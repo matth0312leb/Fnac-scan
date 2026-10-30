@@ -221,7 +221,7 @@ var bookReq = 0;
 function bookHtml(b){
   var box = $("bookBox"); box.innerHTML = "";
   var wrap = document.createElement("div"); wrap.className = "book";
-  if (b.img) { var im = document.createElement("img"); im.src = b.img.replace("http://", "https://"); im.alt = ""; wrap.appendChild(im); }
+  if (b.img) { var im = document.createElement("img"); im.src = b.img.replace("http://", "https://"); im.alt = ""; im.onerror = function(){ im.remove(); }; wrap.appendChild(im); }
   var t = document.createElement("div");
   var h3 = document.createElement("h3"); h3.textContent = b.title; t.appendChild(h3);
   if (b.authors) { var m = document.createElement("div"); m.className = "muted"; m.textContent = b.authors; t.appendChild(m); }
@@ -268,11 +268,22 @@ var GENRES = {"juvenile fiction":"Fiction jeunesse","juvenile nonfiction":"Docum
   "games & activities":"Jeux / activités","literary criticism":"Critique littéraire","nature":"Nature","pets":"Animaux","photography":"Photographie"};
 function frGenre(s){ return String(s || "").split(/,\s*/).filter(Boolean).map(function(g){ return GENRES[g.toLowerCase()] || g; }).join(", "); }
 function clean(s){ var d = document.createElement("div"); d.innerHTML = String(s || ""); return d.textContent.trim(); }
+var diag = {};
+function getJSON(name, url){
+  var ctl = ("AbortController" in window) ? new AbortController() : null;
+  var tm = setTimeout(function(){ if (ctl) ctl.abort(); }, 8000);
+  return fetch(url, ctl ? { signal: ctl.signal } : {}).then(function(r){
+    clearTimeout(tm);
+    if (!r.ok) { diag[name] = r.status === 429 ? "quota dépassé (429)" : "erreur " + r.status; throw 0; }
+    return r;
+  }, function(){ clearTimeout(tm); if (!diag[name]) diag[name] = "connexion bloquée ou trop lente"; throw 0; });
+}
 function fromGoogle(isbn){
-  return fetch("https://www.googleapis.com/books/v1/volumes?q=isbn:" + isbn).then(function(r){ return r.json(); }).then(function(j){
-    if (!j.items || !j.items.length) return null;
+  return getJSON("Google Books", "https://www.googleapis.com/books/v1/volumes?q=isbn:" + isbn).then(function(r){ return r.json(); }).then(function(j){
+    if (!j.items || !j.items.length) { diag["Google Books"] = "aucun résultat"; return null; }
     var v = j.items[0].volumeInfo || {};
     var cats = (v.categories || []).join(", ");
+    diag["Google Books"] = "trouvé";
     return { title: v.title + (v.subtitle ? " – " + v.subtitle : ""), authors: (v.authors || []).join(", "),
       date: frDate(v.publishedDate), publisher: v.publisher || "", pages: v.pageCount || "", genre: frGenre(cats),
       audience: audienceFrom(cats), desc: clean(v.description),
@@ -280,29 +291,55 @@ function fromGoogle(isbn){
   });
 }
 function fromOpenLib(isbn){
-  return fetch("https://openlibrary.org/api/books?bibkeys=ISBN:" + isbn + "&format=json&jscmd=data").then(function(r){ return r.json(); }).then(function(j){
-    var v = j["ISBN:" + isbn]; if (!v) return null;
+  return getJSON("Open Library", "https://openlibrary.org/api/books?bibkeys=ISBN:" + isbn + "&format=json&jscmd=data").then(function(r){ return r.json(); }).then(function(j){
+    var v = j["ISBN:" + isbn]; if (!v) { diag["Open Library"] = "aucun résultat"; return null; }
+    diag["Open Library"] = "trouvé";
     var subj = (v.subjects || []).map(function(s){ return s.name; }).join(", ");
     return { title: v.title + (v.subtitle ? " – " + v.subtitle : ""), authors: (v.authors || []).map(function(a){ return a.name; }).join(", "),
       date: v.publish_date || "", publisher: (v.publishers || []).map(function(x){ return x.name; }).join(", "),
-      pages: v.number_of_pages || "", genre: "", series: "", audience: audienceFrom(subj), desc: "",
+      pages: v.number_of_pages || "", audience: audienceFrom(subj), desc: "",
       img: v.cover && (v.cover.medium || v.cover.small) };
   });
 }
+function bnfPerson(s){
+  s = String(s || "").replace(/\s*\(.*$/, "").replace(/\.\s.*$/, "").trim();
+  var p = s.split(/,\s*/); return p.length === 2 ? p[1] + " " + p[0] : s;
+}
+function fromBnf(isbn){
+  var q = encodeURIComponent('bib.isbn all "' + isbn + '"');
+  return getJSON("BnF", "https://catalogue.bnf.fr/api/SRU?version=1.2&operation=searchRetrieve&recordSchema=dublincore&maximumRecords=1&query=" + q).then(function(r){ return r.text(); }).then(function(x){
+    var d = new DOMParser().parseFromString(x, "text/xml");
+    var all = function(tag){ return Array.prototype.map.call(d.getElementsByTagNameNS("*", tag), function(e){ return e.textContent.trim(); }); };
+    var t = all("title")[0];
+    if (!t) { diag["BnF"] = "aucun résultat"; return null; }
+    diag["BnF"] = "trouvé";
+    var fmt = all("format").join(" "), pm = fmt.match(/(\d+)\s*p/);
+    var pub = (all("publisher")[0] || "").replace(/\s*\(.*\)\s*$/, "").replace(/^.*:\s*/, "");
+    var subj = all("subject").join(", ");
+    return { title: t.split(" / ")[0].replace(/\s*\[.*?\]\s*/g, " ").trim(), authors: all("creator").map(bnfPerson).filter(Boolean).slice(0, 3).join(", "),
+      date: all("date")[0] || "", publisher: pub, pages: pm ? pm[1] : "", genre: "", audience: audienceFrom(subj + " " + fmt),
+      desc: all("description").filter(function(s){ return s.length > 80; })[0] || "" };
+  });
+}
 function loadBook(isbn){
-  var my = ++bookReq;
+  var my = ++bookReq; diag = {};
   var box = $("bookBox"); box.className = ""; box.innerHTML = '<p class="muted">Recherche du livre…</p>';
-  fromGoogle(isbn).catch(function(){ return null; }).then(function(b){
-    if (b && b.desc) return b;
-    return fromOpenLib(isbn).catch(function(){ return null; }).then(function(o){
-      if (!o) return b;
-      if (!b) return o;
-      ["img","pages","publisher","date","audience"].forEach(function(k){ b[k] = b[k] || o[k]; }); return b;
-    });
-  }).then(function(b){
+  var none = function(){ return null; };
+  Promise.all([fromGoogle(isbn).catch(none), fromBnf(isbn).catch(none), fromOpenLib(isbn).catch(none)]).then(function(rs){
     if (my !== bookReq) return;
-    if (b && b.title) bookHtml(b);
-    else box.innerHTML = '<p class="muted">Livre introuvable dans les bases gratuites : utilise le bouton Google IA ci-dessous.</p>';
+    var found = rs.filter(Boolean);
+    if (!found.length) {
+      var lines = ["Google Books", "BnF", "Open Library"].map(function(n){ return n + " : " + (diag[n] || "?"); }).join(" · ");
+      box.innerHTML = '<p class="muted">Livre introuvable dans les bases gratuites : utilise le bouton Google IA ci-dessous.</p><p class="muted" style="font-size:12px">' + lines + '</p>';
+      return;
+    }
+    var b = {};
+    ["title","authors","date","publisher","pages","genre","audience","desc","img"].forEach(function(k){
+      for (var i = 0; i < found.length; i++) if (found[i][k]) { b[k] = found[i][k]; break; }
+    });
+    if (/^\d{4}-\d{2}/.test(b.date)) b.date = frDate(b.date);
+    if (!b.img) b.img = "https://covers.openlibrary.org/b/isbn/" + isbn + "-M.jpg?default=false";
+    bookHtml(b);
   });
 }
 
