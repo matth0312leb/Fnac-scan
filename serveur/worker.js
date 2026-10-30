@@ -382,24 +382,49 @@ async function jeu(p, env) {
 }
 
 // ---------- identification par photo ----------
-async function vision(env, image) {
+async function vision(env, image, details) {
   const question = "Tu regardes la photo d'un article vendu à la Fnac (jeu vidéo, livre, BD, film, produit high-tech…). Lis le texte visible sur la couverture ou la boîte. " +
     'Réponds UNIQUEMENT en JSON : {"type":"jeu|livre|produit","titre":"titre exact lu (jeu ou livre) ou nom du produit","plateforme":"console si jeu vidéo (PS5, Nintendo Switch…), sinon vide","marque":"marque ou éditeur","modele":"modèle si produit","auteur":"auteur si livre","pegi":"chiffre PEGI visible, sinon vide"}. N\'invente rien : laisse vide ce que tu ne lis pas.';
-  const lire = (r) => {
-    const v = r && (r.response !== undefined ? r.response : r.answer !== undefined ? r.answer : r);
-    if (v && typeof v === "object" && v.titre !== undefined) return v;
-    const m = String(typeof v === "string" ? v : JSON.stringify(v || "")).match(/\{[\s\S]*\}/);
-    try { return m ? JSON.parse(m[0]) : null; } catch (e) { return null; }
+  const texteDe = (r) => {
+    const v = r && (r.response !== undefined ? r.response : r.answer !== undefined ? r.answer : r.description !== undefined ? r.description : r);
+    return typeof v === "string" ? v : JSON.stringify(v || "");
   };
-  const llama = () => env.AI.run("@cf/meta/llama-3.2-11b-vision-instruct", { messages: [{ role: "user", content: question }], image, max_tokens: 300 });
-  try { const v = lire(await llama()); if (v && v.titre) return { ...v, modeleIA: "llama-vision" }; }
-  catch (e) {
-    // première utilisation : accepter la licence Meta, puis réessayer
-    if (/agree|licen/i.test(String(e && e.message || e))) {
-      try { await env.AI.run("@cf/meta/llama-3.2-11b-vision-instruct", { prompt: "agree" }); const v = lire(await llama()); if (v && v.titre) return { ...v, modeleIA: "llama-vision" }; } catch (e2) {}
-    }
+  const jsonDe = (t) => {
+    const m = String(t).match(/\{[\s\S]*\}/);
+    try { const o = m ? JSON.parse(m[0]) : null; return o && (o.titre || o.title) ? { ...o, titre: o.titre || o.title } : null; } catch (e) { return null; }
+  };
+  const brut = [];
+  const essai = async (nom, fn) => {
+    try {
+      const t = texteDe(await fn());
+      brut.push(t);
+      details.push(nom + " : " + (t ? "réponse « " + t.replace(/\s+/g, " ").slice(0, 120) + " »" : "réponse vide"));
+      return jsonDe(t);
+    } catch (e) { const m = String(e && e.message || e); details.push(nom + " : erreur " + m.slice(0, 140)); return { erreur: m }; }
+  };
+  const LLAMA = "@cf/meta/llama-3.2-11b-vision-instruct";
+  const llama = () => env.AI.run(LLAMA, { messages: [{ role: "user", content: question }], image, max_tokens: 300 });
+  let v = await essai("llama-vision", llama);
+  if (v && v.erreur && /agree|licen/i.test(v.erreur)) {
+    try { await env.AI.run(LLAMA, { prompt: "agree" }); details.push("licence Meta acceptée"); } catch (e) { details.push("licence : erreur " + String(e && e.message || e).slice(0, 100)); }
+    v = await essai("llama-vision (2e essai)", llama);
   }
-  try { const v = lire(await env.AI.run("@cf/moondream/moondream3.1-9B-A2B", { task: "query", image, question })); if (v && v.titre) return { ...v, modeleIA: "moondream" }; } catch (e) {}
+  if (v && v.titre) return { ...v, modeleIA: "llama-vision" };
+  if (v && v.erreur) {
+    // certains modèles veulent l'image en octets plutôt qu'en texte base64
+    const octets = Array.from(Uint8Array.from(atob(image.split(",")[1] || ""), (c) => c.charCodeAt(0)));
+    v = await essai("llama-vision (octets)", () => env.AI.run(LLAMA, { messages: [{ role: "user", content: question }], image: octets, max_tokens: 300 }));
+    if (v && v.titre) return { ...v, modeleIA: "llama-vision" };
+  }
+  v = await essai("moondream", () => env.AI.run("@cf/moondream/moondream3.1-9B-A2B", { task: "query", image, question }));
+  if (v && v.titre) return { ...v, modeleIA: "moondream" };
+  // une IA a décrit la photo en texte libre : on en extrait le titre avec l'IA texte
+  const desc = brut.filter((t) => t && t.length > 10).join("\n");
+  if (desc) {
+    const o = await demanderIA(env, "Voici ce qu'une IA a lu sur la photo d'un article. Réponds UNIQUEMENT en JSON : " +
+      '{"type":"jeu|livre|produit","titre":"","plateforme":"","marque":"","modele":"","auteur":"","pegi":""}. Laisse vide ce qui n\'est pas indiqué.', desc.slice(0, 2000), 200);
+    if (o && (o.titre || o.title)) { details.push("titre extrait de la description"); return { ...o, titre: o.titre || o.title, modeleIA: "description" }; }
+  }
   return null;
 }
 
@@ -407,8 +432,9 @@ async function photo(image, env) {
   if (!/^data:image\/(jpeg|jpg|png|webp);base64,/.test(image)) return { trouve: false, erreur: "image attendue (data:image/jpeg;base64,...)" };
   if (image.length > 3000000) return { trouve: false, erreur: "image trop lourde" };
   if (!env || !env.AI) return { trouve: false, erreur: "IA indisponible" };
-  const v = await vision(env, image);
-  if (!v) return { trouve: false, erreur: "rien de lisible sur la photo" };
+  const details = [];
+  const v = await vision(env, image, details);
+  if (!v) return { trouve: false, erreur: "rien de lisible sur la photo", details };
   const type = String(v.type || "").toLowerCase();
   if (type.startsWith("jeu") || v.plateforme) {
     const p = { trouve: true, source: "photo", nom: [v.titre, v.plateforme].filter(Boolean).join(" "), marque: v.marque || "", modele: "",

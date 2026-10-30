@@ -124,7 +124,6 @@ li{padding:10px 0;border-top:1px solid var(--line)}
   <div class="code" id="code"></div>
   <div id="bookBox" class="hide"></div>
   <a class="big" id="open" target="_blank" rel="noopener">Ouvrir la fiche fnac.ch</a>
-  <a class="big alt" id="direct" target="_blank" rel="noopener">Essayer d’ouvrir directement la fiche</a>
   <p class="muted" id="note"></p>
   <a class="big alt" id="ai" target="_blank" rel="noopener">Résumé pour conseiller (Google IA)</a>
 </div>
@@ -451,9 +450,8 @@ function loadProduit(ean){
 }
 function produitIntrouvable(){
   var box = $("bookBox"); box.className = ""; box.innerHTML = "";
-  box.appendChild(el("p", "muted", "Pas trouvé automatiquement. Deux solutions rapides :"));
-  var g = el("a", "big", "Fiche Google IA (jeu, produit…)"); g.href = $("ai").href; g.target = "_blank"; g.rel = "noopener";
-  box.appendChild(g);
+  box.appendChild(el("p", "muted", "Pas trouvé automatiquement : essaie la photo de la boîte, ou la fiche Google IA plus bas."));
+  $("ai").textContent = "Fiche Google IA (jeu, produit…)";
   var ph = el("button", "big alt", "📷 Identifier par photo de la boîte"); ph.type = "button"; ph.onclick = function(){ $("f3").click(); };
   box.appendChild(ph);
   box.appendChild(el("p", "warn", ""));
@@ -510,7 +508,7 @@ function identifierPhoto(file){
   bookReq++; var my = ++prodReq, box = $("bookBox");
   $("res").className = "card"; $("code").textContent = "Photo";
   $("note").textContent = ""; box.className = ""; box.innerHTML = '<p class="muted">Lecture de la photo par l’IA… (10 à 20 secondes)</p>';
-  $("open").href = BASE; $("direct").href = "#"; $("ai").href = "#";
+  $("open").href = BASE; $("ai").href = "#";
   $("res").scrollIntoView({ behavior: "smooth", block: "start" });
   reduireImage(file).then(function(image){
     var ctl = ("AbortController" in window) ? new AbortController() : null;
@@ -519,12 +517,15 @@ function identifierPhoto(file){
       .then(function(r){ clearTimeout(tm); return r.json(); });
   }).then(function(j){
     if (my !== prodReq) return;
-    if (!j || !j.trouve) { box.innerHTML = '<p class="muted">L’IA n’a pas réussi à lire la photo. Reprends-la de face, bien éclairée, avec le titre lisible.</p>'; return; }
+    if (!j || !j.trouve) {
+      box.innerHTML = '<p class="muted">L’IA n’a pas réussi à lire la photo. Reprends-la de face, bien éclairée, avec le titre lisible.</p>';
+      if (j && (j.erreur || j.details)) box.appendChild(el("p", "warn", "Détail : " + [j.erreur].concat(j.details || []).filter(Boolean).join(" · ")));
+      return;
+    }
     var ia = j.ia || {}, lu = j.lu || {};
     var nom = (j.type === "jeu" ? (ia.nom || (j.jeu && j.jeu.nom) || lu.titre) + (j.plateforme ? " " + j.plateforme : "") : j.type === "livre" ? [j.titre, j.auteur].filter(Boolean).join(" ") : (ia.nom || j.nom)) || "";
     $("code").textContent = (j.type === "jeu" ? "🎮 " : j.type === "livre" ? "📚 " : "📦 ") + "Photo";
     $("open").href = BASE + encodeURIComponent(nom); $("open").textContent = "Chercher sur fnac.ch";
-    $("direct").href = "https://www.google.com/search?btnI=1&q=" + encodeURIComponent(nom + " fnac.ch");
     $("ai").href = claudeUrl((j.type === "livre" ? "Livre " : j.type === "jeu" ? "Jeu vidéo " : "Produit ") + nom + " : fiche rapide pour un vendeur Fnac, en moins de 150 mots.");
     if (j.type === "livre") {
       bookHtml({ title: j.titre, authors: j.auteur, publisher: j.editeur, bref: ia.resume, sujet: ia.sujet, audience: ia.public, desc: "" });
@@ -547,13 +548,12 @@ function show(c){
   var sku = c.indexOf("s:") === 0;
   $("code").textContent = sku ? c.slice(2) : c;
   $("open").href = urlFor(c);
-  $("direct").href = "https://www.google.com/search?btnI=1&q=" + encodeURIComponent((sku ? c.slice(2) : c) + " fnac.ch");
   $("open").textContent = sku ? "Chercher ce SKU via Google" : "Ouvrir la fiche fnac.ch";
   $("note").textContent = sku ? "Si le bon produit n’apparaît pas en premier, scanne l’EAN." : "";
   $("res").className = "card";
   saveHist(c);
   $("ai").href = claudeUrl(promptOne(c));
-  $("ai").textContent = isBook(c) ? "Résumé détaillé (Google IA)" : "Fiche détaillée (Google IA)";
+  $("ai").textContent = "Plus de détails (Google IA)";
   if (isBook(c)) { prodReq++; loadBook(c); }
   else if (c.indexOf("s:") === 0) { bookReq++; prodReq++; $("bookBox").className = "hide"; $("bookBox").innerHTML = ""; }
   else { bookReq++; loadProduit(c); }
