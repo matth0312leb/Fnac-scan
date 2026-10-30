@@ -333,7 +333,7 @@ function fromServeur(isbn){
     if (!j || !j.trouve) return null;
     var ia = j.ia || {};
     return { title: j.titre, authors: j.auteur, date: /^\d{4}-\d{2}/.test(j.date || "") ? frDate(j.date) : j.date,
-      publisher: j.editeur, pages: j.pages, genre: frGenre(j.genre),
+      publisher: (j.editeur || "").replace(/^./, function(c){ return c.toUpperCase(); }), pages: j.pages, genre: frGenre(j.genre),
       audience: j.age || ia.public || audienceFrom(j.genre), sujet: ia.sujet || "", bref: ia.resume || "",
       desc: j.description || "", img: j.image || "https://covers.openlibrary.org/b/isbn/" + isbn + "-M.jpg?default=false" };
   }, function(){ clearTimeout(tm); return null; });
