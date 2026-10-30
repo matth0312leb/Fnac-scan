@@ -4,6 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Scan produit</title>
+<meta name="theme-color" content="#111111">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <style>
 :root{box-sizing:border-box;--bg:#f6f6f4;--card:#fff;--text:#1a1a1a;--muted:#6b6b6b;--accent:#e1a925;--accent-text:#1a1a1a;--line:#ddd;
@@ -18,7 +23,7 @@ h1{font-size:20px;margin:4px 0 14px}
 .tabs button{flex:1;padding:12px;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:10px;font-size:16px}
 .tabs button.on{background:var(--accent);color:var(--accent-text);border-color:var(--accent);font-weight:600}
 .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
-#reader{width:100%;min-height:160px;border-radius:10px;overflow:hidden}
+#reader{width:100%;min-height:160px;border-radius:10px;overflow:hidden;margin-bottom:8px}
 .big{display:block;width:100%;padding:16px;border:0;border-radius:12px;background:var(--accent);color:var(--accent-text);font-size:18px;font-weight:700;text-align:center;text-decoration:none}
 input{width:100%;padding:14px;font-size:20px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--text);margin-bottom:10px}
 .muted{color:var(--muted);font-size:14px}
@@ -33,6 +38,9 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 .saved{color:#2e9e4f;font-size:13px;font-weight:600}
 .hhead button{border:0;background:none;color:var(--muted);font-size:14px;text-decoration:underline;padding:4px}
 .hide{display:none}
+.opt{display:flex;align-items:center;gap:10px;margin:12px 2px 0;font-size:15px}
+.opt input{width:22px;height:22px;margin:0;accent-color:var(--accent)}
+#torch{margin-top:10px}
 .top{display:flex;align-items:center;gap:14px;background:#111;color:#fff;margin:-16px -16px 18px;padding:18px 16px;border-bottom:4px solid var(--accent)}
 .mark{width:52px;height:52px;border-radius:10px;background:var(--accent);color:#111;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;letter-spacing:-2px}
 .ttl{font-size:19px;font-weight:700}
@@ -47,27 +55,29 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 <body>
 <header class="top"><div class="mark">▮▯▮</div><div><div class="ttl">Scan produit</div><div class="sub">Vésenaz · vérification rapide en rayon</div></div></header>
 <div class="tabs">
-  <button id="t1" class="on" type="button">Scanner EAN</button>
-  <button id="t2" type="button">Saisir SKU</button>
+  <button id="t1" class="on" type="button">Scanner</button>
+  <button id="t2" type="button">Saisir code</button>
   <button id="t3" type="button">Mots-clés</button>
 </div>
 
 <div id="p1">
   <div class="card">
-    <div id="reader"></div>
+    <div id="reader" class="hide"></div>
     <p class="muted" id="hint">Appuie sur « Scanner en direct », puis vise le code-barres.</p>
     <button class="big" id="start" type="button">Scanner en direct</button>
+    <button class="big alt hide" id="torch" type="button">Allumer la lampe</button>
     <button class="big alt" id="shoot" type="button">Prendre une photo</button>
     <button class="big alt" id="pick" type="button">Choisir une photo existante</button>
     <input id="f1" type="file" accept="image/*" capture="environment" class="hide">
     <input id="f2" type="file" accept="image/*" class="hide">
     <div id="filereader" class="hide"></div>
+    <label class="opt"><input type="checkbox" id="auto"> Ouvrir la fiche dès que le code est lu</label>
   </div>
 </div>
 
 <div id="p2" class="hide">
   <div class="card">
-    <input id="sku" inputmode="search" placeholder="Numéro SKU" autocomplete="off">
+    <input id="sku" inputmode="numeric" enterkeyhint="search" placeholder="SKU (8 chiffres) ou EAN" autocomplete="off">
     <button class="big" id="go" type="button">Rechercher</button>
   </div>
 </div>
@@ -189,11 +199,25 @@ function show(c){
   if (navigator.vibrate) { try { navigator.vibrate(60); } catch(e){} }
 }
 
+function eanOk(c){
+  if (!/^(\d{8}|\d{12}|\d{13})$/.test(c)) return false;
+  var d = c.split("").map(Number), chk = d.pop(), s = 0;
+  d.reverse().forEach(function(n, i){ s += n * (i % 2 === 0 ? 3 : 1); });
+  return (10 - s % 10) % 10 === chk;
+}
+var AUTO_KEY = "autoOpen";
+try { $("auto").checked = localStorage.getItem(AUTO_KEY) !== "0"; } catch(e){ $("auto").checked = true; }
+$("auto").onchange = function(){ try { localStorage.setItem(AUTO_KEY, this.checked ? "1" : "0"); } catch(e){} };
+
 function onScan(text){
+  text = String(text).trim();
+  if (!eanOk(text)) { $("hint").textContent = "Lecture douteuse (" + text + "), réessaie en cadrant mieux le code."; return false; }
   var now = Date.now();
   if (text === last && now - lastAt < 3000) return;
   last = text; lastAt = now;
   show(text);
+  if ($("auto").checked) location.href = urlFor(text);
+  return true;
 }
 
 function scanFile(file){
@@ -205,7 +229,7 @@ function scanFile(file){
     verbose: false
   });
   fr.scanFile(file, false)
-    .then(function(t){ $("hint").textContent = "Code lu."; last = ""; onScan(t); })
+    .then(function(t){ last = ""; if (onScan(t) !== false) $("hint").textContent = "Code lu."; })
     .catch(function(){ $("hint").textContent = "Aucun code-barres lisible sur cette photo. Rapproche-toi, évite les reflets et cadre bien le code."; });
 }
 $("shoot").onclick = function(){ $("f1").click(); };
@@ -215,6 +239,7 @@ $("f1").onchange = $("f2").onchange = function(){ scanFile(this.files[0]); this.
 function goSku(){
   var v = $("sku").value.replace(/\s+/g, "");
   if (!v) return;
+  if (/^\d{12,13}$/.test(v)) { show(v); return; }
   show("s:" + v);
 }
 $("go").onclick = goSku;
@@ -223,20 +248,30 @@ $("sku").addEventListener("keydown", function(e){ if (e.key === "Enter") goSku()
 function start(){
   if (running) return;
   if (typeof Html5Qrcode === "undefined") { $("hint").textContent = "Scanner indisponible (bibliothèque non chargée)."; return; }
+  $("reader").className = "";
   scanner = new Html5Qrcode("reader", {
     formatsToSupport: [Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.EAN_8, Html5QrcodeSupportedFormats.UPC_A],
     experimentalFeatures: { useBarCodeDetectorIfSupported: true },
     verbose: false
   });
-  scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 260, height: 120 } }, function(t){ stop(); onScan(t); }, function(){})
-    .then(function(){ running = true; $("start").textContent = "Arrêter"; $("hint").textContent = "Vise le code-barres EAN."; })
-    .catch(function(){ $("hint").textContent = "Caméra refusée. Autorise la caméra pour ce site dans les réglages du navigateur, ou utilise « Prendre une photo »."; });
+  scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 260, height: 120 } }, function(t){ if (onScan(t) !== false) stop(); }, function(){})
+    .then(function(){ running = true; $("start").textContent = "Arrêter"; $("hint").textContent = "Vise le code-barres EAN."; setupTorch(); })
+    .catch(function(){ $("reader").className = "hide"; $("hint").textContent = "Caméra refusée. Autorise la caméra pour ce site dans les réglages du navigateur, ou utilise « Prendre une photo »."; });
 }
 function stop(){
   if (!running || !scanner) return;
-  scanner.stop().then(function(){ running = false; $("start").textContent = "Scanner en direct"; $("hint").textContent = "Appuie sur « Scanner en direct », puis vise le code-barres."; }).catch(function(){});
+  torchOn = false; $("torch").className = "big alt hide"; $("torch").textContent = "Allumer la lampe";
+  scanner.stop().then(function(){ running = false; $("reader").className = "hide"; $("start").textContent = "Scanner en direct"; $("hint").textContent = "Appuie sur « Scanner en direct », puis vise le code-barres."; }).catch(function(){});
 }
 $("start").onclick = function(){ running ? stop() : start(); };
+var torchOn = false;
+function torchFeat(){ try { return scanner.getRunningTrackCameraCapabilities().torchFeature(); } catch(e){ return null; } }
+function setupTorch(){ var t = torchFeat(); if (t && t.isSupported()) $("torch").className = "big alt"; }
+$("torch").onclick = function(){
+  var t = torchFeat(); if (!t) return;
+  t.apply(!torchOn).then(function(){ torchOn = !torchOn; $("torch").textContent = torchOn ? "Éteindre la lampe" : "Allumer la lampe"; }).catch(function(){});
+};
+if ("serviceWorker" in navigator && location.protocol === "https:") { navigator.serviceWorker.register("sw.js").catch(function(){}); }
 renderHist(loadHist());
 </script>
 </body>
