@@ -152,11 +152,12 @@ async function diagnostic(code) {
   if (!code) return { erreur: "ajoute ?ean=..." };
   const [b, g, o, s, u] = await Promise.all([bnf(code), google(code), openlib(code), suisse(code), upc(code)]);
   const w = u.trouve ? await wikidataJeu(titreJeu(u.nom)) : { trouve: false };
+  const [u1, opf, web] = await Promise.all([upcUn(code), openProducts(code), webNom(code, true)]);
   const etat = (x) => x.trouve ? "OK" : "rien (" + (x.status || x.err || "?") + ")";
   return {
     code,
     resume: { BnF: etat(b), swisscovery: etat(s), "Google Books": etat(g), "Open Library": etat(o), "Produits (UPCitemdb / Open Products Facts / web)": u.trouve ? "OK via " + (u.source || "UPCitemdb") + " : " + u.nom : etat(u), "Wikidata (jeux)": u.trouve ? etat(w) + " — recherche : " + titreJeu(u.nom) + (estJeu(u) ? " (détecté comme jeu)" : " (pas détecté comme jeu)") : "non testé" },
-    details: { bnf: b, swisscovery: s, google: g, openlibrary: o, upcitemdb: u, wikidata: w },
+    details: { bnf: b, swisscovery: s, google: g, openlibrary: o, produit_final: u, upcitemdb_seul: u1, open_products_facts: opf, web: web, wikidata: w },
   };
 }
 
@@ -232,18 +233,38 @@ async function openProducts(ean) {
   return { trouve: true, source: "Open Products Facts", nom, marque: p.brands || "", modele: "", categorie: p.categories || "", description: "", image: p.image_front_url || "" };
 }
 
-// Recherche web du code-barres : on garde le titre le plus fréquent des premiers résultats
-async function webNom(ean) {
-  const r = await get("https://html.duckduckgo.com/html/?q=" + ean, { headers: { "Accept": "text/html" } });
-  if (r.status !== 200) return { trouve: false, status: r.status };
-  const titres = [...r.text.matchAll(/class="result__a"[^>]*>([\s\S]*?)<\/a>/g)].map((m) => strip(m[1])).slice(0, 8);
-  if (!titres.length) return { trouve: false, status: 200 };
-  const propre = (t) => t.replace(/\s*[|\-–—]\s*(amazon|ebay|fnac|digitec|galaxus|manor|interdiscount|media ?markt|darty|boulanger|idealo|brack|apple|google|toppreise)[^|]*$/i, "")
-    .replace(/\b(acheter|achat|kaufen|buy|prix|preis|price|en stock|livraison)\b.*$/i, "").replace(new RegExp(ean, "g"), "").replace(/\s+/g, " ").trim();
-  const noms = titres.map(propre).filter((t) => t.length > 6);
-  if (!noms.length) return { trouve: false, status: 200 };
-  return { trouve: true, source: "recherche web", nom: noms[0], marque: "", modele: "", categorie: "", description: "Titres trouvés en ligne pour ce code : " + noms.slice(0, 5).join(" / "), image: "" };
+// Recherche web du code-barres : on garde les titres des premiers résultats (DuckDuckGo, puis Bing)
+function nettoieTitres(titres, ean) {
+  const propre = (t) => t.replace(/\s*[|\-–—]\s*(amazon|ebay|fnac|digitec|galaxus|manor|interdiscount|media ?markt|darty|boulanger|idealo|brack|apple|google|toppreise|ricardo|microspot|conforama|cdiscount|rakuten|walmart|best ?buy)[^|]*$/i, "")
+    .replace(/\b(acheter|achat|kaufen|buy|prix|preis|price|en stock|livraison)\b.*$/i, "").replace(new RegExp(ean, "g"), "")
+    .replace(/\b(EAN|GTIN|UPC|code[- ]barres?|barcode)\b\s*:?/gi, "").replace(/\s+/g, " ").trim();
+  return titres.map(propre).filter((t) => t.length > 6 && !/^(r[ée]sultats?|results?|search|recherche)/i.test(t));
 }
+async function webMoteur(nom, url, re, ean) {
+  const r = await get(url, { headers: { "Accept": "text/html", "Accept-Language": "fr-CH,fr;q=0.9,en;q=0.7" } });
+  const titres = [...r.text.matchAll(re)].map((m) => strip(m[1])).slice(0, 8);
+  const noms = nettoieTitres(titres, ean);
+  return { moteur: nom, status: r.status, nbResultats: titres.length, noms: noms.slice(0, 5),
+    apercu: noms.length ? undefined : strip(r.text).slice(0, 160) };
+}
+async function webNom(ean, detail) {
+  const essais = [
+    () => webMoteur("DuckDuckGo", "https://html.duckduckgo.com/html/?q=" + ean, /class="result__a"[^>]*>([\s\S]*?)<\/a>/g, ean),
+    () => webMoteur("Bing", "https://www.bing.com/search?setlang=fr&cc=CH&q=" + ean, /<li class="b_algo"[\s\S]*?<h2[^>]*>\s*<a[^>]*>([\s\S]*?)<\/a>/g, ean),
+  ];
+  const traces = [];
+  for (const essai of essais) {
+    const t = await essai(); traces.push(t);
+    if (t.noms.length) {
+      const res = { trouve: true, source: "recherche web (" + t.moteur + ")", nom: t.noms[0], marque: "", modele: "", categorie: "",
+        description: "Titres trouvés en ligne pour ce code : " + t.noms.join(" / "), image: "" };
+      if (detail) res.traces = traces;
+      return res;
+    }
+  }
+  return { trouve: false, status: traces.map((t) => t.moteur + " " + t.status + " (" + t.nbResultats + " résultats)").join(", "), traces };
+}
+
 async function upcUn(ean) {
   const r = await get("https://api.upcitemdb.com/prod/trial/lookup?upc=" + ean);
   if (r.status !== 200) return { trouve: false, status: r.status };
