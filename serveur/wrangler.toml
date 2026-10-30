@@ -3,6 +3,10 @@ name = "scan-produit"
 main = "worker.js"
 compatibility_date = "2025-09-01"
 
+# Adresse publique scan-produit.matth0312.workers.dev activée
+workers_dev = true
+preview_urls = false
+
 # IA gratuite de Cloudflare, utilisée pour les résumés de livres
 [ai]
 binding = "AI"
