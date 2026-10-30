@@ -380,6 +380,7 @@ $("auto").onchange = function(){ try { localStorage.setItem(AUTO_KEY, this.check
 
 function onScan(text){
   text = String(text).trim();
+  if (/^\d{12}$/.test(text)) text = "0" + text;
   if (!eanOk(text)) { $("hint").textContent = "Lecture douteuse (" + text + "), réessaie en cadrant mieux le code."; return false; }
   var now = Date.now();
   if (text === last && now - lastAt < 3000) return;
@@ -407,7 +408,8 @@ $("f2").onchange = function(){ scanFile(this.files[0]); this.value = ""; };
 function goSku(){
   var v = $("sku").value.replace(/\s+/g, "");
   if (!v) return;
-  if (/^\d{12,13}$/.test(v)) { show(v); return; }
+  if (/^\d{12}$/.test(v)) v = "0" + v;
+  if (/^\d{13}$/.test(v)) { show(v); return; }
   show("s:" + v);
 }
 $("go").onclick = goSku;
