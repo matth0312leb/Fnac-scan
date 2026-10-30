@@ -66,9 +66,7 @@ li{padding:10px 0;border-top:1px solid var(--line)}
     <p class="muted" id="hint">Appuie sur « Scanner en direct », puis vise le code-barres.</p>
     <button class="big" id="start" type="button">Scanner en direct</button>
     <button class="big alt hide" id="torch" type="button">Allumer la lampe</button>
-    <button class="big alt" id="shoot" type="button">Prendre une photo</button>
     <button class="big alt" id="pick" type="button">Choisir une photo existante</button>
-    <input id="f1" type="file" accept="image/*" capture="environment" class="hide">
     <input id="f2" type="file" accept="image/*" class="hide">
     <div id="filereader" class="hide"></div>
     <label class="opt"><input type="checkbox" id="auto"> Ouvrir la fiche dès que le code est lu</label>
@@ -232,9 +230,8 @@ function scanFile(file){
     .then(function(t){ last = ""; if (onScan(t) !== false) $("hint").textContent = "Code lu."; })
     .catch(function(){ $("hint").textContent = "Aucun code-barres lisible sur cette photo. Rapproche-toi, évite les reflets et cadre bien le code."; });
 }
-$("shoot").onclick = function(){ $("f1").click(); };
 $("pick").onclick = function(){ $("f2").click(); };
-$("f1").onchange = $("f2").onchange = function(){ scanFile(this.files[0]); this.value = ""; };
+$("f2").onchange = function(){ scanFile(this.files[0]); this.value = ""; };
 
 function goSku(){
   var v = $("sku").value.replace(/\s+/g, "");
@@ -256,7 +253,7 @@ function start(){
   });
   scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 260, height: 120 } }, function(t){ if (onScan(t) !== false) stop(); }, function(){})
     .then(function(){ running = true; $("start").textContent = "Arrêter"; $("hint").textContent = "Vise le code-barres EAN."; setupTorch(); })
-    .catch(function(){ $("reader").className = "hide"; $("hint").textContent = "Caméra refusée. Autorise la caméra pour ce site dans les réglages du navigateur, ou utilise « Prendre une photo »."; });
+    .catch(function(){ $("reader").className = "hide"; $("hint").textContent = "Caméra refusée. Autorise la caméra pour ce site dans les réglages du navigateur, ou choisis une photo existante."; });
 }
 function stop(){
   if (!running || !scanner) return;
