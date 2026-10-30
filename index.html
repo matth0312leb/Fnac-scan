@@ -430,6 +430,19 @@ function loadProduit(ean){
     var sub = [j.marque, j.modele].filter(Boolean).join(" · "); if (sub) t.appendChild(el("div", "muted", sub));
     wrap.appendChild(t); box.appendChild(wrap);
     if (ia.resume) box.appendChild(el("p", "bref", ia.resume));
+    if (j.type === "jeu") {
+      var w = j.jeu || {};
+      var modesWd = (w.modes || "").replace(/jeu vidéo /gi, "").replace(/^./, function(c){ return c.toUpperCase(); });
+      var fj = el("dl", "facts");
+      [["Âge", w.pegi || ia.pegi], ["Sortie", w.sortie ? frDate(w.sortie) : ""], ["Plateforme", j.plateforme],
+       ["Modes", ia.modes || modesWd], ["Genre", ia.genre || w.genres], ["Taille", ia.taille], ["Durée", ia.duree],
+       ["Studio", w.studio], ["Pour qui", ia.pour_qui]].forEach(function(f){
+        if (!f[1]) return; fj.appendChild(el("dt", "", f[0])); fj.appendChild(el("dd", "", f[1]));
+      });
+      if (fj.children.length) box.appendChild(fj);
+      box.appendChild(el("p", "warn", (ia.taille ? "Taille estimée par l'IA : " : "Taille non disponible dans les bases gratuites. ") + "Vérifie l'âge et la taille sur la boîte ou la fiche fnac.ch."));
+      return;
+    }
     function liste(titre, arr, cls){ arr = (arr || []).filter(Boolean); if (!arr.length) return; box.appendChild(el("p", "lbl", titre)); var ul = el("ul", "pts " + cls); arr.forEach(function(x){ ul.appendChild(el("li", "", x)); }); box.appendChild(ul); }
     liste("Points forts", ia.forts, "ok");
     liste("Points faibles", ia.faibles, "ko");

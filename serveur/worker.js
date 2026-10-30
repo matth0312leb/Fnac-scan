@@ -4,6 +4,7 @@
 //   /livre?isbn=...   fiche livre (BnF, swisscovery, Google Books, Open Library) + résumé IA
 //   /produit?ean=...  fiche produit (base de codes-barres UPCitemdb) + résumé IA pour conseiller
 //   /comparer?a=...&b=...  comparaison de 2 articles par l'IA
+//   Jeux vidéo : /produit détecte un jeu et ajoute les infos Wikidata (PEGI, sortie, modes, genre, plateformes, studio)
 // Les sites Fnac ne sont pas interrogés : leur anti-robot bloque le serveur (403, testé le 30.10.2026).
 
 const SITE = "https://matth0312leb.github.io";
@@ -55,7 +56,7 @@ async function get(u, opts = {}) {
   const ctl = new AbortController();
   const t = setTimeout(() => ctl.abort(), opts.timeout || 9000);
   try {
-    const r = await fetch(u, { headers: HDRS, redirect: "follow", signal: ctl.signal });
+    const r = await fetch(u, { headers: Object.assign({}, HDRS, opts.headers || {}), redirect: "follow", signal: ctl.signal });
     const text = await r.text();
     return { status: r.status, url: r.url, text };
   } catch (e) {
@@ -150,11 +151,12 @@ async function openlib(isbn) {
 async function diagnostic(code) {
   if (!code) return { erreur: "ajoute ?ean=..." };
   const [b, g, o, s, u] = await Promise.all([bnf(code), google(code), openlib(code), suisse(code), upc(code)]);
+  const w = u.trouve ? await wikidataJeu(titreJeu(u.nom)) : { trouve: false };
   const etat = (x) => x.trouve ? "OK" : "rien (" + (x.status || x.err || "?") + ")";
   return {
     code,
-    resume: { BnF: etat(b), swisscovery: etat(s), "Google Books": etat(g), "Open Library": etat(o), "UPCitemdb (produits)": etat(u) },
-    details: { bnf: b, swisscovery: s, google: g, openlibrary: o, upcitemdb: u },
+    resume: { BnF: etat(b), swisscovery: etat(s), "Google Books": etat(g), "Open Library": etat(o), "UPCitemdb (produits)": etat(u), "Wikidata (jeux)": u.trouve ? etat(w) + " — recherche : " + titreJeu(u.nom) + (estJeu(u) ? " (détecté comme jeu)" : " (pas détecté comme jeu)") : "non testé" },
+    details: { bnf: b, swisscovery: s, google: g, openlibrary: o, upcitemdb: u, wikidata: w },
   };
 }
 
@@ -212,6 +214,12 @@ async function resumeIA(env, f, sujets) {
 // ---------- produits (hors livres) ----------
 async function upc(ean) {
   if (!/^\d{8,14}$/.test(ean)) return { trouve: false };
+  let res = await upcUn(ean);
+  // les codes américains sont souvent enregistrés sur 12 chiffres, sans le 0 du début
+  if (!res.trouve && res.status !== 429 && /^0\d{12}$/.test(ean)) res = await upcUn(ean.slice(1));
+  return res;
+}
+async function upcUn(ean) {
   const r = await get("https://api.upcitemdb.com/prod/trial/lookup?upc=" + ean);
   if (r.status !== 200) return { trouve: false, status: r.status };
   let j; try { j = JSON.parse(r.text); } catch (e) { return { trouve: false }; }
@@ -224,10 +232,76 @@ async function upc(ean) {
   };
 }
 
+// ---------- jeux vidéo ----------
+const PLATEFORMES = /\b(ps5|ps4|ps3|playstation\s*[345]?|xbox(\s*(series\s*[xs]|one|360))?|nintendo\s*switch(\s*2)?|switch(\s*2)?|wii\s*u?|3ds|pc\s*dvd|pc)\b/i;
+function estJeu(p) {
+  const nom = String(p.nom || ""), t = (nom + " " + (p.categorie || "")).toLowerCase();
+  if (/console|controller|manette|headset|casque|c[âa]ble|cable|charg|station|stand|support|carte|card|memory|m[ée]moire|joy-?con|steering|volant/i.test(nom)) return false;
+  if (/video games/.test(t)) return true;
+  return PLATEFORMES.test(nom);
+}
+function plateformeDe(nom) {
+  const m = String(nom).match(PLATEFORMES);
+  if (!m) return "";
+  const s = m[0].toLowerCase();
+  if (/ps5|playstation\s*5/.test(s)) return "PS5";
+  if (/ps4|playstation\s*4/.test(s)) return "PS4";
+  if (/switch\s*2/.test(s)) return "Nintendo Switch 2";
+  if (/switch/.test(s)) return "Nintendo Switch";
+  if (/series/.test(s)) return "Xbox Series X|S";
+  if (/xbox\s*one/.test(s)) return "Xbox One";
+  if (/pc/.test(s)) return "PC";
+  return m[0];
+}
+function titreJeu(nom) {
+  return String(nom)
+    .replace(/\(.*?\)|\[.*?\]/g, " ")
+    .replace(PLATEFORMES, " ")
+    .replace(/\b(sony|microsoft|nintendo|ubisoft|electronic arts|ea sports?|bandai namco|square enix|sega|capcom|take[- ]?two|2k games|warner bros\.?|activision|konami)\b/gi, " ")
+    .replace(/\b(standard|deluxe|gold|ultimate|day one|launch|limited|collector'?s?|game of the year|goty|complete)\s*(edition)?\b/gi, " ")
+    .replace(/\b(edition|édition|video ?game|jeu vidéo|jeu|game|for|pour|new|neuf|eu|pegi\s*\d+|fr|import)\b/gi, " ")
+    .replace(/[-–—:|,]+/g, " ").replace(/\s+/g, " ").trim();
+}
+async function wikidataJeu(titre) {
+  if (!titre || titre.length < 2) return { trouve: false };
+  const esc = titre.replace(/["\\]/g, " ");
+  const q = `SELECT ?item ?itemLabel ?date ?pegiLabel ?modeLabel ?genreLabel ?devLabel ?platLabel WHERE {
+    SERVICE wikibase:mwapi { bd:serviceParam wikibase:api "EntitySearch"; wikibase:endpoint "www.wikidata.org";
+      mwapi:search "${esc}"; mwapi:language "fr". ?item wikibase:apiOutputItem mwapi:item. ?num wikibase:apiOrdinal true. }
+    ?item wdt:P31/wdt:P279* wd:Q7889.
+    OPTIONAL { ?item wdt:P577 ?date. }
+    OPTIONAL { ?item wdt:P908 ?pegi. }
+    OPTIONAL { ?item wdt:P404 ?mode. }
+    OPTIONAL { ?item wdt:P136 ?genre. }
+    OPTIONAL { ?item wdt:P178 ?dev. }
+    OPTIONAL { ?item wdt:P400 ?plat. }
+    SERVICE wikibase:label { bd:serviceParam wikibase:language "fr,en". }
+  } ORDER BY ?num LIMIT 200`;
+  const r = await get("https://query.wikidata.org/sparql?format=json&query=" + encodeURIComponent(q),
+    { timeout: 12000, headers: { "Accept": "application/sparql-results+json", "User-Agent": "ScanProduit/1.0 (https://matth0312leb.github.io/Fnac-scan/)" } });
+  if (r.status !== 200) return { trouve: false, status: r.status };
+  let j; try { j = JSON.parse(r.text); } catch (e) { return { trouve: false }; }
+  const rows = (j.results && j.results.bindings) || [];
+  if (!rows.length) return { trouve: false, status: 200 };
+  const first = rows[0].item.value;
+  const mine = rows.filter((x) => x.item.value === first);
+  const uniq = (k) => [...new Set(mine.map((x) => x[k] && x[k].value).filter(Boolean))];
+  const dates = uniq("date").sort();
+  const pegi = uniq("pegiLabel").map((s) => (s.match(/\d+/) || [s])[0]).sort((a, b) => a - b);
+  return {
+    trouve: true, wikidata: first, nom: uniq("itemLabel")[0] || "",
+    sortie: dates[0] ? dates[0].slice(0, 10) : "",
+    pegi: pegi.length ? "PEGI " + pegi[pegi.length - 1] : "",
+    modes: uniq("modeLabel").join(", "), genres: uniq("genreLabel").slice(0, 3).join(", "),
+    studio: uniq("devLabel").slice(0, 2).join(", "), plateformes: uniq("platLabel").slice(0, 6).join(", "),
+  };
+}
+
 async function produit(ean, env) {
   if (!/^\d{8,13}$/.test(ean)) return { trouve: false, erreur: "EAN attendu" };
   const p = await upc(ean);
   if (!p.trouve) return { trouve: false, sources: { UPCitemdb: p.status || false } };
+  if (estJeu(p)) return await jeu(p, env);
   const infos = ["Produit : " + p.nom, p.marque && "Marque : " + p.marque, p.modele && "Modèle : " + p.modele,
     p.categorie && "Catégorie : " + p.categorie, p.description && "Description : " + p.description].filter(Boolean).join("\n");
   const consigne = "Tu aides un vendeur de la Fnac (Suisse) à conseiller un client en 10 secondes. Réponds en français, en JSON strict sans texte autour : " +
@@ -235,6 +309,20 @@ async function produit(ean, env) {
     "Appuie-toi sur les infos fournies et sur tes connaissances générales du produit. Si tu ne connais pas bien ce produit, reste général et prudent, n'invente pas de caractéristiques chiffrées, et laisse vide ce que tu ignores.";
   const ia = await demanderIA(env, consigne, infos, 450);
   return { trouve: true, ...p, ia, sources: { UPCitemdb: true } };
+}
+
+async function jeu(p, env) {
+  const titre = titreJeu(p.nom);
+  const w = await wikidataJeu(titre);
+  const infos = ["Jeu vidéo : " + p.nom, "Titre nettoyé : " + titre, plateformeDe(p.nom) && "Plateforme de cette boîte : " + plateformeDe(p.nom),
+    w.trouve && "Wikidata – nom : " + w.nom, w.sortie && "Sortie : " + w.sortie, w.pegi && "Classification : " + w.pegi,
+    w.modes && "Modes : " + w.modes, w.genres && "Genres : " + w.genres, w.studio && "Studio : " + w.studio,
+    p.description && "Description : " + p.description].filter(Boolean).join("\n");
+  const consigne = "Tu aides un vendeur de la Fnac (Suisse) à renseigner un client sur un jeu vidéo en 10 secondes. Réponds en français, en JSON strict sans texte autour : " +
+    '{"nom":"titre officiel du jeu","resume":"2 phrases : univers et principe du jeu, sans spoiler","genre":"genre en français, quelques mots","modes":"Solo, Multijoueur local, En ligne… (ce qui s\'applique)","pegi":"PEGI x si connu","taille":"espace disque approximatif sur cette plateforme, ex. ~50 Go, UNIQUEMENT si tu le connais avec certitude, sinon vide","duree":"durée de vie approximative si connue, ex. 30-40 h","pour_qui":"type de joueur à qui le conseiller"}. ' +
+    "Les infos Wikidata fournies sont fiables : reprends-les. Complète avec tes connaissances seulement si tu es sûr ; sinon laisse la chaîne vide. N'invente aucun chiffre.";
+  const ia = await demanderIA(env, consigne, infos, 450);
+  return { trouve: true, type: "jeu", ...p, plateforme: plateformeDe(p.nom), titre, jeu: w, ia, sources: { UPCitemdb: true, Wikidata: w.trouve || w.status || false } };
 }
 
 // ---------- comparaison ----------
