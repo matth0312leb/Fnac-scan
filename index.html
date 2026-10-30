@@ -268,6 +268,8 @@ var GENRES = {"juvenile fiction":"Fiction jeunesse","juvenile nonfiction":"Docum
   "games & activities":"Jeux / activités","literary criticism":"Critique littéraire","nature":"Nature","pets":"Animaux","photography":"Photographie"};
 function frGenre(s){ return String(s || "").split(/,\s*/).filter(Boolean).map(function(g){ return GENRES[g.toLowerCase()] || g; }).join(", "); }
 function clean(s){ var d = document.createElement("div"); d.innerHTML = String(s || ""); return d.textContent.trim(); }
+// Clé Google Books restreinte au site matth0312leb.github.io (sans danger dans une page publique)
+var GBOOKS_KEY = "";
 var diag = {};
 function getJSON(name, url){
   var ctl = ("AbortController" in window) ? new AbortController() : null;
@@ -279,7 +281,7 @@ function getJSON(name, url){
   }, function(){ clearTimeout(tm); if (!diag[name]) diag[name] = "connexion bloquée ou trop lente"; throw 0; });
 }
 function fromGoogle(isbn){
-  return getJSON("Google Books", "https://www.googleapis.com/books/v1/volumes?q=isbn:" + isbn).then(function(r){ return r.json(); }).then(function(j){
+  return getJSON("Google Books", "https://www.googleapis.com/books/v1/volumes?q=isbn:" + isbn + (GBOOKS_KEY ? "&key=" + GBOOKS_KEY : "")).then(function(r){ return r.json(); }).then(function(j){
     if (!j.items || !j.items.length) { diag["Google Books"] = "aucun résultat"; return null; }
     var v = j.items[0].volumeInfo || {};
     var cats = (v.categories || []).join(", ");
