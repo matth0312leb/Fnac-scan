@@ -36,6 +36,18 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 .acts a,.acts button{flex:1;text-align:center;padding:9px 6px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--text);font-size:14px;text-decoration:none}
 .hhead{display:flex;justify-content:space-between;align-items:center}
 .saved{color:#2e9e4f;font-size:13px;font-weight:600}
+.book{display:flex;gap:12px;margin:4px 0 12px}
+.book img{width:72px;height:auto;border-radius:6px;align-self:flex-start;box-shadow:0 1px 6px rgba(0,0,0,.2)}
+.book h3{margin:0 0 4px;font-size:17px;line-height:1.25}
+.desc{font-size:15px;line-height:1.45;margin:0 0 12px;white-space:pre-line}
+.facts{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:15px;margin:0 0 12px}
+.facts dt{color:var(--muted)}
+.facts dd{margin:0;font-weight:600}
+.desc.clip{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.more{border:0;background:none;color:var(--muted);text-decoration:underline;padding:0;margin:-6px 0 12px;font-size:14px}
+.acts button.sel{background:var(--accent);border-color:var(--accent);color:#111;font-weight:600}
+.cmpbar{position:sticky;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:5}
+.cmpbar .big{box-shadow:0 6px 20px rgba(0,0,0,.3)}
 .hhead button{border:0;background:none;color:var(--muted);font-size:14px;text-decoration:underline;padding:4px}
 .hide{display:none}
 .opt{display:flex;align-items:center;gap:10px;margin:12px 2px 0;font-size:15px}
@@ -69,7 +81,7 @@ li{padding:10px 0;border-top:1px solid var(--line)}
     <button class="big alt" id="pick" type="button">Choisir une photo existante</button>
     <input id="f2" type="file" accept="image/*" class="hide">
     <div id="filereader" class="hide"></div>
-    <label class="opt"><input type="checkbox" id="auto"> Ouvrir la fiche dès que le code est lu</label>
+    <label class="opt"><input type="checkbox" id="auto"> Ouvrir la fiche dès que le code est lu (sauf livres)</label>
   </div>
 </div>
 
@@ -90,10 +102,14 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 <div id="res" class="card hide">
   <div class="muted">Dernier code</div>
   <div class="code" id="code"></div>
+  <div id="bookBox" class="hide"></div>
   <a class="big" id="open" target="_blank" rel="noopener">Ouvrir la fiche fnac.ch</a>
   <a class="big alt" id="direct" target="_blank" rel="noopener">Essayer d’ouvrir directement la fiche</a>
   <p class="muted" id="note"></p>
+  <a class="big alt" id="ai" target="_blank" rel="noopener">Résumé pour conseiller (Claude)</a>
 </div>
+
+<div id="cmpBar" class="cmpbar hide"><a class="big" id="cmpGo" target="_blank" rel="noopener">Comparer les 2 articles (Claude)</a></div>
 
 <div id="histCard" class="card hide">
   <div class="hhead"><span class="muted">Historique</span><button id="clr" type="button">Tout effacer</button></div>
@@ -151,12 +167,13 @@ function ago(t){
 }
 function renderHist(h){
   $("histCard").className = h.length ? "card" : "card hide";
+  setTimeout(renderCmp, 0);
   var ul = $("hist"); ul.innerHTML = "";
   h.forEach(function(x){
     var sku = x.c.indexOf("s:") === 0, code = sku ? x.c.slice(2) : x.c;
     var li = document.createElement("li");
     var top = document.createElement("div"); top.className = "hrow";
-    var b = document.createElement("b"); b.textContent = (sku ? "SKU " : "EAN ") + code;
+    var b = document.createElement("b"); b.textContent = (sku ? "SKU " : (isBook(code) ? "Livre " : "EAN ")) + code;
     var s = document.createElement("span"); s.className = "muted"; s.textContent = ago(x.t);
     var ok = document.createElement("span"); ok.className = "saved";
     top.appendChild(b); top.appendChild(ok); top.appendChild(s); li.appendChild(top);
@@ -168,13 +185,127 @@ function renderHist(h){
     li.appendChild(inp);
     var acts = document.createElement("div"); acts.className = "acts";
     var a1 = document.createElement("a"); a1.href = urlFor(x.c); a1.target = "_blank"; a1.rel = "noopener"; a1.textContent = "Ouvrir";
-    var a2 = document.createElement("a"); a2.href = "https://www.google.com/search?btnI=1&q=" + encodeURIComponent(code + " fnac.ch"); a2.target = "_blank"; a2.rel = "noopener"; a2.textContent = "Fiche directe";
     var d = document.createElement("button"); d.type = "button"; d.textContent = "Supprimer";
     d.onclick = function(){ var hh = loadHist().filter(function(y){ return y.c !== x.c; }); storeHist(hh); renderHist(hh); };
-    acts.appendChild(a1); acts.appendChild(a2); acts.appendChild(d); li.appendChild(acts);
+    var cp = document.createElement("button"); cp.type = "button"; cp.textContent = "Comparer";
+    if (cmpSel.indexOf(x.c) > -1) cp.className = "sel";
+    cp.onclick = function(){
+      var i = cmpSel.indexOf(x.c);
+      if (i > -1) cmpSel.splice(i, 1); else { cmpSel.push(x.c); if (cmpSel.length > 2) cmpSel.shift(); }
+      renderHist(loadHist());
+    };
+    acts.appendChild(a1); acts.appendChild(cp); acts.appendChild(d); li.appendChild(acts);
     ul.appendChild(li);
   });
 }
+var cmpSel = [];
+function label(c){ return c.indexOf("s:") === 0 ? "SKU Fnac " + c.slice(2) : (isBook(c) ? "ISBN " : "EAN ") + c; }
+function claudeUrl(q){ return "https://claude.ai/new?q=" + encodeURIComponent(q); }
+function noteOf(c){ var x = loadHist().filter(function(y){ return y.c === c; })[0]; return x && x.n ? " (ma note : " + x.n + ")" : ""; }
+function promptOne(c){
+  if (isBook(c)) return "Je suis vendeur à la Fnac Suisse, au rayon livres. Un client me demande ce livre : " + label(c) + ". Cherche-le sur le web, puis donne-moi en français une fiche rapide, en moins de 120 mots : titre et auteur ; résumé en 2 phrases sans spoiler ; de quoi / de qui ça parle ; âge conseillé ; date de parution et éditeur ; si c'est une série, le tome ; et 2 livres similaires à proposer.";
+  return "Je suis vendeur à la Fnac Suisse. Un client me pose une question sur ce produit : " + label(c) + noteOf(c) + ". Cherche-le sur le web (sur fr.fnac.ch si possible), puis donne-moi en français, en moins de 150 mots : le nom exact du produit, 3 points forts, 2 points faibles, à quel type de client il convient, et une alternative à proposer.";
+}
+function promptCmp(a, b){
+  return "Je suis vendeur à la Fnac Suisse. Un client hésite entre deux articles : (1) " + label(a) + noteOf(a) + " et (2) " + label(b) + noteOf(b) + ". Cherche-les sur le web (sur fr.fnac.ch si possible), puis compare-les en français dans un tableau court (caractéristiques clés, différences qui comptent vraiment), et termine par une phrase : lequel conseiller selon le profil du client.";
+}
+function renderCmp(){
+  var h = loadHist().map(function(x){ return x.c; });
+  cmpSel = cmpSel.filter(function(c){ return h.indexOf(c) > -1; });
+  $("cmpBar").className = cmpSel.length === 2 ? "cmpbar" : "cmpbar hide";
+  if (cmpSel.length === 2) $("cmpGo").href = claudeUrl(promptCmp(cmpSel[0], cmpSel[1]));
+}
+
+function isBook(c){ return /^97[89]\d{10}$/.test(c); }
+var bookReq = 0;
+function bookHtml(b){
+  var box = $("bookBox"); box.innerHTML = "";
+  var wrap = document.createElement("div"); wrap.className = "book";
+  if (b.img) { var im = document.createElement("img"); im.src = b.img.replace("http://", "https://"); im.alt = ""; wrap.appendChild(im); }
+  var t = document.createElement("div");
+  var h3 = document.createElement("h3"); h3.textContent = b.title; t.appendChild(h3);
+  if (b.authors) { var m = document.createElement("div"); m.className = "muted"; m.textContent = b.authors; t.appendChild(m); }
+  wrap.appendChild(t); box.appendChild(wrap);
+  var dl = document.createElement("dl"); dl.className = "facts";
+  [["Public", b.audience], ["Parution", b.date], ["Éditeur", b.publisher], ["Pages", b.pages], ["Genre", b.genre], ["Série", b.series]].forEach(function(f){
+    if (!f[1]) return;
+    var dt = document.createElement("dt"); dt.textContent = f[0];
+    var dd = document.createElement("dd"); dd.textContent = f[1];
+    dl.appendChild(dt); dl.appendChild(dd);
+  });
+  if (dl.children.length) box.appendChild(dl);
+  var p = document.createElement("p"); p.className = "desc";
+  if (b.desc) {
+    p.textContent = b.desc; p.classList.add("clip"); box.appendChild(p);
+    var mo = document.createElement("button"); mo.type = "button"; mo.className = "more"; mo.textContent = "Lire la suite";
+    mo.onclick = function(){ p.classList.remove("clip"); mo.remove(); };
+    box.appendChild(mo);
+  } else { p.className = "muted"; p.textContent = "Pas de résumé dans la base : le bouton Claude ci-dessous en fait un."; box.appendChild(p); }
+  if (!b.audience) { var a = document.createElement("p"); a.className = "muted"; a.textContent = "Âge conseillé non indiqué dans la base : le bouton Claude le précise."; box.appendChild(a); }
+  box.className = "";
+}
+var MOIS = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
+function frDate(s){
+  s = String(s || "").trim(); if (!s) return "";
+  var m = s.match(/^(\d{4})-(\d{2})(?:-(\d{2}))?/);
+  if (m) return (m[3] ? (+m[3]) + " " : "") + MOIS[+m[2] - 1] + " " + m[1];
+  return s;
+}
+function audienceFrom(txt){
+  var t = String(txt || "").toLowerCase();
+  if (/baby|board book|tout-petit|0-3|1-3 ans/.test(t)) return "Tout-petits (0-3 ans)";
+  if (/picture book|album/.test(t)) return "Enfants (3-6 ans)";
+  if (/young adult|ado/.test(t)) return "Ados / jeunes adultes";
+  if (/juvenile|jeunesse|children|enfant/.test(t)) return "Jeunesse";
+  return "";
+}
+var GENRES = {"juvenile fiction":"Fiction jeunesse","juvenile nonfiction":"Documentaire jeunesse","young adult fiction":"Roman ado","young adult nonfiction":"Documentaire ado",
+  "fiction":"Roman","comics & graphic novels":"BD / romans graphiques","cooking":"Cuisine","history":"Histoire","biography & autobiography":"Biographie",
+  "self-help":"Développement personnel","business & economics":"Économie / entreprise","science":"Sciences","computers":"Informatique","travel":"Voyage",
+  "health & fitness":"Santé / forme","psychology":"Psychologie","philosophy":"Philosophie","religion":"Religion","art":"Art","music":"Musique",
+  "sports & recreation":"Sport / loisirs","education":"Éducation","family & relationships":"Famille","poetry":"Poésie","drama":"Théâtre",
+  "true crime":"Faits divers","humor":"Humour","political science":"Politique","social science":"Sciences sociales","foreign language study":"Langues",
+  "games & activities":"Jeux / activités","literary criticism":"Critique littéraire","nature":"Nature","pets":"Animaux","photography":"Photographie"};
+function frGenre(s){ return String(s || "").split(/,\s*/).filter(Boolean).map(function(g){ return GENRES[g.toLowerCase()] || g; }).join(", "); }
+function clean(s){ var d = document.createElement("div"); d.innerHTML = String(s || ""); return d.textContent.trim(); }
+function fromGoogle(isbn){
+  return fetch("https://www.googleapis.com/books/v1/volumes?q=isbn:" + isbn).then(function(r){ return r.json(); }).then(function(j){
+    if (!j.items || !j.items.length) return null;
+    var v = j.items[0].volumeInfo || {};
+    var cats = (v.categories || []).join(", ");
+    return { title: v.title + (v.subtitle ? " – " + v.subtitle : ""), authors: (v.authors || []).join(", "),
+      date: frDate(v.publishedDate), publisher: v.publisher || "", pages: v.pageCount || "", genre: frGenre(cats),
+      audience: audienceFrom(cats), desc: clean(v.description),
+      img: v.imageLinks && (v.imageLinks.thumbnail || v.imageLinks.smallThumbnail) };
+  });
+}
+function fromOpenLib(isbn){
+  return fetch("https://openlibrary.org/api/books?bibkeys=ISBN:" + isbn + "&format=json&jscmd=data").then(function(r){ return r.json(); }).then(function(j){
+    var v = j["ISBN:" + isbn]; if (!v) return null;
+    var subj = (v.subjects || []).map(function(s){ return s.name; }).join(", ");
+    return { title: v.title + (v.subtitle ? " – " + v.subtitle : ""), authors: (v.authors || []).map(function(a){ return a.name; }).join(", "),
+      date: v.publish_date || "", publisher: (v.publishers || []).map(function(x){ return x.name; }).join(", "),
+      pages: v.number_of_pages || "", genre: "", series: "", audience: audienceFrom(subj), desc: "",
+      img: v.cover && (v.cover.medium || v.cover.small) };
+  });
+}
+function loadBook(isbn){
+  var my = ++bookReq;
+  var box = $("bookBox"); box.className = ""; box.innerHTML = '<p class="muted">Recherche du livre…</p>';
+  fromGoogle(isbn).catch(function(){ return null; }).then(function(b){
+    if (b && b.desc) return b;
+    return fromOpenLib(isbn).catch(function(){ return null; }).then(function(o){
+      if (!o) return b;
+      if (!b) return o;
+      ["img","pages","publisher","date","audience"].forEach(function(k){ b[k] = b[k] || o[k]; }); return b;
+    });
+  }).then(function(b){
+    if (my !== bookReq) return;
+    if (b && b.title) bookHtml(b);
+    else box.innerHTML = '<p class="muted">Livre introuvable dans les bases gratuites : utilise le bouton Claude ci-dessous.</p>';
+  });
+}
+
 var clrArmed = false;
 $("clr").onclick = function(){
   if (!clrArmed) { clrArmed = true; $("clr").textContent = "Confirmer ?"; setTimeout(function(){ clrArmed = false; $("clr").textContent = "Tout effacer"; }, 3000); return; }
@@ -194,6 +325,9 @@ function show(c){
   $("note").textContent = sku ? "Si le bon produit n’apparaît pas en premier, scanne l’EAN." : "";
   $("res").className = "card";
   saveHist(c);
+  $("ai").href = claudeUrl(promptOne(c));
+  $("ai").textContent = isBook(c) ? "Résumé détaillé (Claude)" : "Résumé pour conseiller (Claude)";
+  if (isBook(c)) loadBook(c); else { bookReq++; $("bookBox").className = "hide"; $("bookBox").innerHTML = ""; }
   if (navigator.vibrate) { try { navigator.vibrate(60); } catch(e){} }
 }
 
@@ -214,7 +348,7 @@ function onScan(text){
   if (text === last && now - lastAt < 3000) return;
   last = text; lastAt = now;
   show(text);
-  if ($("auto").checked) location.href = urlFor(text);
+  if ($("auto").checked && !isBook(text)) location.href = urlFor(text);
   return true;
 }
 
