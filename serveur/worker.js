@@ -44,6 +44,7 @@ export default {
         let body; try { body = await req.json(); } catch (e) { return send({ trouve: false, erreur: "image attendue" }, 400); }
         return send(await photo(String(body.image || ""), env));
       }
+      if (url.pathname.startsWith("/profil/") || url.pathname === "/stats") return send(await profils(req, url, env));
       if (url.pathname === "/question" && req.method === "POST") {
         let body; try { body = await req.json(); } catch (e) { return send({ ok: false, erreur: "question attendue" }, 400); }
         return send(await question(String(body.question || ""), String(body.contexte || ""), env));
@@ -403,6 +404,80 @@ async function jeu(p, env) {
     "Les infos Wikidata et Wikipédia fournies sont fiables : appuie ton résumé et les modes de jeu sur l'article Wikipédia s'il est fourni (traduis en français). Complète avec tes connaissances seulement si tu es sûr ; sinon laisse la chaîne vide. N'invente aucun chiffre.";
   const ia = await demanderIA(env, consigne, infos, 450);
   return { trouve: true, type: "jeu", ...p, plateforme: p.plateforme || plateformeDe(p.nom), titre, jeu: w, ia, sources: { produit: p.source || "UPCitemdb", Wikidata: w.trouve || w.status || false } };
+}
+
+// ---------- profils (prénom), historique synchronisé et statistiques d'usage ----------
+// Base D1 « DB » : historique(nom, code, note, t), activite(nom, t, type), profils(nom, affichage, cree, vu), config(cle, valeur)
+// Le profil administrateur (config.admin_nom) est protégé par config.code_stats ; les stats ne montrent que des chiffres par fonction.
+const TYPES = ["livre", "jeu", "produit", "sku", "photo", "question", "comparer", "motscles"];
+async function profils(req, url, env) {
+  if (!env.DB) return { ok: false, erreur: "base indisponible" };
+  const corps = req.method === "POST" ? await req.json().catch(() => ({})) : {};
+  const p = (k) => String(corps[k] ?? url.searchParams.get(k) ?? "").trim();
+  const conf = async (k) => { const r = await env.DB.prepare("SELECT valeur FROM config WHERE cle = ?").bind(k).first(); return r ? r.valeur : ""; };
+  const affichage = p("nom").replace(/\s+/g, " ").slice(0, 30);
+  const nom = affichage.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+  const now = Date.now();
+  const route = url.pathname;
+
+  if (route === "/stats") {
+    if (p("cle") !== await conf("code_stats")) return { ok: false, erreur: "code incorrect" };
+    const semaine = now - 7 * 24 * 3600 * 1000;
+    const rows = (await env.DB.prepare("SELECT nom, type, COUNT(*) n, SUM(CASE WHEN t > ? THEN 1 ELSE 0 END) n7, MAX(t) dernier FROM activite GROUP BY nom, type").bind(semaine).all()).results || [];
+    const noms = (await env.DB.prepare("SELECT nom, affichage, cree, vu FROM profils").all()).results || [];
+    const parNom = {};
+    noms.forEach((x) => { parNom[x.nom] = { nom: x.affichage || x.nom, depuis: x.cree, dernier: x.vu || 0, total: 0, semaine: 0, fonctions: {} }; });
+    rows.forEach((r) => {
+      const s = parNom[r.nom] || (parNom[r.nom] = { nom: r.nom, dernier: 0, total: 0, semaine: 0, fonctions: {} });
+      s.fonctions[r.type] = r.n; s.total += r.n; s.semaine += r.n7; s.dernier = Math.max(s.dernier, r.dernier || 0);
+    });
+    return { ok: true, equipe: Object.values(parNom).sort((a, b) => b.total - a.total) };
+  }
+
+  if (!nom || nom.length < 2) return { ok: false, erreur: "prénom manquant" };
+  // protection du profil administrateur
+  if (nom === await conf("admin_nom") && p("cle") !== await conf("code_stats")) return { ok: false, erreur: "code", protege: true };
+
+  if (route === "/profil/connexion") {
+    await env.DB.prepare("INSERT INTO profils (nom, affichage, cree, vu) VALUES (?, ?, ?, ?) ON CONFLICT(nom) DO UPDATE SET vu = excluded.vu").bind(nom, affichage, now, now).run();
+    return { ok: true, nom: affichage, admin: nom === await conf("admin_nom") };
+  }
+  if (route === "/profil/historique") {
+    const rows = (await env.DB.prepare("SELECT code AS c, note AS n, t FROM historique WHERE nom = ? ORDER BY t DESC LIMIT 50").bind(nom).all()).results || [];
+    return { ok: true, historique: rows };
+  }
+  const type = TYPES.includes(p("type")) ? p("type") : "produit";
+  if (route === "/profil/ajouter") {
+    const article = p("article").slice(0, 40);
+    if (!article) return { ok: false, erreur: "article manquant" };
+    await env.DB.batch([
+      env.DB.prepare("INSERT INTO historique (nom, code, note, t) VALUES (?, ?, '', ?) ON CONFLICT(nom, code) DO UPDATE SET t = excluded.t").bind(nom, article, now),
+      env.DB.prepare("INSERT INTO activite (nom, t, type) VALUES (?, ?, ?)").bind(nom, now, type),
+      env.DB.prepare("UPDATE profils SET vu = ? WHERE nom = ?").bind(now, nom),
+      env.DB.prepare("DELETE FROM historique WHERE nom = ? AND code NOT IN (SELECT code FROM historique WHERE nom = ? ORDER BY t DESC LIMIT 50)").bind(nom, nom),
+    ]);
+    return { ok: true };
+  }
+  if (route === "/profil/activite") {
+    await env.DB.batch([
+      env.DB.prepare("INSERT INTO activite (nom, t, type) VALUES (?, ?, ?)").bind(nom, now, type),
+      env.DB.prepare("UPDATE profils SET vu = ? WHERE nom = ?").bind(now, nom),
+    ]);
+    return { ok: true };
+  }
+  if (route === "/profil/note") {
+    await env.DB.prepare("UPDATE historique SET note = ? WHERE nom = ? AND code = ?").bind(p("note").slice(0, 200), nom, p("article")).run();
+    return { ok: true };
+  }
+  if (route === "/profil/supprimer") {
+    await env.DB.prepare("DELETE FROM historique WHERE nom = ? AND code = ?").bind(nom, p("article")).run();
+    return { ok: true };
+  }
+  if (route === "/profil/vider") {
+    await env.DB.prepare("DELETE FROM historique WHERE nom = ?").bind(nom).run();
+    return { ok: true };
+  }
+  return { ok: false, erreur: "route inconnue" };
 }
 
 // ---------- question du client sur une fiche ----------
