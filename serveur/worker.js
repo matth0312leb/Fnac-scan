@@ -121,6 +121,37 @@ async function bnf(isbn) {
   };
 }
 
+// Catalogue des bibliothèques suisses (swisscovery / SLSP), format MARC
+async function suisse(isbn) {
+  const r = await get("https://swisscovery.slsp.ch/view/sru/41SLSP_NETWORK?version=1.2&operation=searchRetrieve&recordSchema=marcxml&maximumRecords=1&query=alma.isbn%3D" + isbn);
+  if (r.status !== 200) return { trouve: false, status: r.status };
+  const champ = (tag, code) => {
+    const out = [];
+    const re = new RegExp('<datafield[^>]*tag="' + tag + '"[^>]*>([\\s\\S]*?)</datafield>', "g");
+    let m;
+    while ((m = re.exec(r.text))) {
+      const sm = m[1].match(new RegExp('<subfield code="' + code + '">([\\s\\S]*?)</subfield>'));
+      if (sm) out.push(strip(sm[1]).replace(/\s*[\/:;,.]\s*$/, ""));
+    }
+    return out;
+  };
+  const titre = champ("245", "a")[0];
+  if (!titre) return { trouve: false, status: 200 };
+  const sous = champ("245", "b")[0];
+  const auteur = champ("100", "a").concat(champ("700", "a")).slice(0, 3).map((s) => { const p = s.split(/,\s*/); return p.length === 2 ? p[1] + " " + p[0] : s; });
+  return {
+    trouve: true,
+    titre: titre + (sous ? " – " + sous : ""),
+    auteur: auteur.join(", "),
+    editeur: champ("264", "b")[0] || champ("260", "b")[0] || "",
+    date: champ("264", "c")[0] || champ("260", "c")[0] || "",
+    pages: ((champ("300", "a")[0] || "").match(/(\d+)\s*(p|S)/) || [])[1] || "",
+    description: champ("520", "a").join(" "),
+    public: champ("521", "a")[0] || "",
+    sujets: champ("650", "a").concat(champ("655", "a")).join(" ; "),
+  };
+}
+
 async function google(isbn) {
   const r = await get("https://www.googleapis.com/books/v1/volumes?q=isbn:" + isbn);
   if (r.status !== 200) return { trouve: false, status: r.status };
@@ -151,35 +182,35 @@ async function openlib(isbn) {
 // ---------- routes ----------
 async function diagnostic(code) {
   if (!code) return { erreur: "ajoute ?ean=..." };
-  const [ch, com, b, g, o] = await Promise.all([fnac("ch", code), fnac("com", code), bnf(code), google(code), openlib(code)]);
+  const [ch, com, b, g, o, s] = await Promise.all([fnac("ch", code), fnac("com", code), bnf(code), google(code), openlib(code), suisse(code)]);
   const etat = (x) => x.trouve ? "OK" : x.bloque ? "BLOQUÉ par anti-robot (" + x.status + ")" : "rien (" + (x.status || x.err || "?") + ")";
   return {
     code,
-    resume: { "fnac.ch": etat(ch), "fnac.com": etat(com), BnF: etat(b), "Google Books": etat(g), "Open Library": etat(o) },
-    details: { fnac_ch: ch, fnac_com: com, bnf: b, google: g, openlibrary: o },
+    resume: { "fnac.ch": etat(ch), "fnac.com": etat(com), BnF: etat(b), swisscovery: etat(s), "Google Books": etat(g), "Open Library": etat(o) },
+    details: { fnac_ch: ch, fnac_com: com, bnf: b, swisscovery: s, google: g, openlibrary: o },
   };
 }
 
 async function livre(isbn, env) {
   if (!/^\d{13}$/.test(isbn)) return { trouve: false, erreur: "ISBN à 13 chiffres attendu" };
-  const [b, g, o, com, ch] = await Promise.all([bnf(isbn), google(isbn), openlib(isbn), fnac("com", isbn), fnac("ch", isbn)]);
+  const [b, g, o, com, ch, s] = await Promise.all([bnf(isbn), google(isbn), openlib(isbn), fnac("com", isbn), fnac("ch", isbn), suisse(isbn)]);
   const pick = (...v) => v.find((x) => x && String(x).trim()) || "";
   const fiche = {
-    trouve: !!(b.trouve || g.trouve || o.trouve || com.trouve || ch.trouve),
-    titre: pick(b.titre, g.titre, com.nom, ch.nom, o.titre),
-    auteur: pick(b.auteur, g.auteur, com.auteur, ch.auteur, o.auteur),
-    editeur: pick(b.editeur, g.editeur, o.editeur),
-    date: pick(g.date, b.date, o.date),
-    pages: pick(b.pages, g.pages, o.pages),
+    trouve: !!(b.trouve || g.trouve || o.trouve || com.trouve || ch.trouve || s.trouve),
+    titre: pick(b.titre, s.titre, g.titre, com.nom, ch.nom, o.titre),
+    auteur: pick(b.auteur, s.auteur, g.auteur, com.auteur, ch.auteur, o.auteur),
+    editeur: pick(b.editeur, s.editeur, g.editeur, o.editeur),
+    date: pick(g.date, b.date, s.date, o.date),
+    pages: pick(b.pages, s.pages, g.pages, o.pages),
     genre: pick(g.genre),
-    age: pick(com.age, ch.age),
+    age: pick(com.age, ch.age, s.public),
     image: pick(g.image, com.image, ch.image, o.image),
-    description: pick(com.description, ch.description, g.description),
+    description: pick(com.description, ch.description, g.description, s.description),
     prix: pick(ch.prix),
     sku: pick(ch.sku),
-    sources: { BnF: b.trouve, Google: g.trouve, OpenLibrary: o.trouve, "fnac.com": com.trouve || (com.bloque ? "bloqué" : false), "fnac.ch": ch.trouve || (ch.bloque ? "bloqué" : false) },
+    sources: { BnF: b.trouve, swisscovery: s.trouve, Google: g.trouve, OpenLibrary: o.trouve, "fnac.com": com.trouve || (com.bloque ? "bloqué" : false), "fnac.ch": ch.trouve || (ch.bloque ? "bloqué" : false) },
   };
-  if (fiche.trouve && env && env.AI) fiche.ia = await resumeIA(env, fiche, b.sujets);
+  if (fiche.trouve && env && env.AI) fiche.ia = await resumeIA(env, fiche, [b.sujets, s.sujets].filter(Boolean).join(" ; "));
   return fiche;
 }
 
@@ -192,7 +223,7 @@ async function resumeIA(env, f, sujets) {
   const infos = [
     "Titre : " + f.titre, f.auteur && "Auteur : " + f.auteur, f.editeur && "Éditeur : " + f.editeur,
     f.date && "Parution : " + f.date, f.pages && "Pages : " + f.pages, f.genre && "Genre : " + f.genre,
-    sujets && "Sujets (catalogue BnF) : " + sujets, f.age && "Âge indiqué : " + f.age,
+    sujets && "Sujets (catalogues de bibliothèques) : " + sujets, f.age && "Âge indiqué : " + f.age,
     f.description && "Texte de l'éditeur : " + f.description.slice(0, 1200),
   ].filter(Boolean).join("\n");
   const consigne = "Tu aides un libraire de la Fnac à renseigner un client en 10 secondes. À partir UNIQUEMENT des infos fournies, réponds en français, en JSON strict sans texte autour : " +
