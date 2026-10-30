@@ -4,6 +4,7 @@
 //   /livre?isbn=...   fiche livre (BnF, swisscovery, Google Books, Open Library) + résumé IA
 //   /produit?ean=...  fiche produit (base de codes-barres UPCitemdb) + résumé IA pour conseiller
 //   /comparer?a=...&b=...  comparaison de 2 articles par l'IA
+//   /similaires?isbn=...  4 livres à proposer « si vous avez aimé… » (IA, titres vérifiés dans Open Library)
 //   POST /question {question, contexte}  réponse de l'IA à une question du client sur la fiche affichée
 //   (les fiches livre/produit/comparaison sont gardées 30 jours dans le stockage KV « FICHES » ; ajouter &frais=1 pour forcer)
 //   POST /photo {image: dataURL}  identification par photo (couverture / boîte) avec l'IA vision
@@ -15,7 +16,8 @@ const UA = "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, 
 const HDRS = { "User-Agent": UA, "Accept": "application/json,application/xml,text/xml;q=0.9,*/*;q=0.8", "Accept-Language": "fr-CH,fr;q=0.9" };
 
 export default {
-  async fetch(req, env) {
+  async fetch(req, env, ctx) {
+    env = compteurIA(env, ctx);
     const url = new URL(req.url);
     const origin = req.headers.get("Origin") || "";
     const cors = {
@@ -32,7 +34,7 @@ export default {
     const VERSION = "v1";
     const cle = url.pathname.slice(1) + ":" + VERSION + ":" + [code, url.searchParams.get("a"), url.searchParams.get("b")].filter(Boolean).join("-");
     const frais = url.searchParams.get("frais") === "1";
-    if (env.FICHES && !frais && /^\/(livre|produit|comparer)$/.test(url.pathname)) {
+    if (env.FICHES && !frais && /^\/(livre|produit|comparer|similaires)$/.test(url.pathname)) {
       try { const deja = await env.FICHES.get(cle, "json"); if (deja) return send({ ...deja, memoire: true }); } catch (e) {}
     }
     const sendCache = async (o) => {
@@ -50,6 +52,7 @@ export default {
         return send(await question(String(body.question || ""), String(body.contexte || ""), env));
       }
       if (url.pathname === "/livre") return await sendCache(await livre(code, env));
+      if (url.pathname === "/similaires") return await sendCache(await similaires(code, env));
       if (url.pathname === "/produit") return await sendCache(await produit(code, env));
       if (url.pathname === "/comparer") {
         const a = (url.searchParams.get("a") || "").replace(/\D/g, ""), b = (url.searchParams.get("b") || "").replace(/\D/g, "");
@@ -193,6 +196,67 @@ async function livre(isbn, env) {
   };
   if (fiche.trouve && env && env.AI) fiche.ia = await resumeIA(env, fiche, [b.sujets, s.sujets].filter(Boolean).join(" ; "));
   return fiche;
+}
+
+// ---------- suivi du quota de l'IA gratuite (10 000 « neurones » par jour) ----------
+// Estimation à partir des tarifs publiés par Cloudflare (neurones par million de jetons, entrée / sortie).
+const TARIFS = {
+  "llama-3.3-70b": [26668, 204805], "llama-3.1-8b": [25608, 75147], "llama-3.2-11b-vision": [4410, 61493],
+  "gemma-3-12b": [31371, 50560], "moondream": [27273, 90909],
+};
+function compteurIA(env, ctx) {
+  if (!env || !env.AI || env.__compte) return env;
+  const ai = env.AI;
+  const compte = {
+    run: async (modele, entree, ...reste) => {
+      const r = await ai.run(modele, entree, ...reste);
+      try {
+        const cle = Object.keys(TARIFS).find((k) => modele.includes(k)) || "llama-3.3-70b";
+        const [tIn, tOut] = TARIFS[cle];
+        const u = (r && r.usage) || {};
+        const texteIn = JSON.stringify((entree && (entree.messages || entree.prompt || entree.question)) || "").length;
+        const jIn = u.prompt_tokens || Math.round(texteIn / 4) + (entree && entree.image ? 1600 : 0);
+        const sortie = r && (r.response ?? r.answer ?? r.description ?? r.caption);
+        const jOut = u.completion_tokens || Math.round(JSON.stringify(sortie || "").length / 4);
+        const neurones = (jIn * tIn + jOut * tOut) / 1e6;
+        if (env.DB && entree && entree.prompt !== "agree") {
+          const jour = new Date().toISOString().slice(0, 10);
+          const p = env.DB.prepare("INSERT INTO ia_usage (jour, appels, neurones) VALUES (?, 1, ?) ON CONFLICT(jour) DO UPDATE SET appels = appels + 1, neurones = neurones + excluded.neurones").bind(jour, neurones).run();
+          if (ctx && ctx.waitUntil) ctx.waitUntil(p); else await p;
+        }
+      } catch (e) {}
+      return r;
+    },
+  };
+  return Object.assign(Object.create(env), env, { AI: compte, __compte: true });
+}
+
+// ---------- livres similaires ----------
+async function similaires(isbn, env) {
+  if (!/^97[89]\d{10}$/.test(isbn)) return { trouve: false, erreur: "ISBN attendu" };
+  let f = env.FICHES ? await env.FICHES.get("livre:v1:" + isbn, "json").catch(() => null) : null;
+  if (!f) f = await livre(isbn, env);
+  if (!f || !f.trouve) return { trouve: false, erreur: "livre introuvable" };
+  const ia = f.ia || {};
+  const infos = ["Livre : " + f.titre, f.auteur && "Auteur : " + f.auteur, f.genre && "Genre : " + f.genre,
+    (f.age || ia.public) && "Public : " + (f.age || ia.public), ia.sujet && "Sujet : " + ia.sujet,
+    (ia.resume || f.description) && "Résumé : " + (ia.resume || f.description).slice(0, 600)].filter(Boolean).join("\n");
+  const consigne = "Tu es libraire à la Fnac (Suisse). Un client a aimé ce livre. Propose 4 AUTRES livres réels, connus et disponibles en français, du même public et du même esprit. " +
+    'Réponds en JSON strict : {"livres":[{"titre":"titre exact en français","auteur":"Prénom Nom","pourquoi":"une phrase courte : le point commun"}]}. ' +
+    "Ne propose que des livres dont tu es certain qu'ils existent ; pas le livre d'origine ni un autre tome de la même série.";
+  const r = await demanderIA(env, consigne, infos, 450);
+  const liste = (r && Array.isArray(r.livres) ? r.livres : []).filter((x) => x && x.titre).slice(0, 4);
+  if (!liste.length) return { trouve: false, erreur: "pas de suggestion" };
+  const verifies = await Promise.all(liste.map(async (x) => {
+    const q = "https://openlibrary.org/search.json?limit=1&fields=title,author_name,isbn&title=" + encodeURIComponent(x.titre) + (x.auteur ? "&author=" + encodeURIComponent(x.auteur) : "");
+    const o = await get(q, { timeout: 5000 });
+    let doc = null; try { doc = JSON.parse(o.text).docs[0]; } catch (e) {}
+    const isbn13 = doc && (doc.isbn || []).find((i) => /^97[89]\d{10}$/.test(i) && /^97[89]2/.test(i)) || doc && (doc.isbn || []).find((i) => /^97[89]\d{10}$/.test(i)) || "";
+    return { titre: String(x.titre), auteur: String(x.auteur || ""), pourquoi: String(x.pourquoi || ""), verifie: !!doc, isbn: isbn13 };
+  }));
+  // on ne garde que les titres retrouvés dans Open Library (évite les livres inventés par l'IA)
+  const surs = verifies.filter((x) => x.verifie);
+  return { trouve: true, pour: f.titre, livres: surs.length ? surs : verifies.map((x) => ({ ...x, aVerifier: true })) };
 }
 
 async function demanderIA(env, consigne, infos, maxTokens) {
@@ -409,7 +473,7 @@ async function jeu(p, env) {
 // ---------- profils (prénom), historique synchronisé et statistiques d'usage ----------
 // Base D1 « DB » : historique(nom, code, note, t), activite(nom, t, type), profils(nom, affichage, cree, vu), config(cle, valeur)
 // Le profil administrateur (config.admin_nom) est protégé par config.code_stats ; les stats ne montrent que des chiffres par fonction.
-const TYPES = ["livre", "jeu", "produit", "sku", "photo", "question", "comparer", "motscles"];
+const TYPES = ["livre", "jeu", "produit", "sku", "photo", "question", "comparer", "motscles", "similaires"];
 async function profils(req, url, env) {
   if (!env.DB) return { ok: false, erreur: "base indisponible" };
   const corps = req.method === "POST" ? await req.json().catch(() => ({})) : {};
@@ -431,7 +495,11 @@ async function profils(req, url, env) {
       const s = parNom[r.nom] || (parNom[r.nom] = { nom: r.nom, dernier: 0, total: 0, semaine: 0, fonctions: {} });
       s.fonctions[r.type] = r.n; s.total += r.n; s.semaine += r.n7; s.dernier = Math.max(s.dernier, r.dernier || 0);
     });
-    return { ok: true, equipe: Object.values(parNom).sort((a, b) => b.total - a.total) };
+    const jour = new Date().toISOString().slice(0, 10);
+    const q = await env.DB.prepare("SELECT appels, neurones FROM ia_usage WHERE jour = ?").bind(jour).first().catch(() => null);
+    const hist = ((await env.DB.prepare("SELECT jour, appels, neurones FROM ia_usage ORDER BY jour DESC LIMIT 7").all().catch(() => ({}))).results) || [];
+    return { ok: true, equipe: Object.values(parNom).sort((a, b) => b.total - a.total),
+      quota: { jour, appels: q ? q.appels : 0, neurones: q ? Math.round(q.neurones) : 0, limite: 10000, semaine: hist } };
   }
 
   if (!nom || nom.length < 2) return { ok: false, erreur: "prénom manquant" };

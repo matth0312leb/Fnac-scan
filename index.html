@@ -68,6 +68,19 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 .stat th,.stat td{text-align:left;padding:7px 4px;border-top:1px solid var(--line);vertical-align:top}
 .stat th{color:var(--muted);font-weight:600}
 .stat .det{font-size:12px;color:var(--muted)}
+.sim{list-style:none;padding:0;margin:6px 0 12px}
+.sim li{border-top:1px solid var(--line);padding:9px 0;display:flex;gap:10px;align-items:flex-start}
+.sim .t{flex:1}
+.sim .t b{display:block}
+.sim .t .muted{font-size:13px}
+.sim a{flex:none;font-size:13px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;color:var(--text);text-decoration:none;background:var(--bg)}
+.lnk{background:none;border:0;padding:0;color:inherit;font:inherit;font-weight:700;text-align:left;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px;cursor:pointer}
+.reshead{display:flex;justify-content:space-between;align-items:center}
+.reshead button{border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:8px;padding:7px 10px;font-size:13px;font-weight:600}
+.quota{margin:0 0 14px}
+.bar{height:8px;border-radius:4px;background:var(--line);overflow:hidden;margin:6px 0 4px}
+.bar span{display:block;height:100%;background:#2e9e4f}
+.bar span.mid{background:#e8a000}.bar span.haut{background:#d64545}
 .warn{font-size:12px;color:var(--muted);margin:4px 0 12px}
 .desc.clip{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
 .more{border:0;background:none;color:var(--muted);text-decoration:underline;padding:0;margin:-6px 0 12px;font-size:14px}
@@ -80,7 +93,7 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 .opt input{width:22px;height:22px;margin:0;accent-color:var(--accent)}
 #torch{margin-top:10px}
 .top{display:flex;align-items:center;gap:14px;background:#111;color:#fff;margin:-16px -16px 18px;padding:18px 16px;border-bottom:4px solid var(--accent)}
-.mark{width:52px;height:52px;border-radius:10px;background:var(--accent);color:#111;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;letter-spacing:-2px}
+.mark{width:56px;height:56px;border-radius:12px;display:block}
 .ttl{font-size:19px;font-weight:700}
 .sub{font-size:12px;color:#bdbdbd;margin-top:2px}
 .card{box-shadow:0 2px 12px rgba(0,0,0,.10)}
@@ -96,7 +109,7 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 </style>
 </head>
 <body>
-<header class="top"><div class="mark">▮▯▮</div><div><div class="ttl">Scan produit</div><div class="sub">Vésenaz · <button class="who" id="who" type="button">profil</button></div></div></header>
+<header class="top"><img class="mark" src="icon-192.png" alt=""><div><div class="ttl">Scan produit</div><div class="sub">Vésenaz · <button class="who" id="who" type="button">profil</button></div></div></header>
 <div id="profil" class="hide"><div class="card">
   <h2>Bienvenue 👋</h2>
   <p class="muted">Ton prénom sert à retrouver ton historique sur n'importe quel téléphone.</p>
@@ -107,7 +120,7 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 </div></div>
 <div class="tabs">
   <button id="t1" class="on" type="button">Scanner</button>
-  <button id="t2" type="button">Saisir code</button>
+  <button id="t2" type="button">Code</button>
   <button id="t3" type="button">Mots-clés</button>
   <button id="t4" type="button">Historique<span class="badge" id="nb">0</span></button>
 </div>
@@ -143,12 +156,12 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 
 <div id="mainRes">
 <div id="res" class="card hide">
-  <div class="muted">Dernier code</div>
+  <div class="reshead"><span class="muted">Dernier code</span><button id="again" type="button">↺ Nouveau scan</button></div>
   <div class="code" id="code"></div>
   <div id="bookBox" class="hide"></div>
   <div id="qBox" class="hide">
     <p class="lbl">Question du client</p>
-    <div class="qrow"><input id="qIn" type="text" enterkeyhint="send" placeholder="Ex. c'est jouable seul ? il y a une suite ?" autocomplete="off"><button id="qGo" type="button">Demander</button></div>
+    <div class="qrow"><input id="qIn" type="text" enterkeyhint="send" placeholder="Ex. pour quel âge ? il y a une suite ?" autocomplete="off"><button id="qGo" type="button">Demander</button></div>
     <div id="qRep"></div>
   </div>
   <a class="big" id="open" target="_blank" rel="noopener">Ouvrir la fiche fnac.ch</a>
@@ -269,8 +282,19 @@ function afficherStats(){
     box.innerHTML = "";
     if (j && j.erreur === "code incorrect") { box.className = "card hide"; codeAChange(); return; }
     if (!j || !j.ok) { box.appendChild(el("p", "muted", "Statistiques indisponibles.")); return; }
+    if (j.quota) {
+      var q = j.quota, pct = Math.min(100, Math.round(q.neurones / q.limite * 100));
+      var qd = el("div", "quota");
+      qd.appendChild(el("p", "lbl", "IA gratuite aujourd'hui"));
+      var bar = el("div", "bar"), sp = el("span", pct >= 80 ? "haut" : pct >= 50 ? "mid" : ""); sp.style.width = Math.max(2, pct) + "%"; bar.appendChild(sp); qd.appendChild(bar);
+      qd.appendChild(el("div", "", "≈ " + pct + " % du quota · " + q.appels + " appels à l'IA"));
+      var sem = (q.semaine || []).slice(0, 7).map(function(x){ return x.jour.slice(8, 10) + "/" + x.jour.slice(5, 7) + " : " + Math.round(x.neurones / q.limite * 100) + " %"; }).join(" · ");
+      if (sem) qd.appendChild(el("div", "warn", "7 derniers jours — " + sem));
+      qd.appendChild(el("div", "warn", "Estimation. Le quota se remet à zéro chaque nuit (1 h, heure suisse). Au-delà, les résumés et la photo s'arrêtent jusqu'au lendemain ; le reste de l'appli fonctionne."));
+      box.appendChild(qd);
+    }
     box.appendChild(el("p", "lbl", "Utilisation par l'équipe"));
-    var NOMS = { livre: "livres", jeu: "fiches jeu", produit: "produits", sku: "SKU", photo: "photos", question: "questions", comparer: "comparaisons", motscles: "mots-clés" };
+    var NOMS = { similaires: "suggestions", livre: "livres", jeu: "fiches jeu", produit: "produits", sku: "SKU", photo: "photos", question: "questions", comparer: "comparaisons", motscles: "mots-clés" };
     var t = el("table", "stat"), hd = el("tr");
     ["Prénom", "Total", "7 j", "Dernière fois"].forEach(function(x){ hd.appendChild(el("th", "", x)); });
     t.appendChild(hd);
@@ -388,6 +412,28 @@ function poserQuestion(){
       rep.textContent = j.reponse + (j.certitude === "incertain" ? " (à vérifier)" : "");
     }, function(){ clearTimeout(tm); rep.textContent = "Serveur injoignable, réessaie."; });
 }
+var COURANT = "";
+function livresSimilaires(isbn, box, btn){
+  btn.disabled = true; btn.textContent = "Recherche de suggestions… (10 s)";
+  var ctl = ("AbortController" in window) ? new AbortController() : null;
+  var tm = setTimeout(function(){ if (ctl) ctl.abort(); }, 30000);
+  fetch(SERVEUR + "/similaires?isbn=" + isbn, ctl ? { signal: ctl.signal } : {}).then(function(r){ clearTimeout(tm); return r.json(); }).then(function(j){
+    btn.remove();
+    if (!j || !j.trouve || !j.livres || !j.livres.length) { box.appendChild(el("p", "muted", "Pas de suggestion pour ce livre.")); return; }
+    stat("similaires");
+    box.appendChild(el("p", "lbl", "Si le client a aimé ce livre"));
+    var ul = el("ul", "sim");
+    j.livres.forEach(function(x){
+      var li = el("li"), t = el("div", "t");
+      if (x.isbn) { var bt = el("button", "lnk", x.titre); bt.type = "button"; bt.onclick = function(){ tab(1); last = ""; show(x.isbn); window.scrollTo({ top: 0, behavior: "smooth" }); }; t.appendChild(bt); }
+      else t.appendChild(el("b", "", x.titre));
+      t.appendChild(el("div", "muted", [x.auteur, x.pourquoi].filter(Boolean).join(" — ") + (x.aVerifier ? " (à vérifier)" : "")));
+      var a = el("a", "", "fnac.ch"); a.href = BASE + encodeURIComponent(x.isbn || (x.titre + " " + x.auteur)); a.target = "_blank"; a.rel = "noopener";
+      li.appendChild(t); li.appendChild(a); ul.appendChild(li);
+    });
+    box.appendChild(ul);
+  }, function(){ clearTimeout(tm); btn.disabled = false; btn.textContent = "📚 Livres similaires (réessayer)"; });
+}
 function bookHtml(b){
   var box = $("bookBox"); box.innerHTML = "";
   var wrap = document.createElement("div"); wrap.className = "book";
@@ -415,6 +461,11 @@ function bookHtml(b){
   if (!b.audience) { var a = document.createElement("p"); a.className = "muted"; a.textContent = "Âge conseillé non indiqué dans la base : le bouton Google IA le précise."; box.appendChild(a); }
   box.className = "";
   montrerQuestion(true);
+  if (isBook(COURANT) && !b.photo) {
+    var sb = el("button", "big alt", "📚 Livres similaires à proposer"); sb.type = "button";
+    sb.onclick = function(){ livresSimilaires(COURANT, box, sb); };
+    box.appendChild(sb);
+  }
 }
 var MOIS = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
 function frDate(s){
@@ -674,7 +725,7 @@ function identifierPhoto(file){
     $("open").href = BASE + encodeURIComponent(nom); $("open").textContent = "Chercher sur fnac.ch";
     $("ai").href = claudeUrl((j.type === "livre" ? "Livre " : j.type === "jeu" ? "Jeu vidéo " : "Produit ") + nom + " : fiche rapide pour un vendeur Fnac, en moins de 150 mots.");
     if (j.type === "livre") {
-      bookHtml({ title: j.titre, authors: j.auteur, publisher: j.editeur, bref: ia.resume, sujet: ia.sujet, audience: ia.public, desc: "" });
+      bookHtml({ title: j.titre, authors: j.auteur, publisher: j.editeur, bref: ia.resume, sujet: ia.sujet, audience: ia.public, desc: "", photo: true });
     } else renderFiche(j);
     box.appendChild(el("p", "warn", "Identifié par photo (lu : « " + (lu.titre || "?") + (lu.plateforme ? " – " + lu.plateforme : "") + " »). Si ce n’est pas le bon article, reprends la photo."));
   }, function(){
@@ -696,6 +747,7 @@ function urlFor(c){
   return BASE + encodeURIComponent(c);
 }
 function show(c){
+  COURANT = c;
   montrerQuestion(false);
   $("open").style.display = ""; $("ai").style.display = "";
   var sku = c.indexOf("s:") === 0;
@@ -791,6 +843,7 @@ $("torch").onclick = function(){
   t.apply(!torchOn).then(function(){ torchOn = !torchOn; $("torch").textContent = torchOn ? "Éteindre la lampe" : "Allumer la lampe"; }).catch(function(){});
 };
 if ("serviceWorker" in navigator && location.protocol === "https:") { navigator.serviceWorker.register("sw.js").catch(function(){}); }
+$("again").onclick = function(){ tab(1); window.scrollTo({ top: 0, behavior: "smooth" }); if (!running) start(); };
 $("who").onclick = ouvrirProfil;
 $("pGo").onclick = connexion;
 $("pNom").addEventListener("keydown", function(e){ if (e.key === "Enter") connexion(); });
