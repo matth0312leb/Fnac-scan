@@ -4,6 +4,8 @@
 //   /livre?isbn=...   fiche livre (BnF, swisscovery, Google Books, Open Library) + résumé IA
 //   /produit?ean=...  fiche produit (base de codes-barres UPCitemdb) + résumé IA pour conseiller
 //   /comparer?a=...&b=...  comparaison de 2 articles par l'IA
+//   POST /question {question, contexte}  réponse de l'IA à une question du client sur la fiche affichée
+//   (les fiches livre/produit/comparaison sont gardées 30 jours dans le stockage KV « FICHES » ; ajouter &frais=1 pour forcer)
 //   POST /photo {image: dataURL}  identification par photo (couverture / boîte) avec l'IA vision
 //   Jeux vidéo : /produit détecte un jeu et ajoute les infos Wikidata (PEGI, sortie, modes, genre, plateformes, studio)
 // Les sites Fnac ne sont pas interrogés : leur anti-robot bloque le serveur (403, testé le 30.10.2026).
@@ -26,22 +28,25 @@ export default {
     if (req.method === "OPTIONS") return new Response(null, { headers: cors });
     const code = (url.searchParams.get("ean") || url.searchParams.get("isbn") || "").replace(/\D/g, "");
     const send = (o, s = 200) => new Response(JSON.stringify(o, null, 2), { status: s, headers: cors });
-    // cache Cloudflare : un même code n'est recalculé qu'une fois par jour (économise le quota IA)
-    const cache = caches.default;
-    const cacheKey = new Request(url.toString(), { method: "GET" });
-    if (/^\/(livre|produit|comparer)$/.test(url.pathname)) {
-      const hit = await cache.match(cacheKey);
-      if (hit) { const r = new Response(hit.body, hit); r.headers.set("Access-Control-Allow-Origin", cors["Access-Control-Allow-Origin"]); return r; }
+    // mémoire des fiches (stockage KV Cloudflare, 30 jours) : un article déjà vu s'affiche tout de suite
+    const VERSION = "v1";
+    const cle = url.pathname.slice(1) + ":" + VERSION + ":" + [code, url.searchParams.get("a"), url.searchParams.get("b")].filter(Boolean).join("-");
+    const frais = url.searchParams.get("frais") === "1";
+    if (env.FICHES && !frais && /^\/(livre|produit|comparer)$/.test(url.pathname)) {
+      try { const deja = await env.FICHES.get(cle, "json"); if (deja) return send({ ...deja, memoire: true }); } catch (e) {}
     }
-    const sendCache = async (o, ctx) => {
-      const r = send(o);
-      if (o && o.trouve) { const c = r.clone(); c.headers.set("Cache-Control", "public, max-age=86400"); await cache.put(cacheKey, c); }
-      return r;
+    const sendCache = async (o) => {
+      if (o && o.trouve && env.FICHES) { try { await env.FICHES.put(cle, JSON.stringify(o), { expirationTtl: 60 * 60 * 24 * 30 }); } catch (e) {} }
+      return send(o);
     };
     try {
       if (url.pathname === "/photo" && req.method === "POST") {
         let body; try { body = await req.json(); } catch (e) { return send({ trouve: false, erreur: "image attendue" }, 400); }
         return send(await photo(String(body.image || ""), env));
+      }
+      if (url.pathname === "/question" && req.method === "POST") {
+        let body; try { body = await req.json(); } catch (e) { return send({ ok: false, erreur: "question attendue" }, 400); }
+        return send(await question(String(body.question || ""), String(body.contexte || ""), env));
       }
       if (url.pathname === "/livre") return await sendCache(await livre(code, env));
       if (url.pathname === "/produit") return await sendCache(await produit(code, env));
@@ -398,6 +403,18 @@ async function jeu(p, env) {
     "Les infos Wikidata et Wikipédia fournies sont fiables : appuie ton résumé et les modes de jeu sur l'article Wikipédia s'il est fourni (traduis en français). Complète avec tes connaissances seulement si tu es sûr ; sinon laisse la chaîne vide. N'invente aucun chiffre.";
   const ia = await demanderIA(env, consigne, infos, 450);
   return { trouve: true, type: "jeu", ...p, plateforme: p.plateforme || plateformeDe(p.nom), titre, jeu: w, ia, sources: { produit: p.source || "UPCitemdb", Wikidata: w.trouve || w.status || false } };
+}
+
+// ---------- question du client sur une fiche ----------
+async function question(q, contexte, env) {
+  q = q.trim().slice(0, 300); contexte = contexte.trim().slice(0, 3000);
+  if (!q) return { ok: false, erreur: "question vide" };
+  const consigne = "Tu aides un vendeur de la Fnac (Suisse) à répondre à la question d'un client, en rayon, sur l'article dont la fiche est fournie. " +
+    'Réponds en français, en JSON strict : {"reponse":"2 à 4 phrases courtes et concrètes","certitude":"sûr|probable|incertain"}. ' +
+    "Appuie-toi d'abord sur la fiche, puis sur tes connaissances générales. Si tu ne sais pas, dis-le simplement et conseille de vérifier sur la boîte ou la fiche fnac.ch. N'invente aucun chiffre ni prix.";
+  const r = await demanderIA(env, consigne, "FICHE DE L'ARTICLE :\n" + contexte + "\n\nQUESTION DU CLIENT : " + q, 300);
+  if (!r || !r.reponse) return { ok: false, erreur: "pas de réponse de l'IA" };
+  return { ok: true, reponse: String(r.reponse), certitude: r.certitude || "" };
 }
 
 // ---------- identification par photo ----------

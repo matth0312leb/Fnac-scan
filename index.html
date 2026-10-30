@@ -53,6 +53,12 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 .cmpt th,.cmpt td{border-top:1px solid var(--line);padding:7px 6px;text-align:left;vertical-align:top}
 .cmpt th{font-weight:600;color:var(--muted);width:28%}
 .cmpt thead td{font-weight:700;border-top:0}
+#qBox{margin:4px 0 14px;padding-top:10px;border-top:1px solid var(--line)}
+.qrow{display:flex;gap:8px}
+.qrow input{flex:1;margin:0;font-size:16px;padding:12px}
+.qrow button{border:0;border-radius:10px;background:var(--accent);color:#111;font-weight:700;padding:0 14px;font-size:15px}
+.qa{margin:10px 0 0;padding:10px 12px;border-radius:8px;background:var(--bg);font-size:15px;line-height:1.45}
+.qa b{display:block;font-size:13px;color:var(--muted);font-weight:600;margin-bottom:3px}
 .warn{font-size:12px;color:var(--muted);margin:4px 0 12px}
 .desc.clip{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
 .more{border:0;background:none;color:var(--muted);text-decoration:underline;padding:0;margin:-6px 0 12px;font-size:14px}
@@ -123,6 +129,11 @@ li{padding:10px 0;border-top:1px solid var(--line)}
   <div class="muted">Dernier code</div>
   <div class="code" id="code"></div>
   <div id="bookBox" class="hide"></div>
+  <div id="qBox" class="hide">
+    <p class="lbl">Question du client</p>
+    <div class="qrow"><input id="qIn" type="text" enterkeyhint="send" placeholder="Ex. c'est jouable seul ? il y a une suite ?" autocomplete="off"><button id="qGo" type="button">Demander</button></div>
+    <div id="qRep"></div>
+  </div>
   <a class="big" id="open" target="_blank" rel="noopener">Ouvrir la fiche fnac.ch</a>
   <p class="muted" id="note"></p>
   <a class="big alt" id="ai" target="_blank" rel="noopener">Résumé pour conseiller (Google IA)</a>
@@ -253,6 +264,24 @@ function renderCmp(){
 
 function isBook(c){ return /^97[89]\d{10}$/.test(c); }
 var bookReq = 0;
+function montrerQuestion(on){
+  $("qBox").className = on ? "" : "hide";
+  if (!on) { $("qRep").innerHTML = ""; $("qIn").value = ""; }
+}
+function poserQuestion(){
+  var q = $("qIn").value.trim(); if (!q) { $("qIn").focus(); return; }
+  var ctx = ($("code").textContent + "\n" + $("bookBox").innerText).slice(0, 3000);
+  var bloc = el("div", "qa"); bloc.appendChild(el("b", "", q)); var rep = el("span", "", "Réflexion…"); bloc.appendChild(rep);
+  $("qRep").insertBefore(bloc, $("qRep").firstChild); $("qIn").value = "";
+  var ctl = ("AbortController" in window) ? new AbortController() : null;
+  var tm = setTimeout(function(){ if (ctl) ctl.abort(); }, 25000);
+  fetch(SERVEUR + "/question", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question: q, contexte: ctx }), signal: ctl ? ctl.signal : undefined })
+    .then(function(r){ clearTimeout(tm); return r.json(); })
+    .then(function(j){
+      if (!j || !j.ok) { rep.textContent = "Pas de réponse pour le moment, réessaie ou utilise Google IA."; return; }
+      rep.textContent = j.reponse + (j.certitude === "incertain" ? " (à vérifier)" : "");
+    }, function(){ clearTimeout(tm); rep.textContent = "Serveur injoignable, réessaie."; });
+}
 function bookHtml(b){
   var box = $("bookBox"); box.innerHTML = "";
   var wrap = document.createElement("div"); wrap.className = "book";
@@ -279,6 +308,7 @@ function bookHtml(b){
   } else if (!b.bref) { p.className = "muted"; p.textContent = "Pas de résumé dans la base : le bouton Google IA ci-dessous en fait un."; box.appendChild(p); }
   if (!b.audience) { var a = document.createElement("p"); a.className = "muted"; a.textContent = "Âge conseillé non indiqué dans la base : le bouton Google IA le précise."; box.appendChild(a); }
   box.className = "";
+  montrerQuestion(true);
 }
 var MOIS = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
 function frDate(s){
@@ -449,6 +479,7 @@ function loadProduit(ean){
   }, function(){ clearTimeout(tm); if (my === prodReq) produitIntrouvable(); });
 }
 function produitIntrouvable(){
+  montrerQuestion(false);
   var box = $("bookBox"); box.className = ""; box.innerHTML = "";
   box.appendChild(el("p", "muted", "Pas trouvé automatiquement : essaie la photo de la boîte, ou la fiche Google IA plus bas."));
   $("ai").textContent = "Fiche Google IA (jeu, produit…)";
@@ -458,7 +489,7 @@ function produitIntrouvable(){
 }
 function maj(s){ return s ? String(s).replace(/^./, function(c){ return c.toUpperCase(); }) : s; }
 function renderFiche(j){
-    var box = $("bookBox"); box.className = "";
+    var box = $("bookBox"); box.className = ""; montrerQuestion(true);
     var ia = j.ia || {};
     box.innerHTML = "";
     var wrap = el("div", "book");
@@ -506,6 +537,7 @@ function reduireImage(file){
 }
 function identifierPhoto(file){
   if (!file) return;
+  montrerQuestion(false);
   bookReq++; var my = ++prodReq, box = $("bookBox");
   $("res").className = "card"; $("code").textContent = "Photo";
   $("note").textContent = ""; box.className = ""; box.innerHTML = '<p class="muted">Lecture de la photo par l’IA… (10 à 20 secondes)</p>';
@@ -555,6 +587,7 @@ function urlFor(c){
   return BASE + encodeURIComponent(c);
 }
 function show(c){
+  montrerQuestion(false);
   $("open").style.display = ""; $("ai").style.display = "";
   var sku = c.indexOf("s:") === 0;
   $("code").textContent = sku ? c.slice(2) : c;
@@ -607,6 +640,8 @@ function scanFile(file){
 }
 $("pick").onclick = function(){ $("f2").click(); };
 $("f2").onchange = function(){ scanFile(this.files[0]); this.value = ""; };
+$("qGo").onclick = poserQuestion;
+$("qIn").addEventListener("keydown", function(e){ if (e.key === "Enter") poserQuestion(); });
 $("snap").onclick = function(){ stop(); $("f3").click(); };
 $("f3").onchange = function(){ identifierPhoto(this.files[0]); this.value = ""; };
 

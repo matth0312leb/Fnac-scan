@@ -10,3 +10,8 @@ preview_urls = false
 # IA gratuite de Cloudflare, utilisée pour les résumés de livres
 [ai]
 binding = "AI"
+
+# Mémoire des fiches déjà vues (stockage KV gratuit, créé le 30.10.2026)
+[[kv_namespaces]]
+binding = "FICHES"
+id = "b12b142321804ffdb3d3f5b9c5c06328"
