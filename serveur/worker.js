@@ -155,7 +155,7 @@ async function diagnostic(code) {
   const etat = (x) => x.trouve ? "OK" : "rien (" + (x.status || x.err || "?") + ")";
   return {
     code,
-    resume: { BnF: etat(b), swisscovery: etat(s), "Google Books": etat(g), "Open Library": etat(o), "UPCitemdb (produits)": etat(u), "Wikidata (jeux)": u.trouve ? etat(w) + " — recherche : " + titreJeu(u.nom) + (estJeu(u) ? " (détecté comme jeu)" : " (pas détecté comme jeu)") : "non testé" },
+    resume: { BnF: etat(b), swisscovery: etat(s), "Google Books": etat(g), "Open Library": etat(o), "Produits (UPCitemdb / Open Products Facts / web)": u.trouve ? "OK via " + (u.source || "UPCitemdb") + " : " + u.nom : etat(u), "Wikidata (jeux)": u.trouve ? etat(w) + " — recherche : " + titreJeu(u.nom) + (estJeu(u) ? " (détecté comme jeu)" : " (pas détecté comme jeu)") : "non testé" },
     details: { bnf: b, swisscovery: s, google: g, openlibrary: o, upcitemdb: u, wikidata: w },
   };
 }
@@ -217,7 +217,32 @@ async function upc(ean) {
   let res = await upcUn(ean);
   // les codes américains sont souvent enregistrés sur 12 chiffres, sans le 0 du début
   if (!res.trouve && res.status !== 429 && /^0\d{12}$/.test(ean)) res = await upcUn(ean.slice(1));
+  if (!res.trouve) { const o = await openProducts(ean); if (o.trouve) return o; }
+  if (!res.trouve) { const d = await webNom(ean); if (d.trouve) return d; }
   return res;
+}
+
+// Base libre Open Products Facts (produits non alimentaires)
+async function openProducts(ean) {
+  const r = await get("https://world.openproductsfacts.org/api/v2/product/" + ean + ".json?fields=product_name,product_name_fr,brands,categories,image_front_url");
+  if (r.status !== 200) return { trouve: false, status: r.status };
+  let j; try { j = JSON.parse(r.text); } catch (e) { return { trouve: false }; }
+  const p = j.product; const nom = p && (p.product_name_fr || p.product_name);
+  if (!nom) return { trouve: false, status: 200 };
+  return { trouve: true, source: "Open Products Facts", nom, marque: p.brands || "", modele: "", categorie: p.categories || "", description: "", image: p.image_front_url || "" };
+}
+
+// Recherche web du code-barres : on garde le titre le plus fréquent des premiers résultats
+async function webNom(ean) {
+  const r = await get("https://html.duckduckgo.com/html/?q=" + ean, { headers: { "Accept": "text/html" } });
+  if (r.status !== 200) return { trouve: false, status: r.status };
+  const titres = [...r.text.matchAll(/class="result__a"[^>]*>([\s\S]*?)<\/a>/g)].map((m) => strip(m[1])).slice(0, 8);
+  if (!titres.length) return { trouve: false, status: 200 };
+  const propre = (t) => t.replace(/\s*[|\-–—]\s*(amazon|ebay|fnac|digitec|galaxus|manor|interdiscount|media ?markt|darty|boulanger|idealo|brack|apple|google|toppreise)[^|]*$/i, "")
+    .replace(/\b(acheter|achat|kaufen|buy|prix|preis|price|en stock|livraison)\b.*$/i, "").replace(new RegExp(ean, "g"), "").replace(/\s+/g, " ").trim();
+  const noms = titres.map(propre).filter((t) => t.length > 6);
+  if (!noms.length) return { trouve: false, status: 200 };
+  return { trouve: true, source: "recherche web", nom: noms[0], marque: "", modele: "", categorie: "", description: "Titres trouvés en ligne pour ce code : " + noms.slice(0, 5).join(" / "), image: "" };
 }
 async function upcUn(ean) {
   const r = await get("https://api.upcitemdb.com/prod/trial/lookup?upc=" + ean);
@@ -306,7 +331,7 @@ async function produit(ean, env) {
     p.categorie && "Catégorie : " + p.categorie, p.description && "Description : " + p.description].filter(Boolean).join("\n");
   const consigne = "Tu aides un vendeur de la Fnac (Suisse) à conseiller un client en 10 secondes. Réponds en français, en JSON strict sans texte autour : " +
     '{"nom":"nom commercial court du produit en français","resume":"1 à 2 phrases : ce que c\'est et à quoi ça sert","forts":["point fort","point fort","point fort"],"faibles":["point faible","point faible"],"pour_qui":"type de client à qui le conseiller","alternative":"une alternative courante à proposer"}. ' +
-    "Appuie-toi sur les infos fournies et sur tes connaissances générales du produit. Si tu ne connais pas bien ce produit, reste général et prudent, n'invente pas de caractéristiques chiffrées, et laisse vide ce que tu ignores.";
+    "Si les infos viennent de titres de pages web, déduis-en le produit exact (marque, modèle, génération). Appuie-toi sur les infos fournies et sur tes connaissances générales du produit. Si tu ne connais pas bien ce produit, reste général et prudent, n'invente pas de caractéristiques chiffrées, et laisse vide ce que tu ignores.";
   const ia = await demanderIA(env, consigne, infos, 450);
   return { trouve: true, ...p, ia, sources: { UPCitemdb: true } };
 }
