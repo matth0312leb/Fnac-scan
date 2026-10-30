@@ -456,6 +456,7 @@ function produitIntrouvable(){
   box.appendChild(ph);
   box.appendChild(el("p", "warn", ""));
 }
+function maj(s){ return s ? String(s).replace(/^./, function(c){ return c.toUpperCase(); }) : s; }
 function renderFiche(j){
     var box = $("bookBox"); box.className = "";
     var ia = j.ia || {};
@@ -471,7 +472,7 @@ function renderFiche(j){
       var modesWd = (w.modes || "").replace(/jeu vidéo /gi, "").replace(/^./, function(c){ return c.toUpperCase(); });
       var fj = el("dl", "facts");
       [["Âge", w.pegi || ia.pegi], ["Sortie", w.sortie ? frDate(w.sortie) : ""], ["Plateforme", j.plateforme],
-       ["Modes", ia.modes || modesWd], ["Genre", ia.genre || w.genres], ["Taille", ia.taille], ["Durée", ia.duree],
+       ["Modes", maj(ia.modes || modesWd)], ["Genre", maj(ia.genre || w.genres)], ["Taille", ia.taille], ["Durée", ia.duree],
        ["Studio", w.studio], ["Pour qui", ia.pour_qui]].forEach(function(f){
         if (!f[1]) return; fj.appendChild(el("dt", "", f[0])); fj.appendChild(el("dd", "", f[1]));
       });

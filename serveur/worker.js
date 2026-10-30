@@ -314,10 +314,24 @@ function titreJeu(nom) {
     .replace(/\b(edition|édition|video ?game|jeu vidéo|jeu|game|for|pour|new|neuf|eu|pegi\s*\d+|fr|import)\b/gi, " ")
     .replace(/[-–—:|,]+/g, " ").replace(/\s+/g, " ").trim();
 }
+// Début de l'article Wikipédia (français, sinon anglais) pour que l'IA résume un vrai texte
+async function extraitWikipedia(urlFr, urlEn) {
+  for (const u of [urlFr, urlEn]) {
+    if (!u) continue;
+    const m = u.match(/^https:\/\/(fr|en)\.wikipedia\.org\/wiki\/(.+)$/);
+    if (!m) continue;
+    const r = await get("https://" + m[1] + ".wikipedia.org/api/rest_v1/page/summary/" + m[2],
+      { timeout: 6000, headers: { "Accept": "application/json", "User-Agent": "ScanProduit/1.0 (https://matth0312leb.github.io/Fnac-scan/)" } });
+    if (r.status !== 200) continue;
+    try { const j = JSON.parse(r.text); if (j.extract) return { langue: m[1], texte: j.extract.slice(0, 1500) }; } catch (e) {}
+  }
+  return null;
+}
+
 async function wikidataJeu(titre) {
   if (!titre || titre.length < 2) return { trouve: false };
   const esc = titre.replace(/["\\]/g, " ");
-  const q = `SELECT ?item ?itemLabel ?date ?pegiLabel ?modeLabel ?genreLabel ?devLabel ?platLabel WHERE {
+  const q = `SELECT ?item ?itemLabel ?date ?pegiLabel ?modeLabel ?genreLabel ?devLabel ?platLabel ?wfr ?wen WHERE {
     SERVICE wikibase:mwapi { bd:serviceParam wikibase:api "EntitySearch"; wikibase:endpoint "www.wikidata.org";
       mwapi:search "${esc}"; mwapi:language "fr". ?item wikibase:apiOutputItem mwapi:item. ?num wikibase:apiOrdinal true. }
     ?item wdt:P31/wdt:P279* wd:Q7889.
@@ -327,6 +341,8 @@ async function wikidataJeu(titre) {
     OPTIONAL { ?item wdt:P136 ?genre. }
     OPTIONAL { ?item wdt:P178 ?dev. }
     OPTIONAL { ?item wdt:P400 ?plat. }
+    OPTIONAL { ?wfr schema:about ?item; schema:isPartOf <https://fr.wikipedia.org/>. }
+    OPTIONAL { ?wen schema:about ?item; schema:isPartOf <https://en.wikipedia.org/>. }
     SERVICE wikibase:label { bd:serviceParam wikibase:language "fr,en". }
   } ORDER BY ?num LIMIT 200`;
   const r = await get("https://query.wikidata.org/sparql?format=json&query=" + encodeURIComponent(q),
@@ -337,7 +353,8 @@ async function wikidataJeu(titre) {
   if (!rows.length) return { trouve: false, status: 200 };
   const first = rows[0].item.value;
   const mine = rows.filter((x) => x.item.value === first);
-  const uniq = (k) => [...new Set(mine.map((x) => x[k] && x[k].value).filter(Boolean))];
+  // les libellés sans traduction reviennent sous forme d'identifiant (Q123…) : on les écarte
+  const uniq = (k) => [...new Set(mine.map((x) => x[k] && x[k].value).filter((v) => v && !/^Q\d+$/.test(v)))];
   const dates = uniq("date").sort();
   const pegi = uniq("pegiLabel").map((s) => (s.match(/\d+/) || [s])[0]).sort((a, b) => a - b);
   return {
@@ -346,6 +363,7 @@ async function wikidataJeu(titre) {
     pegi: pegi.length ? "PEGI " + pegi[pegi.length - 1] : "",
     modes: uniq("modeLabel").join(", "), genres: uniq("genreLabel").slice(0, 3).join(", "),
     studio: uniq("devLabel").slice(0, 2).join(", "), plateformes: uniq("platLabel").slice(0, 6).join(", "),
+    wikipedia: await extraitWikipedia(uniq("wfr")[0], uniq("wen")[0]),
   };
 }
 
@@ -373,10 +391,11 @@ async function jeu(p, env) {
   const infos = ["Jeu vidéo : " + p.nom, "Titre nettoyé : " + titre, plateformeDe(p.nom) && "Plateforme de cette boîte : " + plateformeDe(p.nom),
     w.trouve && "Wikidata – nom : " + w.nom, w.sortie && "Sortie : " + w.sortie, w.pegi && "Classification : " + w.pegi,
     w.modes && "Modes : " + w.modes, w.genres && "Genres : " + w.genres, w.studio && "Studio : " + w.studio,
+    w.wikipedia && "Article Wikipédia (" + w.wikipedia.langue + ") : " + w.wikipedia.texte,
     p.description && "Description : " + p.description].filter(Boolean).join("\n");
   const consigne = "Tu aides un vendeur de la Fnac (Suisse) à renseigner un client sur un jeu vidéo en 10 secondes. Réponds en français, en JSON strict sans texte autour : " +
     '{"nom":"titre officiel du jeu","resume":"2 phrases : univers et principe du jeu, sans spoiler","genre":"genre en français, quelques mots","modes":"Solo, Multijoueur local, En ligne… (ce qui s\'applique)","pegi":"PEGI x si connu","taille":"espace disque approximatif sur cette plateforme, ex. ~50 Go, UNIQUEMENT si tu le connais avec certitude, sinon vide","duree":"durée de vie approximative si connue, ex. 30-40 h","pour_qui":"type de joueur à qui le conseiller"}. ' +
-    "Les infos Wikidata fournies sont fiables : reprends-les. Complète avec tes connaissances seulement si tu es sûr ; sinon laisse la chaîne vide. N'invente aucun chiffre.";
+    "Les infos Wikidata et Wikipédia fournies sont fiables : appuie ton résumé et les modes de jeu sur l'article Wikipédia s'il est fourni (traduis en français). Complète avec tes connaissances seulement si tu es sûr ; sinon laisse la chaîne vide. N'invente aucun chiffre.";
   const ia = await demanderIA(env, consigne, infos, 450);
   return { trouve: true, type: "jeu", ...p, plateforme: p.plateforme || plateformeDe(p.nom), titre, jeu: w, ia, sources: { produit: p.source || "UPCitemdb", Wikidata: w.trouve || w.status || false } };
 }
@@ -451,6 +470,7 @@ async function photo(image, env) {
       categorie: "Jeu vidéo", description: v.pegi ? "PEGI " + v.pegi + " visible sur la boîte" : "", image: "", plateforme: plateformeDe(v.plateforme || "") || v.plateforme || "" };
     const r = await jeu(p, env);
     if (v.pegi && r.jeu && !r.jeu.pegi) r.jeu.pegi = "PEGI " + v.pegi;
+    if (v.marque && r.jeu && !r.jeu.studio) r.jeu.studio = v.marque;
     return { ...r, lu: v };
   }
   if (type.startsWith("livre")) {
