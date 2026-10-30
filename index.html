@@ -44,6 +44,16 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 .facts{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:15px;margin:0 0 12px}
 .facts dt{color:var(--muted)}
 .facts dd{margin:0;font-weight:600}
+.pts{margin:0 0 12px;padding-left:20px;font-size:15px;line-height:1.45}
+.pts.ok li::marker{content:"+ ";color:#2e9e4f;font-weight:700}
+.pts.ko li::marker{content:"– ";color:#d64545;font-weight:700}
+.pts li{border:0;padding:1px 0}
+.lbl{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:0 0 4px}
+.cmpt{width:100%;border-collapse:collapse;font-size:14px;margin:6px 0 12px}
+.cmpt th,.cmpt td{border-top:1px solid var(--line);padding:7px 6px;text-align:left;vertical-align:top}
+.cmpt th{font-weight:600;color:var(--muted);width:28%}
+.cmpt thead td{font-weight:700;border-top:0}
+.warn{font-size:12px;color:var(--muted);margin:4px 0 12px}
 .desc.clip{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
 .more{border:0;background:none;color:var(--muted);text-decoration:underline;padding:0;margin:-6px 0 12px;font-size:14px}
 .acts button.sel{background:var(--accent);border-color:var(--accent);color:#111;font-weight:600}
@@ -110,7 +120,8 @@ li{padding:10px 0;border-top:1px solid var(--line)}
   <a class="big alt" id="ai" target="_blank" rel="noopener">Résumé pour conseiller (Google IA)</a>
 </div>
 
-<div id="cmpBar" class="cmpbar hide"><a class="big" id="cmpGo" target="_blank" rel="noopener">Comparer les 2 articles (Google IA)</a></div>
+<div id="cmpBar" class="cmpbar hide"><button class="big" id="cmpGo" type="button">Comparer les 2 articles</button></div>
+<div id="cmpRes" class="card hide"></div>
 
 <div id="histCard" class="card hide">
   <div class="hhead"><span class="muted">Historique</span><button id="clr" type="button">Tout effacer</button></div>
@@ -214,7 +225,7 @@ function renderCmp(){
   var h = loadHist().map(function(x){ return x.c; });
   cmpSel = cmpSel.filter(function(c){ return h.indexOf(c) > -1; });
   $("cmpBar").className = cmpSel.length === 2 ? "cmpbar" : "cmpbar hide";
-  if (cmpSel.length === 2) $("cmpGo").href = claudeUrl(promptCmp(cmpSel[0], cmpSel[1]));
+  if (cmpSel.length !== 2) $("cmpRes").className = "card hide";
 }
 
 function isBook(c){ return /^97[89]\d{10}$/.test(c); }
@@ -368,6 +379,68 @@ function loadBookNavigateur(isbn, my){
   });
 }
 
+function codeNu(c){ return c.indexOf("s:") === 0 ? c.slice(2) : c; }
+function el(tag, cls, txt){ var e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
+function lienGoogle(txt, q){ var a = el("a", "big alt", txt); a.href = claudeUrl(q); a.target = "_blank"; a.rel = "noopener"; return a; }
+$("cmpGo").onclick = function(){
+  if (cmpSel.length !== 2) return;
+  var a = cmpSel[0], b = cmpSel[1], box = $("cmpRes");
+  box.className = "card"; box.innerHTML = '<p class="muted">Comparaison en cours… (10 à 20 secondes)</p>';
+  box.scrollIntoView({ behavior: "smooth", block: "start" });
+  var ctl = ("AbortController" in window) ? new AbortController() : null;
+  var tm = setTimeout(function(){ if (ctl) ctl.abort(); }, 30000);
+  fetch(SERVEUR + "/comparer?a=" + codeNu(a) + "&b=" + codeNu(b), ctl ? { signal: ctl.signal } : {}).then(function(r){ clearTimeout(tm); return r.json(); }).then(function(j){
+    box.innerHTML = "";
+    var ia = j && j.ia;
+    if (!j || !j.trouve || !ia || !ia.lignes) {
+      box.appendChild(el("p", "muted", j && j.introuvables ? "Article introuvable dans les bases gratuites (" + j.introuvables.join(", ") + "). Essaie Google IA :" : "Comparaison impossible pour le moment. Essaie Google IA :"));
+      box.appendChild(lienGoogle("Comparer avec Google IA", promptCmp(a, b))); return;
+    }
+    box.appendChild(el("p", "lbl", "Comparaison"));
+    var t = el("table", "cmpt"), th = el("thead"), hr = el("tr");
+    hr.appendChild(el("td", "", "")); hr.appendChild(el("td", "", "A · " + j.a.nom)); hr.appendChild(el("td", "", "B · " + j.b.nom));
+    th.appendChild(hr); t.appendChild(th);
+    var tb = el("tbody");
+    ia.lignes.forEach(function(l){ var tr = el("tr"); tr.appendChild(el("th", "", l.critere)); tr.appendChild(el("td", "", l.a)); tr.appendChild(el("td", "", l.b)); tb.appendChild(tr); });
+    t.appendChild(tb); box.appendChild(t);
+    if (ia.conseil) box.appendChild(el("p", "bref", ia.conseil));
+    box.appendChild(el("p", "warn", "Rédigé par une IA à partir de bases publiques : vérifie les caractéristiques importantes sur la fiche."));
+    box.appendChild(lienGoogle("Plus de détails (Google IA)", promptCmp(a, b)));
+  }, function(){
+    clearTimeout(tm); box.innerHTML = "";
+    box.appendChild(el("p", "muted", "Serveur injoignable. Essaie Google IA :"));
+    box.appendChild(lienGoogle("Comparer avec Google IA", promptCmp(a, b)));
+  });
+};
+
+var prodReq = 0;
+function loadProduit(ean){
+  var my = ++prodReq, box = $("bookBox");
+  box.className = ""; box.innerHTML = '<p class="muted">Recherche du produit…</p>';
+  var ctl = ("AbortController" in window) ? new AbortController() : null;
+  var tm = setTimeout(function(){ if (ctl) ctl.abort(); }, 20000);
+  fetch(SERVEUR + "/produit?ean=" + ean, ctl ? { signal: ctl.signal } : {}).then(function(r){ clearTimeout(tm); return r.json(); }).then(function(j){
+    if (my !== prodReq) return;
+    if (!j || !j.trouve) { box.innerHTML = '<p class="muted">Produit absent de la base gratuite : utilise le bouton Google IA ci-dessous.</p>'; return; }
+    var ia = j.ia || {};
+    box.innerHTML = "";
+    var wrap = el("div", "book");
+    if (j.image) { var im = el("img"); im.src = j.image.replace("http://", "https://"); im.alt = ""; im.onerror = function(){ im.remove(); }; wrap.appendChild(im); }
+    var t = el("div"); t.appendChild(el("h3", "", ia.nom || j.nom));
+    var sub = [j.marque, j.modele].filter(Boolean).join(" · "); if (sub) t.appendChild(el("div", "muted", sub));
+    wrap.appendChild(t); box.appendChild(wrap);
+    if (ia.resume) box.appendChild(el("p", "bref", ia.resume));
+    function liste(titre, arr, cls){ arr = (arr || []).filter(Boolean); if (!arr.length) return; box.appendChild(el("p", "lbl", titre)); var ul = el("ul", "pts " + cls); arr.forEach(function(x){ ul.appendChild(el("li", "", x)); }); box.appendChild(ul); }
+    liste("Points forts", ia.forts, "ok");
+    liste("Points faibles", ia.faibles, "ko");
+    var dl = el("dl", "facts");
+    [["Pour qui", ia.pour_qui], ["Alternative", ia.alternative]].forEach(function(f){ if (!f[1]) return; dl.appendChild(el("dt", "", f[0])); dl.appendChild(el("dd", "", f[1])); });
+    if (dl.children.length) box.appendChild(dl);
+    if (!ia.resume) box.appendChild(el("p", "muted", "Résumé IA indisponible : utilise le bouton Google IA ci-dessous."));
+    else box.appendChild(el("p", "warn", "Rédigé par une IA : vérifie prix et caractéristiques sur la fiche fnac.ch."));
+  }, function(){ clearTimeout(tm); if (my === prodReq) box.innerHTML = '<p class="muted">Serveur injoignable : utilise le bouton Google IA ci-dessous.</p>'; });
+}
+
 var clrArmed = false;
 $("clr").onclick = function(){
   if (!clrArmed) { clrArmed = true; $("clr").textContent = "Confirmer ?"; setTimeout(function(){ clrArmed = false; $("clr").textContent = "Tout effacer"; }, 3000); return; }
@@ -389,7 +462,9 @@ function show(c){
   saveHist(c);
   $("ai").href = claudeUrl(promptOne(c));
   $("ai").textContent = isBook(c) ? "Résumé détaillé (Google IA)" : "Résumé pour conseiller (Google IA)";
-  if (isBook(c)) loadBook(c); else { bookReq++; $("bookBox").className = "hide"; $("bookBox").innerHTML = ""; }
+  if (isBook(c)) { prodReq++; loadBook(c); }
+  else if (c.indexOf("s:") === 0) { bookReq++; prodReq++; $("bookBox").className = "hide"; $("bookBox").innerHTML = ""; }
+  else { bookReq++; loadProduit(c); }
   if (navigator.vibrate) { try { navigator.vibrate(60); } catch(e){} }
 }
 
