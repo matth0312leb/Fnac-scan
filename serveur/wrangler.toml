@@ -1,0 +1,8 @@
+# Réglages du serveur Cloudflare (déployé automatiquement depuis GitHub)
+name = "scan-produit"
+main = "worker.js"
+compatibility_date = "2025-09-01"
+
+# IA gratuite de Cloudflare, utilisée pour les résumés de livres
+[ai]
+binding = "AI"
