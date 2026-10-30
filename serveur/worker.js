@@ -386,8 +386,12 @@ async function vision(env, image, details) {
   const question = "Tu regardes la photo d'un article vendu à la Fnac (jeu vidéo, livre, BD, film, produit high-tech…). Lis le texte visible sur la couverture ou la boîte. " +
     'Réponds UNIQUEMENT en JSON : {"type":"jeu|livre|produit","titre":"titre exact lu (jeu ou livre) ou nom du produit","plateforme":"console si jeu vidéo (PS5, Nintendo Switch…), sinon vide","marque":"marque ou éditeur","modele":"modèle si produit","auteur":"auteur si livre","pegi":"chiffre PEGI visible, sinon vide"}. N\'invente rien : laisse vide ce que tu ne lis pas.';
   const texteDe = (r) => {
-    const v = r && (r.response !== undefined ? r.response : r.answer !== undefined ? r.answer : r.description !== undefined ? r.description : r);
-    return typeof v === "string" ? v : JSON.stringify(v || "");
+    if (r == null) return "";
+    if (typeof r === "string") return r;
+    const v = r.response ?? r.answer ?? r.description ?? r.caption ?? r.result ?? (r.choices && r.choices[0] && r.choices[0].message && r.choices[0].message.content);
+    if (typeof v === "string") return v;
+    if (v && typeof v === "object" && Object.keys(v).length) return JSON.stringify(v);
+    return JSON.stringify(r).slice(0, 300);
   };
   const jsonDe = (t) => {
     const m = String(t).match(/\{[\s\S]*\}/);
@@ -397,27 +401,33 @@ async function vision(env, image, details) {
   const essai = async (nom, fn) => {
     try {
       const t = texteDe(await fn());
-      brut.push(t);
-      details.push(nom + " : " + (t ? "réponse « " + t.replace(/\s+/g, " ").slice(0, 120) + " »" : "réponse vide"));
+      if (t && t !== "{}") brut.push(t);
+      details.push(nom + " : " + (t ? "« " + t.replace(/\s+/g, " ").slice(0, 100) + " »" : "réponse vide"));
       return jsonDe(t);
-    } catch (e) { const m = String(e && e.message || e); details.push(nom + " : erreur " + m.slice(0, 140)); return { erreur: m }; }
+    } catch (e) { const m = String(e && e.message || e); details.push(nom + " : " + m.slice(0, 110)); return { erreur: m }; }
   };
   const LLAMA = "@cf/meta/llama-3.2-11b-vision-instruct";
-  const llama = () => env.AI.run(LLAMA, { messages: [{ role: "user", content: question }], image, max_tokens: 300 });
-  let v = await essai("llama-vision", llama);
-  if (v && v.erreur && /agree|licen/i.test(v.erreur)) {
-    try { await env.AI.run(LLAMA, { prompt: "agree" }); details.push("licence Meta acceptée"); } catch (e) { details.push("licence : erreur " + String(e && e.message || e).slice(0, 100)); }
-    v = await essai("llama-vision (2e essai)", llama);
+  const sys = { role: "system", content: "Tu lis le texte des couvertures et emballages et tu réponds en JSON." };
+  const formats = [
+    ["llama A", () => env.AI.run(LLAMA, { messages: [sys, { role: "user", content: question }], image, max_tokens: 300 })],
+    ["llama B", () => env.AI.run(LLAMA, { prompt: question, image, max_tokens: 300 })],
+    ["llama C", () => env.AI.run(LLAMA, { messages: [sys, { role: "user", content: [{ type: "text", text: question }, { type: "image_url", image_url: { url: image } }] }], max_tokens: 300 })],
+  ];
+  let licence = false;
+  for (const [nom, fn] of formats) {
+    let v = await essai(nom, fn);
+    if (v && v.erreur && /agree|licen/i.test(v.erreur) && !licence) {
+      licence = true;
+      try { await env.AI.run(LLAMA, { prompt: "agree" }); details.push("licence Meta acceptée"); } catch (e) { details.push("licence : " + String(e && e.message || e).slice(0, 80)); }
+      v = await essai(nom + " (2e)", fn);
+    }
+    if (v && v.titre) return { ...v, modeleIA: nom };
   }
-  if (v && v.titre) return { ...v, modeleIA: "llama-vision" };
-  if (v && v.erreur) {
-    // certains modèles veulent l'image en octets plutôt qu'en texte base64
-    const octets = Array.from(Uint8Array.from(atob(image.split(",")[1] || ""), (c) => c.charCodeAt(0)));
-    v = await essai("llama-vision (octets)", () => env.AI.run(LLAMA, { messages: [{ role: "user", content: question }], image: octets, max_tokens: 300 }));
-    if (v && v.titre) return { ...v, modeleIA: "llama-vision" };
-  }
+  let v = await essai("gemma", () => env.AI.run("@cf/google/gemma-3-12b-it", { messages: [{ role: "user", content: [{ type: "text", text: question }, { type: "image_url", image_url: { url: image } }] }], max_tokens: 300 }));
+  if (v && v.titre) return { ...v, modeleIA: "gemma" };
   v = await essai("moondream", () => env.AI.run("@cf/moondream/moondream3.1-9B-A2B", { task: "query", image, question }));
   if (v && v.titre) return { ...v, modeleIA: "moondream" };
+  await essai("moondream légende", () => env.AI.run("@cf/moondream/moondream3.1-9B-A2B", { task: "caption", image, length: "long" }));
   // une IA a décrit la photo en texte libre : on en extrait le titre avec l'IA texte
   const desc = brut.filter((t) => t && t.length > 10).join("\n");
   if (desc) {
