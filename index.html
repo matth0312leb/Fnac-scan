@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Scan produit</title>
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+:root{box-sizing:border-box;--bg:#f6f6f4;--card:#fff;--text:#1a1a1a;--muted:#6b6b6b;--accent:#e1a925;--accent-text:#1a1a1a;--line:#ddd;
+padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141414;--card:#222;--text:#f2f2f2;--muted:#9a9a9a;--line:#383838}}
+:root[data-theme="dark"]{--bg:#141414;--card:#222;--text:#f2f2f2;--muted:#9a9a9a;--line:#383838}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:16px;max-width:520px;margin-inline:auto}
+h1{font-size:20px;margin:4px 0 14px}
+.tabs{display:flex;gap:8px;margin-bottom:12px}
+.tabs button{flex:1;padding:12px;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:10px;font-size:16px}
+.tabs button.on{background:var(--accent);color:var(--accent-text);border-color:var(--accent);font-weight:600}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+#reader{width:100%;min-height:160px;border-radius:10px;overflow:hidden}
+.big{display:block;width:100%;padding:16px;border:0;border-radius:12px;background:var(--accent);color:var(--accent-text);font-size:18px;font-weight:700;text-align:center;text-decoration:none}
+input{width:100%;padding:14px;font-size:20px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--text);margin-bottom:10px}
+.muted{color:var(--muted);font-size:14px}
+.code{font-size:26px;font-weight:700;letter-spacing:1px;margin:4px 0 12px}
+ul{list-style:none;padding:0;margin:8px 0 0}
+li{padding:10px 0;border-top:1px solid var(--line)}
+.hrow{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.note{font-size:15px;padding:8px 10px;margin:6px 0 8px}
+.acts{display:flex;gap:8px}
+.acts a,.acts button{flex:1;text-align:center;padding:9px 6px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--text);font-size:14px;text-decoration:none}
+.hhead{display:flex;justify-content:space-between;align-items:center}
+.saved{color:#2e9e4f;font-size:13px;font-weight:600}
+.hhead button{border:0;background:none;color:var(--muted);font-size:14px;text-decoration:underline;padding:4px}
+.hide{display:none}
+.top{display:flex;align-items:center;gap:14px;background:#111;color:#fff;margin:-16px -16px 18px;padding:18px 16px;border-bottom:4px solid var(--accent)}
+.mark{width:52px;height:52px;border-radius:10px;background:var(--accent);color:#111;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;letter-spacing:-2px}
+.ttl{font-size:19px;font-weight:700}
+.sub{font-size:12px;color:#bdbdbd;margin-top:2px}
+.card{box-shadow:0 2px 12px rgba(0,0,0,.10)}
+.big{transition:transform .1s}
+.big:active{transform:scale(.98)}
+.tabs button{font-weight:600}
+.alt{margin-top:10px;background:var(--bg);color:var(--text);border:1px solid var(--line);font-weight:600;font-size:16px}
+</style>
+</head>
+<body>
+<header class="top"><div class="mark">▮▯▮</div><div><div class="ttl">Scan produit</div><div class="sub">Vésenaz · vérification rapide en rayon</div></div></header>
+<div class="tabs">
+  <button id="t1" class="on" type="button">Scanner EAN</button>
+  <button id="t2" type="button">Saisir SKU</button>
+  <button id="t3" type="button">Mots-clés</button>
+</div>
+
+<div id="p1">
+  <div class="card">
+    <div id="reader"></div>
+    <p class="muted" id="hint">Appuie sur « Scanner en direct », puis vise le code-barres.</p>
+    <button class="big" id="start" type="button">Scanner en direct</button>
+    <button class="big alt" id="shoot" type="button">Prendre une photo</button>
+    <button class="big alt" id="pick" type="button">Choisir une photo existante</button>
+    <input id="f1" type="file" accept="image/*" capture="environment" class="hide">
+    <input id="f2" type="file" accept="image/*" class="hide">
+    <div id="filereader" class="hide"></div>
+  </div>
+</div>
+
+<div id="p2" class="hide">
+  <div class="card">
+    <input id="sku" inputmode="search" placeholder="Numéro SKU" autocomplete="off">
+    <button class="big" id="go" type="button">Rechercher</button>
+  </div>
+</div>
+
+<div id="p3" class="hide">
+  <div class="card">
+    <input id="kw" type="search" enterkeyhint="search" placeholder="Ex. casque bose bluetooth" autocomplete="off">
+    <a class="big" id="kwGo" target="_blank" rel="noopener">Rechercher sur fnac.ch</a>
+  </div>
+</div>
+
+<div id="res" class="card hide">
+  <div class="muted">Dernier code</div>
+  <div class="code" id="code"></div>
+  <a class="big" id="open" target="_blank" rel="noopener">Ouvrir la fiche fnac.ch</a>
+  <a class="big alt" id="direct" target="_blank" rel="noopener">Essayer d’ouvrir directement la fiche</a>
+  <p class="muted" id="note"></p>
+</div>
+
+<div id="histCard" class="card hide">
+  <div class="hhead"><span class="muted">Historique</span><button id="clr" type="button">Tout effacer</button></div>
+  <ul id="hist"></ul>
+</div>
+
+<script>
+var BASE = "https://www.fr.fnac.ch/SearchResult/ResultList.aspx?Search=";
+var scanner = null, running = false, last = "", lastAt = 0;
+var $ = function(id){ return document.getElementById(id); };
+
+function tab(n){
+  $("p1").className = n === 1 ? "" : "hide";
+  $("p2").className = n === 2 ? "" : "hide";
+  $("t1").className = n === 1 ? "on" : "";
+  $("t2").className = n === 2 ? "on" : "";
+  $("p3").className = n === 3 ? "" : "hide";
+  $("t3").className = n === 3 ? "on" : "";
+}
+$("t1").onclick = function(){ tab(1); };
+$("t2").addEventListener("click", stop); $("t3").addEventListener("click", stop);
+$("t2").onclick = function(){ tab(2); $("sku").focus(); };
+$("t3").onclick = function(){ tab(3); $("kw").focus(); };
+function kwUrl(){ return BASE + encodeURIComponent($("kw").value.trim()); }
+$("kwGo").onclick = function(e){
+  if (!$("kw").value.trim()) { e.preventDefault(); $("kw").focus(); return; }
+  this.href = kwUrl();
+};
+$("kw").onkeydown = function(e){
+  if (e.key === "Enter" && this.value.trim()) { window.open(kwUrl(), "_blank", "noopener"); }
+};
+
+function loadHist(){
+  try {
+    var h = JSON.parse(localStorage.getItem("hist") || "[]");
+    return h.map(function(x){ return typeof x === "string" ? {c: x, t: 0, n: ""} : x; });
+  } catch(e){ return []; }
+}
+function storeHist(h){ try { localStorage.setItem("hist", JSON.stringify(h)); } catch(e){} }
+function saveHist(c){
+  var h = loadHist(), old = h.filter(function(x){ return x.c === c; })[0];
+  h = h.filter(function(x){ return x.c !== c; });
+  h.unshift({c: c, t: Date.now(), n: old ? old.n : "", s: old ? old.s : ""});
+  h = h.slice(0, 30);
+  storeHist(h); renderHist(h);
+}
+function ago(t){
+  if (!t) return "";
+  var m = Math.round((Date.now() - t) / 60000);
+  if (m < 1) return "à l’instant";
+  if (m < 60) return "il y a " + m + " min";
+  var hh = Math.round(m / 60);
+  if (hh < 24) return "il y a " + hh + " h";
+  return "il y a " + Math.round(hh / 24) + " j";
+}
+function renderHist(h){
+  $("histCard").className = h.length ? "card" : "card hide";
+  var ul = $("hist"); ul.innerHTML = "";
+  h.forEach(function(x){
+    var sku = x.c.indexOf("s:") === 0, code = sku ? x.c.slice(2) : x.c;
+    var li = document.createElement("li");
+    var top = document.createElement("div"); top.className = "hrow";
+    var b = document.createElement("b"); b.textContent = (sku ? "SKU " : "EAN ") + code;
+    var s = document.createElement("span"); s.className = "muted"; s.textContent = ago(x.t);
+    var ok = document.createElement("span"); ok.className = "saved";
+    top.appendChild(b); top.appendChild(ok); top.appendChild(s); li.appendChild(top);
+    var inp = document.createElement("input"); inp.className = "note"; inp.placeholder = "Prix, remarque…"; inp.value = x.n || "";
+    inp.oninput = function(){
+      var hh = loadHist(); hh.forEach(function(y){ if (y.c === x.c) y.n = inp.value; }); storeHist(hh);
+      ok.textContent = "✓ Enregistré"; clearTimeout(ok.tm); ok.tm = setTimeout(function(){ ok.textContent = ""; }, 1500);
+    };
+    li.appendChild(inp);
+    var acts = document.createElement("div"); acts.className = "acts";
+    var a1 = document.createElement("a"); a1.href = urlFor(x.c); a1.target = "_blank"; a1.rel = "noopener"; a1.textContent = "Ouvrir";
+    var a2 = document.createElement("a"); a2.href = "https://www.google.com/search?btnI=1&q=" + encodeURIComponent(code + " fnac.ch"); a2.target = "_blank"; a2.rel = "noopener"; a2.textContent = "Fiche directe";
+    var d = document.createElement("button"); d.type = "button"; d.textContent = "Supprimer";
+    d.onclick = function(){ var hh = loadHist().filter(function(y){ return y.c !== x.c; }); storeHist(hh); renderHist(hh); };
+    acts.appendChild(a1); acts.appendChild(a2); acts.appendChild(d); li.appendChild(acts);
+    ul.appendChild(li);
+  });
+}
+var clrArmed = false;
+$("clr").onclick = function(){
+  if (!clrArmed) { clrArmed = true; $("clr").textContent = "Confirmer ?"; setTimeout(function(){ clrArmed = false; $("clr").textContent = "Tout effacer"; }, 3000); return; }
+  clrArmed = false; $("clr").textContent = "Tout effacer"; storeHist([]); renderHist([]);
+};
+
+function urlFor(c){
+  if (c.indexOf("s:") === 0) return "https://www.google.com/search?q=" + encodeURIComponent(c.slice(2) + " fnac.ch");
+  return BASE + encodeURIComponent(c);
+}
+function show(c){
+  var sku = c.indexOf("s:") === 0;
+  $("code").textContent = sku ? c.slice(2) : c;
+  $("open").href = urlFor(c);
+  $("direct").href = "https://www.google.com/search?btnI=1&q=" + encodeURIComponent((sku ? c.slice(2) : c) + " fnac.ch");
+  $("open").textContent = sku ? "Chercher ce SKU via Google" : "Ouvrir la fiche fnac.ch";
+  $("note").textContent = sku ? "Si le bon produit n’apparaît pas en premier, scanne l’EAN." : "";
+  $("res").className = "card";
+  saveHist(c);
+  if (navigator.vibrate) { try { navigator.vibrate(60); } catch(e){} }
+}
+
+function onScan(text){
+  var now = Date.now();
+  if (text === last && now - lastAt < 3000) return;
+  last = text; lastAt = now;
+  show(text);
+}
+
+function scanFile(file){
+  if (!file) return;
+  if (typeof Html5Qrcode === "undefined") { $("hint").textContent = "Scanner indisponible (bibliothèque non chargée)."; return; }
+  $("hint").textContent = "Analyse de la photo…";
+  var fr = new Html5Qrcode("filereader", {
+    formatsToSupport: [Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.EAN_8, Html5QrcodeSupportedFormats.UPC_A],
+    verbose: false
+  });
+  fr.scanFile(file, false)
+    .then(function(t){ $("hint").textContent = "Code lu."; last = ""; onScan(t); })
+    .catch(function(){ $("hint").textContent = "Aucun code-barres lisible sur cette photo. Rapproche-toi, évite les reflets et cadre bien le code."; });
+}
+$("shoot").onclick = function(){ $("f1").click(); };
+$("pick").onclick = function(){ $("f2").click(); };
+$("f1").onchange = $("f2").onchange = function(){ scanFile(this.files[0]); this.value = ""; };
+
+function goSku(){
+  var v = $("sku").value.replace(/\s+/g, "");
+  if (!v) return;
+  show("s:" + v);
+}
+$("go").onclick = goSku;
+$("sku").addEventListener("keydown", function(e){ if (e.key === "Enter") goSku(); });
+
+function start(){
+  if (running) return;
+  if (typeof Html5Qrcode === "undefined") { $("hint").textContent = "Scanner indisponible (bibliothèque non chargée)."; return; }
+  scanner = new Html5Qrcode("reader", {
+    formatsToSupport: [Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.EAN_8, Html5QrcodeSupportedFormats.UPC_A],
+    experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+    verbose: false
+  });
+  scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 260, height: 120 } }, function(t){ stop(); onScan(t); }, function(){})
+    .then(function(){ running = true; $("start").textContent = "Arrêter"; $("hint").textContent = "Vise le code-barres EAN."; })
+    .catch(function(){ $("hint").textContent = "Caméra refusée. Autorise la caméra pour ce site dans les réglages du navigateur, ou utilise « Prendre une photo »."; });
+}
+function stop(){
+  if (!running || !scanner) return;
+  scanner.stop().then(function(){ running = false; $("start").textContent = "Scanner en direct"; $("hint").textContent = "Appuie sur « Scanner en direct », puis vise le code-barres."; }).catch(function(){});
+}
+$("start").onclick = function(){ running ? stop() : start(); };
+renderHist(loadHist());
+</script>
+</body>
+</html>
