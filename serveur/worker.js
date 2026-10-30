@@ -1,12 +1,12 @@
 // Serveur de l'appli « Scan produit » (Cloudflare Worker, offre gratuite)
 // Adresses :
 //   /test?ean=...     diagnostic : montre ce que chaque site répond
-//   /livre?isbn=...   fiche livre (BnF, Google Books, Open Library, fnac.com, fnac.ch) + résumé IA
-//   /produit?ean=...  fiche produit fnac.ch (nom, prix, SKU, description) si Fnac laisse passer
+//   /livre?isbn=...   fiche livre (BnF, swisscovery, Google Books, Open Library) + résumé IA
+// Les sites Fnac ne sont pas interrogés : leur anti-robot bloque le serveur (403, testé le 30.10.2026).
 
 const SITE = "https://matth0312leb.github.io";
 const UA = "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Mobile Safari/537.36";
-const HDRS = { "User-Agent": UA, "Accept": "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8", "Accept-Language": "fr-CH,fr;q=0.9" };
+const HDRS = { "User-Agent": UA, "Accept": "application/json,application/xml,text/xml;q=0.9,*/*;q=0.8", "Accept-Language": "fr-CH,fr;q=0.9" };
 
 export default {
   async fetch(req, env) {
@@ -24,8 +24,7 @@ export default {
     try {
       if (url.pathname === "/test") return send(await diagnostic(code));
       if (url.pathname === "/livre") return send(await livre(code, env));
-      if (url.pathname === "/produit") return send(await produit(code));
-      return send({ ok: true, message: "Serveur Scan produit en ligne. Essaie /test?ean=9782889443666" });
+      return send({ ok: true, message: "Serveur Scan produit en ligne. Essaie /test?ean=9782070612758" });
     } catch (e) {
       return send({ ok: false, erreur: String(e && e.message || e) }, 500);
     }
@@ -46,61 +45,10 @@ async function get(u, opts = {}) {
 }
 const strip = (h) => String(h || "").replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<style[\s\S]*?<\/style>/gi, " ")
   .replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&#39;|&rsquo;/g, "'")
-  .replace(/&quot;/g, '"').replace(/&eacute;/g, "é").replace(/&egrave;/g, "è").replace(/&agrave;/g, "à").replace(/[ \t]+/g, " ").trim();
-const bloque = (r) => r.status === 403 || r.status === 429 || /captcha|datadome|geo\.captcha-delivery|Access denied/i.test(r.text.slice(0, 5000));
-
-function jsonLd(html) {
-  const out = [];
-  const re = /<script[^>]+application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi;
-  let m;
-  while ((m = re.exec(html))) {
-    try {
-      const j = JSON.parse(m[1].trim());
-      (Array.isArray(j) ? j : (j["@graph"] || [j])).forEach((x) => out.push(x));
-    } catch (e) {}
-  }
-  return out;
-}
-function produitDepuisHtml(html, pageUrl) {
-  const items = jsonLd(html);
-  const p = items.find((x) => /Product|Book/i.test([].concat(x["@type"] || "").join(" "))) || {};
-  const offer = [].concat(p.offers || [])[0] || {};
-  const texte = strip(html);
-  const sku = (texte.match(/SKU\s*:?\s*(\d{8})(?!\d)/i) || [])[1] || "";
-  const age = (texte.match(/(?:[ÂA]ge|Tranche d'[âa]ge)\s*:?\s*([^\n]{2,40}?ans)/i) || [])[1] || "";
-  const titreHtml = (html.match(/<meta property="og:title" content="([^"]+)"/i) || [])[1] || "";
-  return {
-    trouve: !!(p.name || titreHtml),
-    url: pageUrl,
-    nom: p.name || strip(titreHtml),
-    prix: offer.price ? String(offer.price) + " " + (offer.priceCurrency || "") : "",
-    dispo: offer.availability ? String(offer.availability).split("/").pop() : "",
-    description: strip(p.description || "").slice(0, 1500),
-    image: [].concat(p.image || [])[0] || "",
-    auteur: [].concat(p.author || []).map((a) => a.name || a).join(", "),
-    sku, age,
-  };
-}
+  .replace(/&quot;/g, '"').replace(/&eacute;/g, "é").replace(/&egrave;/g, "è").replace(/&agrave;/g, "à")
+  .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&#(\d+);/g, (m, n) => String.fromCharCode(+n)).replace(/<<|>>/g, "").replace(/[ \t]+/g, " ").trim();
 
 // ---------- sources ----------
-async function fnac(site, code) {
-  const base = site === "ch" ? "https://www.fr.fnac.ch" : "https://www.fnac.com";
-  const r = await get(base + "/SearchResult/ResultList.aspx?Search=" + code);
-  if (bloque(r)) return { trouve: false, bloque: true, status: r.status };
-  if (r.status !== 200) return { trouve: false, status: r.status, err: r.err };
-  let html = r.text, pageUrl = r.url;
-  // page de résultats : on suit le premier lien produit (/aNNNNN/)
-  if (!/\/a\d+\//.test(pageUrl)) {
-    const m = html.match(/href="(https?:\/\/[^"]*\/a\d+\/[^"]+|\/a\d+\/[^"]+)"/i);
-    if (!m) return { trouve: false, status: r.status, info: "aucun produit dans les résultats" };
-    const lien = m[1].startsWith("http") ? m[1] : base + m[1];
-    const r2 = await get(lien.split("#")[0]);
-    if (bloque(r2)) return { trouve: false, bloque: true, status: r2.status };
-    html = r2.text; pageUrl = r2.url;
-  }
-  return produitDepuisHtml(html, pageUrl);
-}
-
 async function bnf(isbn) {
   const q = encodeURIComponent('bib.isbn all "' + isbn + '"');
   const r = await get("https://catalogue.bnf.fr/api/SRU?version=1.2&operation=searchRetrieve&recordSchema=dublincore&maximumRecords=1&query=" + q);
@@ -182,41 +130,34 @@ async function openlib(isbn) {
 // ---------- routes ----------
 async function diagnostic(code) {
   if (!code) return { erreur: "ajoute ?ean=..." };
-  const [ch, com, b, g, o, s] = await Promise.all([fnac("ch", code), fnac("com", code), bnf(code), google(code), openlib(code), suisse(code)]);
-  const etat = (x) => x.trouve ? "OK" : x.bloque ? "BLOQUÉ par anti-robot (" + x.status + ")" : "rien (" + (x.status || x.err || "?") + ")";
+  const [b, g, o, s] = await Promise.all([bnf(code), google(code), openlib(code), suisse(code)]);
+  const etat = (x) => x.trouve ? "OK" : "rien (" + (x.status || x.err || "?") + ")";
   return {
     code,
-    resume: { "fnac.ch": etat(ch), "fnac.com": etat(com), BnF: etat(b), swisscovery: etat(s), "Google Books": etat(g), "Open Library": etat(o) },
-    details: { fnac_ch: ch, fnac_com: com, bnf: b, swisscovery: s, google: g, openlibrary: o },
+    resume: { BnF: etat(b), swisscovery: etat(s), "Google Books": etat(g), "Open Library": etat(o) },
+    details: { bnf: b, swisscovery: s, google: g, openlibrary: o },
   };
 }
 
 async function livre(isbn, env) {
   if (!/^\d{13}$/.test(isbn)) return { trouve: false, erreur: "ISBN à 13 chiffres attendu" };
-  const [b, g, o, com, ch, s] = await Promise.all([bnf(isbn), google(isbn), openlib(isbn), fnac("com", isbn), fnac("ch", isbn), suisse(isbn)]);
+  const [b, g, o, s] = await Promise.all([bnf(isbn), google(isbn), openlib(isbn), suisse(isbn)]);
   const pick = (...v) => v.find((x) => x && String(x).trim()) || "";
   const fiche = {
-    trouve: !!(b.trouve || g.trouve || o.trouve || com.trouve || ch.trouve || s.trouve),
-    titre: pick(b.titre, s.titre, g.titre, com.nom, ch.nom, o.titre),
-    auteur: pick(b.auteur, s.auteur, g.auteur, com.auteur, ch.auteur, o.auteur),
+    trouve: !!(b.trouve || g.trouve || o.trouve || s.trouve),
+    titre: pick(b.titre, s.titre, g.titre, o.titre),
+    auteur: pick(b.auteur, s.auteur, g.auteur, o.auteur),
     editeur: pick(b.editeur, s.editeur, g.editeur, o.editeur),
     date: pick(g.date, b.date, s.date, o.date),
     pages: pick(b.pages, s.pages, g.pages, o.pages),
     genre: pick(g.genre),
-    age: pick(com.age, ch.age, s.public),
-    image: pick(g.image, com.image, ch.image, o.image),
-    description: pick(com.description, ch.description, g.description, s.description),
-    prix: pick(ch.prix),
-    sku: pick(ch.sku),
-    sources: { BnF: b.trouve, swisscovery: s.trouve, Google: g.trouve, OpenLibrary: o.trouve, "fnac.com": com.trouve || (com.bloque ? "bloqué" : false), "fnac.ch": ch.trouve || (ch.bloque ? "bloqué" : false) },
+    age: pick(s.public),
+    image: pick(g.image, o.image),
+    description: pick(s.description, g.description),
+    sources: { BnF: b.trouve, swisscovery: s.trouve, Google: g.trouve, OpenLibrary: o.trouve },
   };
   if (fiche.trouve && env && env.AI) fiche.ia = await resumeIA(env, fiche, [b.sujets, s.sujets].filter(Boolean).join(" ; "));
   return fiche;
-}
-
-async function produit(ean) {
-  if (!/^\d{8,13}$/.test(ean)) return { trouve: false, erreur: "EAN attendu" };
-  return await fnac("ch", ean);
 }
 
 async function resumeIA(env, f, sujets) {

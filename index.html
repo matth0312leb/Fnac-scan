@@ -39,6 +39,7 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 .book{display:flex;gap:12px;margin:4px 0 12px}
 .book img{width:72px;height:auto;border-radius:6px;align-self:flex-start;box-shadow:0 1px 6px rgba(0,0,0,.2)}
 .book h3{margin:0 0 4px;font-size:17px;line-height:1.25}
+.bref{font-size:16px;line-height:1.4;margin:0 0 12px;padding:10px 12px;border-left:4px solid var(--accent);background:var(--bg);border-radius:6px}
 .desc{font-size:15px;line-height:1.45;margin:0 0 12px;white-space:pre-line}
 .facts{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:15px;margin:0 0 12px}
 .facts dt{color:var(--muted)}
@@ -226,8 +227,9 @@ function bookHtml(b){
   var h3 = document.createElement("h3"); h3.textContent = b.title; t.appendChild(h3);
   if (b.authors) { var m = document.createElement("div"); m.className = "muted"; m.textContent = b.authors; t.appendChild(m); }
   wrap.appendChild(t); box.appendChild(wrap);
+  if (b.bref) { var br = document.createElement("p"); br.className = "bref"; br.textContent = b.bref; box.appendChild(br); }
   var dl = document.createElement("dl"); dl.className = "facts";
-  [["Public", b.audience], ["Parution", b.date], ["Éditeur", b.publisher], ["Pages", b.pages], ["Genre", b.genre], ["Série", b.series]].forEach(function(f){
+  [["Public", b.audience], ["Sujet", b.sujet], ["Parution", b.date], ["Éditeur", b.publisher], ["Pages", b.pages], ["Genre", b.genre], ["Série", b.series]].forEach(function(f){
     if (!f[1]) return;
     var dt = document.createElement("dt"); dt.textContent = f[0];
     var dd = document.createElement("dd"); dd.textContent = f[1];
@@ -240,7 +242,7 @@ function bookHtml(b){
     var mo = document.createElement("button"); mo.type = "button"; mo.className = "more"; mo.textContent = "Lire la suite";
     mo.onclick = function(){ p.classList.remove("clip"); mo.remove(); };
     box.appendChild(mo);
-  } else { p.className = "muted"; p.textContent = "Pas de résumé dans la base : le bouton Google IA ci-dessous en fait un."; box.appendChild(p); }
+  } else if (!b.bref) { p.className = "muted"; p.textContent = "Pas de résumé dans la base : le bouton Google IA ci-dessous en fait un."; box.appendChild(p); }
   if (!b.audience) { var a = document.createElement("p"); a.className = "muted"; a.textContent = "Âge conseillé non indiqué dans la base : le bouton Google IA le précise."; box.appendChild(a); }
   box.className = "";
 }
@@ -323,9 +325,30 @@ function fromBnf(isbn){
       desc: all("description").filter(function(s){ return s.length > 80; })[0] || "" };
   });
 }
+var SERVEUR = "https://scan-produit.matth0312.workers.dev";
+function fromServeur(isbn){
+  var ctl = ("AbortController" in window) ? new AbortController() : null;
+  var tm = setTimeout(function(){ if (ctl) ctl.abort(); }, 20000);
+  return fetch(SERVEUR + "/livre?isbn=" + isbn, ctl ? { signal: ctl.signal } : {}).then(function(r){ clearTimeout(tm); return r.json(); }).then(function(j){
+    if (!j || !j.trouve) return null;
+    var ia = j.ia || {};
+    return { title: j.titre, authors: j.auteur, date: /^\d{4}-\d{2}/.test(j.date || "") ? frDate(j.date) : j.date,
+      publisher: j.editeur, pages: j.pages, genre: frGenre(j.genre),
+      audience: j.age || ia.public || audienceFrom(j.genre), sujet: ia.sujet || "", bref: ia.resume || "",
+      desc: j.description || "", img: j.image || "https://covers.openlibrary.org/b/isbn/" + isbn + "-M.jpg?default=false" };
+  }, function(){ clearTimeout(tm); return null; });
+}
 function loadBook(isbn){
   var my = ++bookReq; diag = {};
   var box = $("bookBox"); box.className = ""; box.innerHTML = '<p class="muted">Recherche du livre…</p>';
+  fromServeur(isbn).catch(function(){ return null; }).then(function(s){
+    if (my !== bookReq) return;
+    if (s && s.title) { bookHtml(s); return; }
+    loadBookNavigateur(isbn, my);
+  });
+}
+function loadBookNavigateur(isbn, my){
+  var box = $("bookBox");
   var none = function(){ return null; };
   Promise.all([fromGoogle(isbn).catch(none), fromBnf(isbn).catch(none), fromOpenLib(isbn).catch(none)]).then(function(rs){
     if (my !== bookReq) return;
