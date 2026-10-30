@@ -509,6 +509,7 @@ function identifierPhoto(file){
   $("res").className = "card"; $("code").textContent = "Photo";
   $("note").textContent = ""; box.className = ""; box.innerHTML = '<p class="muted">Lecture de la photo par l’IA… (10 à 20 secondes)</p>';
   $("open").href = BASE; $("ai").href = "#";
+  $("open").style.display = "none"; $("ai").style.display = "none";
   $("res").scrollIntoView({ behavior: "smooth", block: "start" });
   reduireImage(file).then(function(image){
     var ctl = ("AbortController" in window) ? new AbortController() : null;
@@ -519,9 +520,12 @@ function identifierPhoto(file){
     if (my !== prodReq) return;
     if (!j || !j.trouve) {
       box.innerHTML = '<p class="muted">L’IA n’a pas réussi à lire la photo. Reprends-la de face, bien éclairée, avec le titre lisible.</p>';
+      var re = el("button", "big", "📷 Reprendre la photo"); re.type = "button"; re.onclick = function(){ $("f3").click(); };
+      box.appendChild(re);
       if (j && (j.erreur || j.details)) box.appendChild(el("p", "warn", "Détail : " + [j.erreur].concat(j.details || []).filter(Boolean).join(" · ")));
       return;
     }
+    $("open").style.display = ""; $("ai").style.display = "";
     var ia = j.ia || {}, lu = j.lu || {};
     var nom = (j.type === "jeu" ? (ia.nom || (j.jeu && j.jeu.nom) || lu.titre) + (j.plateforme ? " " + j.plateforme : "") : j.type === "livre" ? [j.titre, j.auteur].filter(Boolean).join(" ") : (ia.nom || j.nom)) || "";
     $("code").textContent = (j.type === "jeu" ? "🎮 " : j.type === "livre" ? "📚 " : "📦 ") + "Photo";
@@ -531,7 +535,12 @@ function identifierPhoto(file){
       bookHtml({ title: j.titre, authors: j.auteur, publisher: j.editeur, bref: ia.resume, sujet: ia.sujet, audience: ia.public, desc: "" });
     } else renderFiche(j);
     box.appendChild(el("p", "warn", "Identifié par photo (lu : « " + (lu.titre || "?") + (lu.plateforme ? " – " + lu.plateforme : "") + " »). Si ce n’est pas le bon article, reprends la photo."));
-  }, function(){ if (my === prodReq) box.innerHTML = '<p class="muted">Photo non envoyée (serveur injoignable ou trop lent). Réessaie.</p>'; });
+  }, function(){
+    if (my !== prodReq) return;
+    box.innerHTML = '<p class="muted">Photo non envoyée (serveur injoignable ou trop lent).</p>';
+    var re = el("button", "big", "📷 Reprendre la photo"); re.type = "button"; re.onclick = function(){ $("f3").click(); };
+    box.appendChild(re);
+  });
 }
 
 var clrArmed = false;
@@ -545,6 +554,7 @@ function urlFor(c){
   return BASE + encodeURIComponent(c);
 }
 function show(c){
+  $("open").style.display = ""; $("ai").style.display = "";
   var sku = c.indexOf("s:") === 0;
   $("code").textContent = sku ? c.slice(2) : c;
   $("open").href = urlFor(c);
