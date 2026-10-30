@@ -59,6 +59,15 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 .qrow button{border:0;border-radius:10px;background:var(--accent);color:#111;font-weight:700;padding:0 14px;font-size:15px}
 .qa{margin:10px 0 0;padding:10px 12px;border-radius:8px;background:var(--bg);font-size:15px;line-height:1.45}
 .qa b{display:block;font-size:13px;color:var(--muted);font-weight:600;margin-bottom:3px}
+#profil.hide{display:none}
+#profil{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px}
+#profil .card{width:100%;max-width:420px;margin:0}
+#profil h2{margin:0 0 6px;font-size:20px}
+.who{color:#e1a925;text-decoration:underline;cursor:pointer;background:none;border:0;padding:0;font:inherit}
+.stat{width:100%;border-collapse:collapse;font-size:14px}
+.stat th,.stat td{text-align:left;padding:7px 4px;border-top:1px solid var(--line);vertical-align:top}
+.stat th{color:var(--muted);font-weight:600}
+.stat .det{font-size:12px;color:var(--muted)}
 .warn{font-size:12px;color:var(--muted);margin:4px 0 12px}
 .desc.clip{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
 .more{border:0;background:none;color:var(--muted);text-decoration:underline;padding:0;margin:-6px 0 12px;font-size:14px}
@@ -87,7 +96,16 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 </style>
 </head>
 <body>
-<header class="top"><div class="mark">▮▯▮</div><div><div class="ttl">Scan produit</div><div class="sub">Vésenaz · vérification rapide en rayon</div></div></header>
+<header class="top"><div class="mark">▮▯▮</div><div><div class="ttl">Scan produit</div><div class="sub">Vésenaz · <button class="who" id="who" type="button">profil</button></div></div></header>
+<div id="profil" class="hide"><div class="card">
+  <h2>Bienvenue 👋</h2>
+  <p class="muted">Ton prénom sert à retrouver ton historique sur n'importe quel téléphone.</p>
+  <input id="pNom" type="text" placeholder="Ton prénom" autocomplete="given-name" enterkeyhint="go">
+  <input id="pCle" type="password" inputmode="numeric" placeholder="Code de ce profil" class="hide">
+  <button class="big" id="pGo" type="button">Commencer</button>
+  <p class="warn" id="pMsg"></p>
+  <p class="warn">Confidentialité : Matthieu voit seulement des statistiques d'usage (nombre de recherches par fonction : livres, jeux, photos, questions…). Il ne voit pas les articles que tu recherches ni tes notes.</p>
+</div></div>
 <div class="tabs">
   <button id="t1" class="on" type="button">Scanner</button>
   <button id="t2" type="button">Saisir code</button>
@@ -146,6 +164,8 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 <div id="cmpBar" class="cmpbar hide"><button class="big" id="cmpGo" type="button">Comparer les 2 articles</button></div>
 <div id="cmpRes" class="card hide"></div>
 
+<button class="big alt hide" id="statBtn" type="button" style="margin-bottom:12px">📊 Statistiques de l'équipe</button>
+<div id="statCard" class="card hide"></div>
 <div id="histCard" class="card">
   <div class="hhead"><span class="muted">Derniers articles</span><button id="clr" type="button">Tout effacer</button></div>
   <ul id="hist"></ul>
@@ -178,11 +198,87 @@ $("t4").onclick = function(){ tab(4); };
 function kwUrl(){ return BASE + encodeURIComponent($("kw").value.trim()); }
 $("kwGo").onclick = function(e){
   if (!$("kw").value.trim()) { e.preventDefault(); $("kw").focus(); return; }
+  stat("motscles");
   this.href = kwUrl();
 };
 $("kw").onkeydown = function(e){
-  if (e.key === "Enter" && this.value.trim()) { window.open(kwUrl(), "_blank", "noopener"); }
+  if (e.key === "Enter" && this.value.trim()) { stat("motscles"); window.open(kwUrl(), "_blank", "noopener"); }
 };
+
+// ---------- profil (prénom) ----------
+var PROFIL = { nom: "", cle: "", admin: false };
+try { PROFIL.nom = localStorage.getItem("profilNom") || ""; PROFIL.cle = localStorage.getItem("profilCle") || ""; PROFIL.admin = localStorage.getItem("profilAdmin") === "1"; } catch(e){}
+function prof(route, data){
+  if (!PROFIL.nom) return Promise.resolve(null);
+  var body = Object.assign({ nom: PROFIL.nom, cle: PROFIL.cle }, data || {});
+  return fetch(SERVEUR + route, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
+    .then(function(r){ return r.json(); }).catch(function(){ return null; });
+}
+function stat(type){ prof("/profil/activite", { type: type }); }
+function typeDe(c){ return c.indexOf("s:") === 0 ? "sku" : (isBook(c) ? "livre" : "produit"); }
+function majProfilUI(){
+  $("who").textContent = PROFIL.nom ? "👤 " + PROFIL.nom : "profil";
+  $("statBtn").className = PROFIL.admin ? "big alt" : "big alt hide";
+}
+function ouvrirProfil(){
+  $("profil").className = ""; $("pNom").value = ""; $("pCle").value = ""; $("pCle").className = "hide"; $("pMsg").textContent = "";
+  setTimeout(function(){ $("pNom").focus(); }, 50);
+}
+function chargerHistoriqueServeur(importer){
+  return prof("/profil/historique").then(function(j){
+    if (!j || !j.ok) return;
+    var serveur = j.historique || [], local = loadHist();
+    if (importer && local.length) {
+      var deja = serveur.map(function(x){ return x.c; });
+      local.filter(function(x){ return deja.indexOf(x.c) < 0; }).slice(0, 30).forEach(function(x){
+        prof("/profil/ajouter", { article: x.c, type: typeDe(x.c), import: "1" }).then(function(){ if (x.n) prof("/profil/note", { article: x.c, note: x.n }); });
+        serveur.push(x);
+      });
+      serveur.sort(function(a, b){ return (b.t || 0) - (a.t || 0); });
+    }
+    storeHist(serveur); renderHist(serveur);
+  });
+}
+function connexion(){
+  var nom = $("pNom").value.trim(), cle = $("pCle").value.trim();
+  if (nom.length < 2) { $("pMsg").textContent = "Entre ton prénom."; return; }
+  $("pMsg").textContent = "Connexion…";
+  fetch(SERVEUR + "/profil/connexion", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nom: nom, cle: cle }) })
+    .then(function(r){ return r.json(); }).then(function(j){
+      if (j && j.protege) { $("pCle").className = ""; $("pCle").focus(); $("pMsg").textContent = cle ? "Code incorrect." : "Ce profil est protégé : entre son code."; return; }
+      if (!j || !j.ok) { $("pMsg").textContent = "Connexion impossible, réessaie."; return; }
+      var premier = !PROFIL.nom || PROFIL.nom.toLowerCase() !== nom.toLowerCase();
+      if (premier && PROFIL.nom) storeHist([]);   // changement de profil : on ne mélange pas les historiques
+      PROFIL = { nom: j.nom, cle: cle, admin: !!j.admin };
+      try { localStorage.setItem("profilNom", PROFIL.nom); localStorage.setItem("profilCle", cle); localStorage.setItem("profilAdmin", PROFIL.admin ? "1" : "0"); } catch(e){}
+      $("profil").className = "hide"; majProfilUI(); $("statCard").className = "card hide";
+      chargerHistoriqueServeur(true);
+    }, function(){ $("pMsg").textContent = "Serveur injoignable, réessaie."; });
+}
+function afficherStats(){
+  var box = $("statCard");
+  if (box.className === "card") { box.className = "card hide"; return; }
+  box.className = "card"; box.innerHTML = '<p class="muted">Chargement…</p>';
+  fetch(SERVEUR + "/stats?cle=" + encodeURIComponent(PROFIL.cle)).then(function(r){ return r.json(); }).then(function(j){
+    box.innerHTML = "";
+    if (!j || !j.ok) { box.appendChild(el("p", "muted", "Statistiques indisponibles.")); return; }
+    box.appendChild(el("p", "lbl", "Utilisation par l'équipe"));
+    var NOMS = { livre: "livres", jeu: "fiches jeu", produit: "produits", sku: "SKU", photo: "photos", question: "questions", comparer: "comparaisons", motscles: "mots-clés" };
+    var t = el("table", "stat"), hd = el("tr");
+    ["Prénom", "Total", "7 j", "Dernière fois"].forEach(function(x){ hd.appendChild(el("th", "", x)); });
+    t.appendChild(hd);
+    j.equipe.forEach(function(p){
+      var tr = el("tr"), c1 = el("td");
+      c1.appendChild(el("b", "", p.nom));
+      var det = Object.keys(p.fonctions).sort(function(a, b){ return p.fonctions[b] - p.fonctions[a]; }).map(function(k){ return p.fonctions[k] + " " + (NOMS[k] || k); }).join(" · ");
+      if (det) { c1.appendChild(el("br")); c1.appendChild(el("span", "det", det)); }
+      tr.appendChild(c1); tr.appendChild(el("td", "", String(p.total))); tr.appendChild(el("td", "", String(p.semaine))); tr.appendChild(el("td", "", p.dernier ? ago(p.dernier) : "—"));
+      t.appendChild(tr);
+    });
+    box.appendChild(t);
+    box.appendChild(el("p", "warn", "Uniquement des chiffres : les articles recherchés et les notes de chacun restent privés."));
+  }, function(){ box.innerHTML = '<p class="muted">Serveur injoignable.</p>'; });
+}
 
 function loadHist(){
   try {
@@ -197,6 +293,7 @@ function saveHist(c){
   h.unshift({c: c, t: Date.now(), n: old ? old.n : "", s: old ? old.s : ""});
   h = h.slice(0, 30);
   storeHist(h); renderHist(h);
+  prof("/profil/ajouter", { article: c, type: typeDe(c) });
 }
 function ago(t){
   if (!t) return "";
@@ -226,13 +323,14 @@ function renderHist(h){
     var inp = document.createElement("input"); inp.className = "note"; inp.placeholder = "Prix, remarque…"; inp.value = x.n || "";
     inp.oninput = function(){
       var hh = loadHist(); hh.forEach(function(y){ if (y.c === x.c) y.n = inp.value; }); storeHist(hh);
+      clearTimeout(inp.tm); inp.tm = setTimeout(function(){ prof("/profil/note", { article: x.c, note: inp.value }); }, 800);
       ok.textContent = "✓ Enregistré"; clearTimeout(ok.tm); ok.tm = setTimeout(function(){ ok.textContent = ""; }, 1500);
     };
     li.appendChild(inp);
     var acts = document.createElement("div"); acts.className = "acts";
     var a1 = document.createElement("a"); a1.href = urlFor(x.c); a1.target = "_blank"; a1.rel = "noopener"; a1.textContent = "Ouvrir";
     var d = document.createElement("button"); d.type = "button"; d.textContent = "Supprimer";
-    d.onclick = function(){ var hh = loadHist().filter(function(y){ return y.c !== x.c; }); storeHist(hh); renderHist(hh); };
+    d.onclick = function(){ var hh = loadHist().filter(function(y){ return y.c !== x.c; }); storeHist(hh); renderHist(hh); prof("/profil/supprimer", { article: x.c }); };
     var cp = document.createElement("button"); cp.type = "button"; cp.textContent = "Comparer";
     if (cmpSel.indexOf(x.c) > -1) cp.className = "sel";
     cp.onclick = function(){
@@ -270,6 +368,7 @@ function montrerQuestion(on){
 }
 function poserQuestion(){
   var q = $("qIn").value.trim(); if (!q) { $("qIn").focus(); return; }
+  stat("question");
   var ctx = ($("code").textContent + "\n" + $("bookBox").innerText).slice(0, 3000);
   var bloc = el("div", "qa"); bloc.appendChild(el("b", "", q)); var rep = el("span", "", "Réflexion…"); bloc.appendChild(rep);
   $("qRep").insertBefore(bloc, $("qRep").firstChild); $("qIn").value = "";
@@ -437,6 +536,7 @@ function el(tag, cls, txt){ var e = document.createElement(tag); if (cls) e.clas
 function lienGoogle(txt, q){ var a = el("a", "big alt", txt); a.href = claudeUrl(q); a.target = "_blank"; a.rel = "noopener"; return a; }
 $("cmpGo").onclick = function(){
   if (cmpSel.length !== 2) return;
+  stat("comparer");
   var a = cmpSel[0], b = cmpSel[1], box = $("cmpRes");
   box.className = "card"; box.innerHTML = '<p class="muted">Comparaison en cours… (10 à 20 secondes)</p>';
   box.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -475,6 +575,7 @@ function loadProduit(ean){
   fetch(SERVEUR + "/produit?ean=" + ean, ctl ? { signal: ctl.signal } : {}).then(function(r){ clearTimeout(tm); return r.json(); }).then(function(j){
     if (my !== prodReq) return;
     if (!j || !j.trouve) { produitIntrouvable(); return; }
+    if (j.type === "jeu") stat("jeu");
     renderFiche(j);
   }, function(){ clearTimeout(tm); if (my === prodReq) produitIntrouvable(); });
 }
@@ -537,6 +638,7 @@ function reduireImage(file){
 }
 function identifierPhoto(file){
   if (!file) return;
+  stat("photo");
   montrerQuestion(false);
   bookReq++; var my = ++prodReq, box = $("bookBox");
   $("res").className = "card"; $("code").textContent = "Photo";
@@ -579,7 +681,7 @@ function identifierPhoto(file){
 var clrArmed = false;
 $("clr").onclick = function(){
   if (!clrArmed) { clrArmed = true; $("clr").textContent = "Confirmer ?"; setTimeout(function(){ clrArmed = false; $("clr").textContent = "Tout effacer"; }, 3000); return; }
-  clrArmed = false; $("clr").textContent = "Tout effacer"; storeHist([]); renderHist([]);
+  clrArmed = false; $("clr").textContent = "Tout effacer"; storeHist([]); renderHist([]); prof("/profil/vider");
 };
 
 function urlFor(c){
@@ -682,7 +784,14 @@ $("torch").onclick = function(){
   t.apply(!torchOn).then(function(){ torchOn = !torchOn; $("torch").textContent = torchOn ? "Éteindre la lampe" : "Allumer la lampe"; }).catch(function(){});
 };
 if ("serviceWorker" in navigator && location.protocol === "https:") { navigator.serviceWorker.register("sw.js").catch(function(){}); }
+$("who").onclick = ouvrirProfil;
+$("pGo").onclick = connexion;
+$("pNom").addEventListener("keydown", function(e){ if (e.key === "Enter") connexion(); });
+$("pCle").addEventListener("keydown", function(e){ if (e.key === "Enter") connexion(); });
+$("statBtn").onclick = afficherStats;
 renderHist(loadHist());
+majProfilUI();
+if (PROFIL.nom) chargerHistoriqueServeur(false); else ouvrirProfil();
 </script>
 </body>
 </html>

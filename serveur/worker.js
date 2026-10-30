@@ -452,7 +452,7 @@ async function profils(req, url, env) {
     if (!article) return { ok: false, erreur: "article manquant" };
     await env.DB.batch([
       env.DB.prepare("INSERT INTO historique (nom, code, note, t) VALUES (?, ?, '', ?) ON CONFLICT(nom, code) DO UPDATE SET t = excluded.t").bind(nom, article, now),
-      env.DB.prepare("INSERT INTO activite (nom, t, type) VALUES (?, ?, ?)").bind(nom, now, type),
+      p("import") === "1" ? env.DB.prepare("SELECT 1") : env.DB.prepare("INSERT INTO activite (nom, t, type) VALUES (?, ?, ?)").bind(nom, now, type),
       env.DB.prepare("UPDATE profils SET vu = ? WHERE nom = ?").bind(now, nom),
       env.DB.prepare("DELETE FROM historique WHERE nom = ? AND code NOT IN (SELECT code FROM historique WHERE nom = ? ORDER BY t DESC LIMIT 50)").bind(nom, nom),
     ]);
