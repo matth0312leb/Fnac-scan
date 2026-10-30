@@ -240,7 +240,7 @@ async function openProducts(ean) {
   return { trouve: true, source: "Open Products Facts", nom, marque: p.brands || "", modele: "", categorie: p.categories || "", description: "", image: p.image_front_url || "" };
 }
 
-// Recherche web du code-barres : on garde les titres des premiers résultats (DuckDuckGo, puis Bing)
+// Recherche web du code-barres via Bing (DuckDuckGo retiré : il bloque le serveur, testé le 30.10.2026)
 function nettoieTitres(titres, ean) {
   const propre = (t) => t.replace(/\s*[|\-–—]\s*(amazon|ebay|fnac|digitec|galaxus|manor|interdiscount|media ?markt|darty|boulanger|idealo|brack|apple|google|toppreise|ricardo|microspot|conforama|cdiscount|rakuten|walmart|best ?buy)[^|]*$/i, "")
     .replace(/\b(acheter|achat|kaufen|buy|prix|preis|price|en stock|livraison)\b.*$/i, "").replace(new RegExp(ean, "g"), "")
@@ -248,7 +248,7 @@ function nettoieTitres(titres, ean) {
   return titres.map(propre).filter((t) => t.length > 6 && !/^(r[ée]sultats?|results?|search|recherche)/i.test(t));
 }
 async function webMoteur(nom, url, re, ean) {
-  const r = await get(url, { headers: { "Accept": "text/html", "Accept-Language": "fr-CH,fr;q=0.9,en;q=0.7" } });
+  const r = await get(url, { timeout: 6000, headers: { "Accept": "text/html", "Accept-Language": "fr-CH,fr;q=0.9,en;q=0.7" } });
   const titres = [...r.text.matchAll(re)].map((m) => strip(m[1])).slice(0, 8);
   const noms = nettoieTitres(titres, ean);
   return { moteur: nom, status: r.status, nbResultats: titres.length, noms: noms.slice(0, 5),
@@ -256,7 +256,6 @@ async function webMoteur(nom, url, re, ean) {
 }
 async function webNom(ean, detail) {
   const essais = [
-    () => webMoteur("DuckDuckGo", "https://html.duckduckgo.com/html/?q=" + ean, /class="result__a"[^>]*>([\s\S]*?)<\/a>/g, ean),
     () => webMoteur("Bing", "https://www.bing.com/search?setlang=fr&cc=CH&q=" + ean, /<li class="b_algo"[\s\S]*?<h2[^>]*>\s*<a[^>]*>([\s\S]*?)<\/a>/g, ean),
   ];
   const traces = [];

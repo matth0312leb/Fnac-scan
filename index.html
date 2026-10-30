@@ -218,7 +218,7 @@ function claudeUrl(q){ return "https://www.google.com/search?udm=50&hl=fr&q=" + 
 function noteOf(c){ var x = loadHist().filter(function(y){ return y.c === c; })[0]; return x && x.n ? " (ma note : " + x.n + ")" : ""; }
 function promptOne(c){
   if (isBook(c)) return "Livre ISBN " + c + " : fiche rapide pour un libraire, en moins de 120 mots. Titre et auteur, résumé en 2 phrases sans spoiler, de quoi ou de qui ça parle, âge conseillé, date de parution et éditeur, tome si c'est une série, 2 livres similaires.";
-  return "Produit " + label(c) + noteOf(c) + " : fiche rapide pour un vendeur Fnac, en moins de 150 mots. Nom exact du produit, 3 points forts, 2 points faibles, pour quel type de client, une alternative à proposer.";
+  return (c.indexOf("s:") === 0 ? "Produit " + label(c) : "Code-barres " + codeNu(c)) + noteOf(c) + " : identifie le produit et fais une fiche rapide pour un vendeur Fnac, en moins de 150 mots. Nom exact. Si c'est un jeu vidéo : plateforme, PEGI, date de sortie, solo ou multijoueur (local, en ligne), taille de téléchargement, genre et résumé sans spoiler. Sinon : 3 points forts, 2 points faibles, pour quel type de client, une alternative.";
 }
 function promptCmp(a, b){
   return "Compare ces deux produits pour un vendeur Fnac : (1) " + label(a) + noteOf(a) + " et (2) " + label(b) + noteOf(b) + ". Tableau court des caractéristiques clés et des différences qui comptent vraiment, puis une phrase : lequel conseiller selon le profil du client.";
@@ -423,9 +423,18 @@ function loadProduit(ean){
   var tm = setTimeout(function(){ if (ctl) ctl.abort(); }, 20000);
   fetch(SERVEUR + "/produit?ean=" + ean, ctl ? { signal: ctl.signal } : {}).then(function(r){ clearTimeout(tm); return r.json(); }).then(function(j){
     if (my !== prodReq) return;
-    if (!j || !j.trouve) { box.innerHTML = '<p class="muted">Produit absent des bases gratuites : essaie « Identifier par photo » ou le bouton Google IA ci-dessous.</p>'; return; }
+    if (!j || !j.trouve) { produitIntrouvable(); return; }
     renderFiche(j);
-  }, function(){ clearTimeout(tm); if (my === prodReq) box.innerHTML = '<p class="muted">Serveur injoignable : utilise le bouton Google IA ci-dessous.</p>'; });
+  }, function(){ clearTimeout(tm); if (my === prodReq) produitIntrouvable(); });
+}
+function produitIntrouvable(){
+  var box = $("bookBox"); box.className = ""; box.innerHTML = "";
+  box.appendChild(el("p", "muted", "Pas trouvé automatiquement. Deux solutions rapides :"));
+  var g = el("a", "big", "Fiche Google IA (jeu, produit…)"); g.href = $("ai").href; g.target = "_blank"; g.rel = "noopener";
+  box.appendChild(g);
+  var ph = el("button", "big alt", "📷 Identifier par photo de la boîte"); ph.type = "button"; ph.onclick = function(){ $("f3").click(); };
+  box.appendChild(ph);
+  box.appendChild(el("p", "warn", ""));
 }
 function renderFiche(j){
     var box = $("bookBox"); box.className = "";
@@ -522,7 +531,7 @@ function show(c){
   $("res").className = "card";
   saveHist(c);
   $("ai").href = claudeUrl(promptOne(c));
-  $("ai").textContent = isBook(c) ? "Résumé détaillé (Google IA)" : "Résumé pour conseiller (Google IA)";
+  $("ai").textContent = isBook(c) ? "Résumé détaillé (Google IA)" : "Fiche détaillée (Google IA)";
   if (isBook(c)) { prodReq++; loadBook(c); }
   else if (c.indexOf("s:") === 0) { bookReq++; prodReq++; $("bookBox").className = "hide"; $("bookBox").innerHTML = ""; }
   else { bookReq++; loadProduit(c); }
