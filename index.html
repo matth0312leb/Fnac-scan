@@ -211,7 +211,14 @@ function prof(route, data){
   if (!PROFIL.nom) return Promise.resolve(null);
   var body = Object.assign({ nom: PROFIL.nom, cle: PROFIL.cle }, data || {});
   return fetch(SERVEUR + route, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
-    .then(function(r){ return r.json(); }).catch(function(){ return null; });
+    .then(function(r){ return r.json(); })
+    .then(function(j){ if (j && j.protege) codeAChange(); return j; })
+    .catch(function(){ return null; });
+}
+function codeAChange(){
+  if ($("profil").className === "") return;
+  ouvrirProfil(); $("pNom").value = PROFIL.nom; $("pCle").className = ""; $("pCle").focus();
+  $("pMsg").textContent = "Ton code a changé : entre le nouveau.";
 }
 function stat(type){ prof("/profil/activite", { type: type }); }
 function typeDe(c){ return c.indexOf("s:") === 0 ? "sku" : (isBook(c) ? "livre" : "produit"); }
@@ -260,6 +267,7 @@ function afficherStats(){
   box.className = "card"; box.innerHTML = '<p class="muted">Chargement…</p>';
   fetch(SERVEUR + "/stats?cle=" + encodeURIComponent(PROFIL.cle)).then(function(r){ return r.json(); }).then(function(j){
     box.innerHTML = "";
+    if (j && j.erreur === "code incorrect") { box.className = "card hide"; codeAChange(); return; }
     if (!j || !j.ok) { box.appendChild(el("p", "muted", "Statistiques indisponibles.")); return; }
     box.appendChild(el("p", "lbl", "Utilisation par l'équipe"));
     var NOMS = { livre: "livres", jeu: "fiches jeu", produit: "produits", sku: "SKU", photo: "photos", question: "questions", comparer: "comparaisons", motscles: "mots-clés" };
