@@ -152,12 +152,13 @@ async function diagnostic(code) {
   if (!code) return { erreur: "ajoute ?ean=..." };
   const [b, g, o, s, u] = await Promise.all([bnf(code), google(code), openlib(code), suisse(code), upc(code)]);
   const w = u.trouve ? await wikidataJeu(titreJeu(u.nom)) : { trouve: false };
-  const [u1, opf, web] = await Promise.all([upcUn(code), openProducts(code), webNom(code, true)]);
+  const [u1, opf, web, tp] = await Promise.all([upcUn(code), openProducts(code), webNom(code, true), toppreise(code)]);
   const etat = (x) => x.trouve ? "OK" : "rien (" + (x.status || x.err || "?") + ")";
   return {
     code,
     resume: { BnF: etat(b), swisscovery: etat(s), "Google Books": etat(g), "Open Library": etat(o), "Produits (UPCitemdb / Open Products Facts / web)": u.trouve ? "OK via " + (u.source || "UPCitemdb") + " : " + u.nom : etat(u), "Wikidata (jeux)": u.trouve ? etat(w) + " — recherche : " + titreJeu(u.nom) + (estJeu(u) ? " (détecté comme jeu)" : " (pas détecté comme jeu)") : "non testé" },
-    details: { bnf: b, swisscovery: s, google: g, openlibrary: o, produit_final: u, upcitemdb_seul: u1, open_products_facts: opf, web: web, wikidata: w },
+    toppreise: tp.trouve ? "Fnac trouvé : CHF " + tp.prix_fnac : (tp.status === 200 ? (tp.fnac_present ? "Fnac mentionné" : "page OK, Fnac absent") : "rien / bloqué (" + tp.status + ")"),
+    details: { toppreise: tp, bnf: b, swisscovery: s, google: g, openlibrary: o, produit_final: u, upcitemdb_seul: u1, open_products_facts: opf, web: web, wikidata: w },
   };
 }
 
@@ -369,6 +370,33 @@ async function jeu(p, env) {
     "Les infos Wikidata fournies sont fiables : reprends-les. Complète avec tes connaissances seulement si tu es sûr ; sinon laisse la chaîne vide. N'invente aucun chiffre.";
   const ia = await demanderIA(env, consigne, infos, 450);
   return { trouve: true, type: "jeu", ...p, plateforme: plateformeDe(p.nom), titre, jeu: w, ia, sources: { UPCitemdb: true, Wikidata: w.trouve || w.status || false } };
+}
+
+// ---------- prix via le comparateur Toppreise (essai) ----------
+async function toppreise(ean) {
+  const base = "https://www.toppreise.ch";
+  const r = await get(base + "/produktsuche?q=" + ean, { headers: { "Accept": "text/html", "Accept-Language": "fr-CH,de-CH;q=0.9" } });
+  const out = { status: r.status, url: r.url };
+  if (r.status !== 200) return { trouve: false, ...out, apercu: strip(r.text).slice(0, 160) };
+  let html = r.text, pageUrl = r.url;
+  // si on reste sur la page de résultats, suivre le premier lien produit
+  if (!/preisvergleich|\/p\d+|-p\d+/i.test(pageUrl)) {
+    const m = html.match(/href="(\/[^"]*(?:preisvergleich|-p\d+)[^"]*)"/i);
+    if (m) { const r2 = await get(base + m[1], { headers: { "Accept": "text/html" } }); out.produit = r2.status; if (r2.status === 200) { html = r2.text; pageUrl = r2.url; } }
+  }
+  const texte = strip(html);
+  const prixTous = [...texte.matchAll(/CHF\s*([\d'’]+(?:[.,]\d{2}|\.–|\.-)?)/g)].map((m) => m[1]);
+  // prix proche de la mention « Fnac »
+  let fnac = "";
+  const i = texte.search(/fnac/i);
+  if (i >= 0) {
+    const prixRe = /(?:CHF\s*)?([\d'’]{1,6}[.,]\d{2})/;
+    const apres = texte.slice(i, i + 200).match(prixRe);
+    const avant = [...texte.slice(Math.max(0, i - 120), i).matchAll(new RegExp(prixRe.source, "g"))].pop();
+    fnac = apres ? apres[1] : avant ? avant[1] + " (à vérifier)" : "mentionné, prix non repéré";
+  }
+  return { trouve: !!fnac, ...out, page: pageUrl, fnac_present: i >= 0, prix_fnac: fnac, prix_sur_la_page: prixTous.slice(0, 6),
+    apercu: texte.slice(0, 160) };
 }
 
 // ---------- comparaison ----------
