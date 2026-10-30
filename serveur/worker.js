@@ -4,6 +4,7 @@
 //   /livre?isbn=...   fiche livre (BnF, swisscovery, Google Books, Open Library) + résumé IA
 //   /produit?ean=...  fiche produit (base de codes-barres UPCitemdb) + résumé IA pour conseiller
 //   /comparer?a=...&b=...  comparaison de 2 articles par l'IA
+//   POST /photo {image: dataURL}  identification par photo (couverture / boîte) avec l'IA vision
 //   Jeux vidéo : /produit détecte un jeu et ajoute les infos Wikidata (PEGI, sortie, modes, genre, plateformes, studio)
 // Les sites Fnac ne sont pas interrogés : leur anti-robot bloque le serveur (403, testé le 30.10.2026).
 
@@ -17,7 +18,8 @@ export default {
     const origin = req.headers.get("Origin") || "";
     const cors = {
       "Access-Control-Allow-Origin": origin === SITE ? SITE : "*",
-      "Access-Control-Allow-Methods": "GET, OPTIONS",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
       "Content-Type": "application/json; charset=utf-8",
       "Cache-Control": "public, max-age=3600",
     };
@@ -37,6 +39,10 @@ export default {
       return r;
     };
     try {
+      if (url.pathname === "/photo" && req.method === "POST") {
+        let body; try { body = await req.json(); } catch (e) { return send({ trouve: false, erreur: "image attendue" }, 400); }
+        return send(await photo(String(body.image || ""), env));
+      }
       if (url.pathname === "/livre") return await sendCache(await livre(code, env));
       if (url.pathname === "/produit") return await sendCache(await produit(code, env));
       if (url.pathname === "/comparer") {
@@ -349,13 +355,17 @@ async function produit(ean, env) {
   const p = await upc(ean);
   if (!p.trouve) return { trouve: false, sources: { UPCitemdb: p.status || false } };
   if (estJeu(p)) return await jeu(p, env);
+  return await produitIA(p, env);
+}
+
+async function produitIA(p, env) {
   const infos = ["Produit : " + p.nom, p.marque && "Marque : " + p.marque, p.modele && "Modèle : " + p.modele,
     p.categorie && "Catégorie : " + p.categorie, p.description && "Description : " + p.description].filter(Boolean).join("\n");
   const consigne = "Tu aides un vendeur de la Fnac (Suisse) à conseiller un client en 10 secondes. Réponds en français, en JSON strict sans texte autour : " +
     '{"nom":"nom commercial court du produit en français","resume":"1 à 2 phrases : ce que c\'est et à quoi ça sert","forts":["point fort","point fort","point fort"],"faibles":["point faible","point faible"],"pour_qui":"type de client à qui le conseiller","alternative":"une alternative courante à proposer"}. ' +
     "Si les infos viennent de titres de pages web, déduis-en le produit exact (marque, modèle, génération). Appuie-toi sur les infos fournies et sur tes connaissances générales du produit. Si tu ne connais pas bien ce produit, reste général et prudent, n'invente pas de caractéristiques chiffrées, et laisse vide ce que tu ignores.";
   const ia = await demanderIA(env, consigne, infos, 450);
-  return { trouve: true, ...p, ia, sources: { UPCitemdb: true } };
+  return { trouve: true, ...p, ia, sources: { produit: p.source || "UPCitemdb" } };
 }
 
 async function jeu(p, env) {
@@ -369,7 +379,55 @@ async function jeu(p, env) {
     '{"nom":"titre officiel du jeu","resume":"2 phrases : univers et principe du jeu, sans spoiler","genre":"genre en français, quelques mots","modes":"Solo, Multijoueur local, En ligne… (ce qui s\'applique)","pegi":"PEGI x si connu","taille":"espace disque approximatif sur cette plateforme, ex. ~50 Go, UNIQUEMENT si tu le connais avec certitude, sinon vide","duree":"durée de vie approximative si connue, ex. 30-40 h","pour_qui":"type de joueur à qui le conseiller"}. ' +
     "Les infos Wikidata fournies sont fiables : reprends-les. Complète avec tes connaissances seulement si tu es sûr ; sinon laisse la chaîne vide. N'invente aucun chiffre.";
   const ia = await demanderIA(env, consigne, infos, 450);
-  return { trouve: true, type: "jeu", ...p, plateforme: plateformeDe(p.nom), titre, jeu: w, ia, sources: { UPCitemdb: true, Wikidata: w.trouve || w.status || false } };
+  return { trouve: true, type: "jeu", ...p, plateforme: p.plateforme || plateformeDe(p.nom), titre, jeu: w, ia, sources: { produit: p.source || "UPCitemdb", Wikidata: w.trouve || w.status || false } };
+}
+
+// ---------- identification par photo ----------
+async function vision(env, image) {
+  const question = "Tu regardes la photo d'un article vendu à la Fnac (jeu vidéo, livre, BD, film, produit high-tech…). Lis le texte visible sur la couverture ou la boîte. " +
+    'Réponds UNIQUEMENT en JSON : {"type":"jeu|livre|produit","titre":"titre exact lu (jeu ou livre) ou nom du produit","plateforme":"console si jeu vidéo (PS5, Nintendo Switch…), sinon vide","marque":"marque ou éditeur","modele":"modèle si produit","auteur":"auteur si livre","pegi":"chiffre PEGI visible, sinon vide"}. N\'invente rien : laisse vide ce que tu ne lis pas.';
+  const lire = (r) => {
+    const v = r && (r.response !== undefined ? r.response : r.answer !== undefined ? r.answer : r);
+    if (v && typeof v === "object" && v.titre !== undefined) return v;
+    const m = String(typeof v === "string" ? v : JSON.stringify(v || "")).match(/\{[\s\S]*\}/);
+    try { return m ? JSON.parse(m[0]) : null; } catch (e) { return null; }
+  };
+  const llama = () => env.AI.run("@cf/meta/llama-3.2-11b-vision-instruct", { messages: [{ role: "user", content: question }], image, max_tokens: 300 });
+  try { const v = lire(await llama()); if (v && v.titre) return { ...v, modeleIA: "llama-vision" }; }
+  catch (e) {
+    // première utilisation : accepter la licence Meta, puis réessayer
+    if (/agree|licen/i.test(String(e && e.message || e))) {
+      try { await env.AI.run("@cf/meta/llama-3.2-11b-vision-instruct", { prompt: "agree" }); const v = lire(await llama()); if (v && v.titre) return { ...v, modeleIA: "llama-vision" }; } catch (e2) {}
+    }
+  }
+  try { const v = lire(await env.AI.run("@cf/moondream/moondream3.1-9B-A2B", { task: "query", image, question })); if (v && v.titre) return { ...v, modeleIA: "moondream" }; } catch (e) {}
+  return null;
+}
+
+async function photo(image, env) {
+  if (!/^data:image\/(jpeg|jpg|png|webp);base64,/.test(image)) return { trouve: false, erreur: "image attendue (data:image/jpeg;base64,...)" };
+  if (image.length > 3000000) return { trouve: false, erreur: "image trop lourde" };
+  if (!env || !env.AI) return { trouve: false, erreur: "IA indisponible" };
+  const v = await vision(env, image);
+  if (!v) return { trouve: false, erreur: "rien de lisible sur la photo" };
+  const type = String(v.type || "").toLowerCase();
+  if (type.startsWith("jeu") || v.plateforme) {
+    const p = { trouve: true, source: "photo", nom: [v.titre, v.plateforme].filter(Boolean).join(" "), marque: v.marque || "", modele: "",
+      categorie: "Jeu vidéo", description: v.pegi ? "PEGI " + v.pegi + " visible sur la boîte" : "", image: "", plateforme: plateformeDe(v.plateforme || "") || v.plateforme || "" };
+    const r = await jeu(p, env);
+    if (v.pegi && r.jeu && !r.jeu.pegi) r.jeu.pegi = "PEGI " + v.pegi;
+    return { ...r, lu: v };
+  }
+  if (type.startsWith("livre")) {
+    const infos = ["Livre (lu sur la couverture) : " + v.titre, v.auteur && "Auteur : " + v.auteur, v.marque && "Éditeur : " + v.marque].filter(Boolean).join("\n");
+    const consigne = "Tu aides un libraire de la Fnac à renseigner un client en 10 secondes. Réponds en français, en JSON strict sans texte autour : " +
+      '{"resume":"2 phrases maximum, sans spoiler","sujet":"de quoi ou de qui parle le livre","public":"âge ou public conseillé"}. ' +
+      "Utilise tes connaissances seulement si tu reconnais ce livre avec certitude ; sinon laisse les champs vides. N'invente pas d'intrigue.";
+    const ia = await demanderIA(env, consigne, infos, 300);
+    return { trouve: true, type: "livre", source: "photo", titre: v.titre, auteur: v.auteur || "", editeur: v.marque || "", ia, lu: v };
+  }
+  const p = { trouve: true, source: "photo", nom: [v.marque, v.titre, v.modele].filter(Boolean).join(" "), marque: v.marque || "", modele: v.modele || "", categorie: "", description: "", image: "" };
+  return { ...(await produitIA(p, env)), lu: v };
 }
 
 // ---------- prix via le comparateur Toppreise (essai) ----------

@@ -89,7 +89,9 @@ li{padding:10px 0;border-top:1px solid var(--line)}
     <p class="muted" id="hint">Appuie sur « Scanner en direct », puis vise le code-barres.</p>
     <button class="big" id="start" type="button">Scanner en direct</button>
     <button class="big alt hide" id="torch" type="button">Allumer la lampe</button>
-    <button class="big alt" id="pick" type="button">Choisir une photo existante</button>
+    <button class="big alt" id="snap" type="button">📷 Identifier par photo (couverture, boîte)</button>
+    <button class="big alt" id="pick" type="button">Choisir une photo existante (code-barres)</button>
+    <input id="f3" type="file" accept="image/*" capture="environment" class="hide">
     <input id="f2" type="file" accept="image/*" class="hide">
     <div id="filereader" class="hide"></div>
     <label class="opt"><input type="checkbox" id="auto"> Ouvrir la fiche dès que le code est lu (sauf livres)</label>
@@ -421,7 +423,12 @@ function loadProduit(ean){
   var tm = setTimeout(function(){ if (ctl) ctl.abort(); }, 20000);
   fetch(SERVEUR + "/produit?ean=" + ean, ctl ? { signal: ctl.signal } : {}).then(function(r){ clearTimeout(tm); return r.json(); }).then(function(j){
     if (my !== prodReq) return;
-    if (!j || !j.trouve) { box.innerHTML = '<p class="muted">Produit absent de la base gratuite : utilise le bouton Google IA ci-dessous.</p>'; return; }
+    if (!j || !j.trouve) { box.innerHTML = '<p class="muted">Produit absent des bases gratuites : essaie « Identifier par photo » ou le bouton Google IA ci-dessous.</p>'; return; }
+    renderFiche(j);
+  }, function(){ clearTimeout(tm); if (my === prodReq) box.innerHTML = '<p class="muted">Serveur injoignable : utilise le bouton Google IA ci-dessous.</p>'; });
+}
+function renderFiche(j){
+    var box = $("bookBox"); box.className = "";
     var ia = j.ia || {};
     box.innerHTML = "";
     var wrap = el("div", "book");
@@ -451,7 +458,48 @@ function loadProduit(ean){
     if (dl.children.length) box.appendChild(dl);
     if (!ia.resume) box.appendChild(el("p", "muted", "Résumé IA indisponible : utilise le bouton Google IA ci-dessous."));
     else box.appendChild(el("p", "warn", "Rédigé par une IA : vérifie prix et caractéristiques sur la fiche fnac.ch."));
-  }, function(){ clearTimeout(tm); if (my === prodReq) box.innerHTML = '<p class="muted">Serveur injoignable : utilise le bouton Google IA ci-dessous.</p>'; });
+}
+
+// ---------- identification par photo ----------
+function reduireImage(file){
+  return new Promise(function(ok, ko){
+    var url = URL.createObjectURL(file), img = new Image();
+    img.onload = function(){
+      var max = 1024, w = img.naturalWidth, h = img.naturalHeight, k = Math.min(1, max / Math.max(w, h));
+      var c = document.createElement("canvas"); c.width = Math.round(w * k); c.height = Math.round(h * k);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url); ok(c.toDataURL("image/jpeg", 0.8));
+    };
+    img.onerror = function(){ URL.revokeObjectURL(url); ko(); };
+    img.src = url;
+  });
+}
+function identifierPhoto(file){
+  if (!file) return;
+  bookReq++; var my = ++prodReq, box = $("bookBox");
+  $("res").className = "card"; $("code").textContent = "Photo";
+  $("note").textContent = ""; box.className = ""; box.innerHTML = '<p class="muted">Lecture de la photo par l’IA… (10 à 20 secondes)</p>';
+  $("open").href = BASE; $("direct").href = "#"; $("ai").href = "#";
+  $("res").scrollIntoView({ behavior: "smooth", block: "start" });
+  reduireImage(file).then(function(image){
+    var ctl = ("AbortController" in window) ? new AbortController() : null;
+    var tm = setTimeout(function(){ if (ctl) ctl.abort(); }, 40000);
+    return fetch(SERVEUR + "/photo", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ image: image }), signal: ctl ? ctl.signal : undefined })
+      .then(function(r){ clearTimeout(tm); return r.json(); });
+  }).then(function(j){
+    if (my !== prodReq) return;
+    if (!j || !j.trouve) { box.innerHTML = '<p class="muted">L’IA n’a pas réussi à lire la photo. Reprends-la de face, bien éclairée, avec le titre lisible.</p>'; return; }
+    var ia = j.ia || {}, lu = j.lu || {};
+    var nom = (j.type === "jeu" ? (ia.nom || (j.jeu && j.jeu.nom) || lu.titre) + (j.plateforme ? " " + j.plateforme : "") : j.type === "livre" ? [j.titre, j.auteur].filter(Boolean).join(" ") : (ia.nom || j.nom)) || "";
+    $("code").textContent = (j.type === "jeu" ? "🎮 " : j.type === "livre" ? "📚 " : "📦 ") + "Photo";
+    $("open").href = BASE + encodeURIComponent(nom); $("open").textContent = "Chercher sur fnac.ch";
+    $("direct").href = "https://www.google.com/search?btnI=1&q=" + encodeURIComponent(nom + " fnac.ch");
+    $("ai").href = claudeUrl((j.type === "livre" ? "Livre " : j.type === "jeu" ? "Jeu vidéo " : "Produit ") + nom + " : fiche rapide pour un vendeur Fnac, en moins de 150 mots.");
+    if (j.type === "livre") {
+      bookHtml({ title: j.titre, authors: j.auteur, publisher: j.editeur, bref: ia.resume, sujet: ia.sujet, audience: ia.public, desc: "" });
+    } else renderFiche(j);
+    box.appendChild(el("p", "warn", "Identifié par photo (lu : « " + (lu.titre || "?") + (lu.plateforme ? " – " + lu.plateforme : "") + " »). Si ce n’est pas le bon article, reprends la photo."));
+  }, function(){ if (my === prodReq) box.innerHTML = '<p class="muted">Photo non envoyée (serveur injoignable ou trop lent). Réessaie.</p>'; });
 }
 
 var clrArmed = false;
@@ -517,6 +565,8 @@ function scanFile(file){
 }
 $("pick").onclick = function(){ $("f2").click(); };
 $("f2").onchange = function(){ scanFile(this.files[0]); this.value = ""; };
+$("snap").onclick = function(){ stop(); $("f3").click(); };
+$("f3").onchange = function(){ identifierPhoto(this.files[0]); this.value = ""; };
 
 function goSku(){
   var v = $("sku").value.replace(/\s+/g, "");
