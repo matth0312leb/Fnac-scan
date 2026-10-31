@@ -282,7 +282,7 @@ function afficherStats(){
   var box = $("statCard");
   if (box.className === "card") { box.className = "card hide"; return; }
   box.className = "card"; box.innerHTML = '<p class="muted">Chargement…</p>';
-  fetch(SERVEUR + "/stats?cle=" + encodeURIComponent(PROFIL.cle)).then(function(r){ return r.json(); }).then(function(j){
+  fetch(SERVEUR + "/stats?cle=" + encodeURIComponent(PROFIL.cle) + "&t=" + Date.now(), { cache: "no-store" }).then(function(r){ return r.json(); }).then(function(j){
     box.innerHTML = "";
     if (j && j.erreur === "code incorrect") { box.className = "card hide"; codeAChange(); return; }
     if (!j || !j.ok) { box.appendChild(el("p", "muted", "Statistiques indisponibles.")); return; }

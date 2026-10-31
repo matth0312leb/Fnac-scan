@@ -28,6 +28,8 @@ export default {
       "Cache-Control": "public, max-age=3600",
     };
     if (req.method === "OPTIONS") return new Response(null, { headers: cors });
+    // statistiques, profils, questions et photos : jamais gardés en mémoire par le navigateur
+    if (/^\/(stats|profil\/|question|photo|test)/.test(url.pathname)) cors["Cache-Control"] = "no-store";
     const code = (url.searchParams.get("ean") || url.searchParams.get("isbn") || "").replace(/\D/g, "");
     const send = (o, s = 200) => new Response(JSON.stringify(o, null, 2), { status: s, headers: cors });
     // mémoire des fiches (stockage KV Cloudflare, 30 jours) : un article déjà vu s'affiche tout de suite
