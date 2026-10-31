@@ -60,6 +60,7 @@ export default {
         const g = (k) => (url.searchParams.get(k) || "").trim().slice(0, 120);
         return await sendCache(await comparer(g("a"), g("b"), env, g("na"), g("nb")));
       }
+      if (url.pathname === "/test" && url.searchParams.get("titre")) return send({ livre: await chercherLivre(url.searchParams.get("titre"), url.searchParams.get("auteur") || "", url.searchParams.get("editeur") || "") });
       if (url.pathname === "/test") return send(await diagnostic(code));
       return send({ ok: true, message: "Serveur Scan produit en ligne. Essaie /test?ean=9782070612758" });
     } catch (e) {
@@ -672,7 +673,7 @@ async function question(q, contexte, env) {
 
 // ---------- identification par photo ----------
 async function vision(env, image, details) {
-  const question = "Tu regardes la photo d'un article vendu à la Fnac (jeu vidéo, livre, BD, film, produit high-tech…). Lis le texte visible sur la couverture ou la boîte. " +
+  const question = "Tu regardes la photo d'un article vendu à la Fnac (jeu vidéo, livre, BD, film, produit high-tech…). Lis le texte visible sur la couverture ou la boîte. Un jeu vidéo est une boîte plate avec le logo d'une console (PS5, Switch, Xbox) et un logo PEGI ; un livre, un album jeunesse ou une BD a un auteur et un éditeur (Gallimard, Margot, Dargaud…) et pas de console. " +
     'Réponds UNIQUEMENT en JSON : {"type":"jeu|livre|produit","titre":"titre exact lu (jeu ou livre) ou nom du produit","plateforme":"console si jeu vidéo (PS5, Nintendo Switch…), sinon vide","marque":"marque ou éditeur","modele":"modèle si produit","auteur":"auteur si livre","pegi":"chiffre PEGI visible, sinon vide"}. N\'invente rien : laisse vide ce que tu ne lis pas.';
   const texteDe = (r) => {
     if (r == null) return "";
@@ -727,6 +728,52 @@ async function vision(env, image, details) {
   return null;
 }
 
+// ---------- retrouver un livre (et son ISBN) à partir du titre lu sur la couverture ----------
+const motsDe = (t) => String(t || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, " ").split(" ")
+  .filter((w) => w.length > 2 && !["les", "des", "une", "aux", "pour", "avec", "dans", "sur", "the", "and", "tome"].includes(w));
+// part des mots lus qui se retrouvent dans le titre trouvé (tolère une lettre mal lue : « Malcel » ≈ « Marcel »)
+function ressemblance(lu, trouve) {
+  const a = motsDe(lu), b = motsDe(trouve);
+  if (!a.length || !b.length) return 0;
+  const proche = (x, y) => x === y || (x.length === y.length && x.length > 3 && [...x].filter((c, i) => c !== y[i]).length <= 1);
+  return a.filter((x) => b.some((y) => proche(x, y))).length / a.length;
+}
+async function bnfTitre(requete) {
+  const r = await get("https://catalogue.bnf.fr/api/SRU?version=1.2&operation=searchRetrieve&recordSchema=dublincore&maximumRecords=8&query=" + encodeURIComponent(requete), { timeout: 7000 });
+  if (r.status !== 200) return [];
+  return [...r.text.matchAll(/<srw:record>([\s\S]*?)<\/srw:record>/g)].map((m) => {
+    const rec = m[1], dc = (tag) => [...rec.matchAll(new RegExp("<dc:" + tag + "[^>]*>([\\s\\S]*?)</dc:" + tag + ">", "g"))].map((x) => strip(x[1]));
+    const isbn = (rec.match(/ISBN\s*(97[89][\d\- ]{10,17})/) || [])[1];
+    return { titre: (dc("title")[0] || "").split(" / ")[0], editeur: dc("publisher").join(" "), auteur: dc("creator").join(" "), date: dc("date")[0] || "", isbn: isbn ? isbn.replace(/\D/g, "") : "" };
+  }).filter((x) => x.isbn && x.isbn.length === 13);
+}
+async function openlibTitre(titre, auteur) {
+  const r = await get("https://openlibrary.org/search.json?limit=5&fields=title,author_name,isbn,publisher&title=" + encodeURIComponent(titre) + (auteur ? "&author=" + encodeURIComponent(auteur) : ""), { timeout: 7000 });
+  if (r.status !== 200) return [];
+  let j; try { j = JSON.parse(r.text); } catch (e) { return []; }
+  return (j.docs || []).map((d) => ({ titre: d.title || "", auteur: (d.author_name || []).join(" "), editeur: (d.publisher || []).join(" "),
+    isbn: ((d.isbn || []).filter((i) => /^9782/.test(i))[0] || (d.isbn || []).filter((i) => /^97[89]\d{10}$/.test(i))[0] || "") })).filter((x) => x.isbn);
+}
+async function chercherLivre(titre, auteur, editeur) {
+  const mots = motsDe(titre);
+  if (!mots.length) return null;
+  const nomAuteur = motsDe(auteur).slice(-1)[0] || "";
+  const req = [];
+  const q = (ws) => 'bib.title all "' + ws.join(" ") + '"';
+  if (nomAuteur) req.push(q(mots) + ' and bib.author all "' + nomAuteur + '"');
+  req.push(q(mots));
+  // un mot mal lu fait échouer la recherche : on réessaie sans chacun des mots (titres de 3 mots ou plus)
+  if (mots.length >= 3) mots.slice(0, 5).forEach((_, i) => req.push(q(mots.filter((__, k) => k !== i))));
+  const listes = await Promise.all(req.slice(0, 7).map((x) => bnfTitre(x).catch(() => [])).concat([openlibTitre(titre, auteur).catch(() => [])]));
+  const marque = motsDe(editeur), aut = motsDe(auteur);
+  const tous = listes.flat().map((x) => ({ ...x,
+    score: ressemblance(titre, x.titre) * 10 + (marque.length && motsDe(x.editeur).some((w) => marque.includes(w)) ? 3 : 0) +
+      (aut.length && motsDe(x.auteur).some((w) => aut.includes(w)) ? 3 : 0) + (/^9782/.test(x.isbn) ? 1 : 0) }))
+    .filter((x) => ressemblance(titre, x.titre) >= 0.6 && ressemblance(x.titre, titre) >= 0.5);
+  tous.sort((a, b) => b.score - a.score || String(b.date).localeCompare(String(a.date)));
+  return tous[0] || null;
+}
+
 async function photo(image, env) {
   if (!/^data:image\/(jpeg|jpg|png|webp);base64,/.test(image)) return { trouve: false, erreur: "image attendue (data:image/jpeg;base64,...)" };
   if (image.length > 3000000) return { trouve: false, erreur: "image trop lourde" };
@@ -734,14 +781,28 @@ async function photo(image, env) {
   const details = [];
   const v = await vision(env, image, details);
   if (!v) return { trouve: false, erreur: "rien de lisible sur la photo", details };
-  const type = String(v.type || "").toLowerCase();
+  let type = String(v.type || "").toLowerCase();
+  // « plateforme » ne compte que si c'est une vraie console (l'IA renvoie parfois « aucune », « N/A »…)
+  v.plateforme = PLATEFORMES.test(String(v.plateforme || "")) ? v.plateforme : "";
+  const aCouverture = !v.plateforme && !v.pegi;   // ni console ni PEGI : probablement pas un jeu vidéo
+  // livre (ou jeu sans console) : on cherche le titre dans les catalogues pour retrouver l'ISBN
+  if (type.startsWith("livre") || (aCouverture && (type.startsWith("jeu") || v.auteur))) {
+    const trouve = await chercherLivre(v.titre, v.auteur, v.marque).catch(() => null);
+    details.push("catalogue : " + (trouve ? trouve.titre + " (" + trouve.isbn + ")" : "aucun livre correspondant"));
+    if (trouve) return { trouve: true, type: "livre", source: "photo", isbn: trouve.isbn, titre: trouve.titre, auteur: v.auteur || "", editeur: v.marque || "", lu: v, details };
+    if (type.startsWith("jeu")) type = v.auteur ? "livre" : "jeu";
+  }
   if (type.startsWith("jeu") || v.plateforme) {
     const p = { trouve: true, source: "photo", nom: [v.titre, v.plateforme].filter(Boolean).join(" "), marque: v.marque || "", modele: "",
       categorie: "Jeu vidéo", description: v.pegi ? "PEGI " + v.pegi + " visible sur la boîte" : "", image: "", plateforme: plateformeDe(v.plateforme || "") || v.plateforme || "" };
     const r = await jeu(p, env);
-    if (v.pegi && r.jeu && !r.jeu.pegi) r.jeu.pegi = "PEGI " + v.pegi;
-    if (v.marque && r.jeu && !r.jeu.studio) r.jeu.studio = v.marque;
-    return { ...r, lu: v };
+    // pas de console, pas de PEGI et inconnu de Wikidata : ce n'est sans doute pas un jeu vidéo → traité comme un livre
+    if (aCouverture && !(r.jeu && r.jeu.trouve)) type = "livre";
+    else {
+      if (v.pegi && r.jeu && !r.jeu.pegi) r.jeu.pegi = "PEGI " + v.pegi;
+      if (v.marque && r.jeu && !r.jeu.studio) r.jeu.studio = v.marque;
+      return { ...r, lu: v };
+    }
   }
   if (type.startsWith("livre")) {
     const infos = ["Livre (lu sur la couverture) : " + v.titre, v.auteur && "Auteur : " + v.auteur, v.marque && "Éditeur : " + v.marque].filter(Boolean).join("\n");

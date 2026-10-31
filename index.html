@@ -919,6 +919,13 @@ function identifierPhoto(file){
       if (j && (j.erreur || j.details)) box.appendChild(el("p", "warn", "Détail : " + [j.erreur].concat(j.details || []).filter(Boolean).join(" · ")));
       return;
     }
+    // livre retrouvé dans les catalogues : fiche complète comme après un scan (résumé, date exacte, similaires)
+    if (j.type === "livre" && j.isbn) {
+      if (CMP) { saveHist(j.isbn); setTitre(j.isbn, j.titre); if (cmpAjoute(j.isbn) === "lance") return; }
+      show(j.isbn);
+      $("note").textContent = "Identifié par photo (lu : « " + ((j.lu && j.lu.titre) || "?") + " »). Si ce n’est pas le bon livre, reprends la photo.";
+      return;
+    }
     $("open").style.display = ""; $("ai").style.display = "";
     var ia = j.ia || {}, lu = j.lu || {};
     var nom = (j.type === "jeu" ? (ia.nom || (j.jeu && j.jeu.nom) || lu.titre) + (j.plateforme ? " " + j.plateforme : "") : j.type === "livre" ? [j.titre, j.auteur].filter(Boolean).join(" ") : (ia.nom || j.nom)) || "";

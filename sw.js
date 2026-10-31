@@ -1,5 +1,5 @@
 // Réseau d'abord (toujours la dernière version), copie locale si pas de connexion.
-var CACHE = "scan-v48";
+var CACHE = "scan-v49";
 var FILES = ["./", "index.html", "manifest.json", "bipbip-192.png", "logo.svg",
   "https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"];
 self.addEventListener("install", function(e){
