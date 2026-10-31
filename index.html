@@ -886,7 +886,6 @@ function show(c){
   if (isBook(c)) { prodReq++; loadBook(c); }
   else if (c.indexOf("s:") === 0) { bookReq++; prodReq++; $("bookBox").className = "hide"; $("bookBox").innerHTML = ""; }
   else { bookReq++; loadProduit(c); }
-  bip();
 }
 
 function eanOk(c){
@@ -906,6 +905,7 @@ function onScan(text){
   var now = Date.now();
   if (text === last && now - lastAt < 3000) return;
   last = text; lastAt = now;
+  bip();   // le bip uniquement pour un code lu par la caméra ou une photo de code-barres
   show(text);
   if ($("auto").checked && !isBook(text)) location.href = urlFor(text);
   return true;
