@@ -952,8 +952,10 @@ function start(){
     experimentalFeatures: { useBarCodeDetectorIfSupported: true },
     verbose: false
   });
-  scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 260, height: 120 } }, function(t){ if (onScan(t) !== false) stop(); }, function(){})
-    .then(function(){ running = true; lab("start", "Arrêter la caméra"); $("hint").textContent = "Vise le code-barres EAN."; setupTorch(); })
+  // zone de lecture large et image plus nette (meilleur résultat sur iPhone, qui n'a pas le détecteur intégré d'Android)
+  var zone = function(w, h){ return { width: Math.max(200, Math.floor(w * 0.85)), height: Math.max(110, Math.floor(Math.min(h * 0.45, w * 0.5))) }; };
+  scanner.start({ facingMode: "environment" }, { fps: 15, qrbox: zone, aspectRatio: 1.333, videoConstraints: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 }, focusMode: "continuous" } }, function(t){ if (onScan(t) !== false) stop(); }, function(){})
+    .then(function(){ running = true; lab("start", "Arrêter la caméra"); $("hint").textContent = "Tiens le téléphone à 15–20 cm, code bien à plat. Touche l'image pour refaire la mise au point."; setupTorch(); reglerMiseAuPoint(); })
     .catch(function(){ $("reader").className = "hide"; $("hint").textContent = "Caméra refusée. Autorise la caméra pour ce site dans les réglages du navigateur, ou utilise une photo."; });
 }
 function stop(){
@@ -964,6 +966,31 @@ function stop(){
 $("start").onclick = function(){ running ? stop() : start(); };
 var torchOn = false;
 function torchFeat(){ try { return scanner.getRunningTrackCameraCapabilities().torchFeature(); } catch(e){ return null; } }
+// ---------- mise au point (autofocus) et zoom léger ----------
+function pisteVideo(){ var v = document.querySelector("#reader video"); return v && v.srcObject && v.srcObject.getVideoTracks ? v.srcObject.getVideoTracks()[0] : null; }
+function reglerMiseAuPoint(){
+  var piste = pisteVideo(); if (!piste || !piste.getCapabilities) return;   // iPhone : la mise au point reste automatique
+  var cap = piste.getCapabilities() || {}, adv = {};
+  if (cap.focusMode && cap.focusMode.indexOf("continuous") > -1) adv.focusMode = "continuous";
+  // un petit zoom permet de tenir le téléphone plus loin, là où l'image est nette
+  if (cap.zoom && cap.zoom.max >= 1.5) adv.zoom = Math.min(2, Math.max(cap.zoom.min || 1, 1.6));
+  if (Object.keys(adv).length) piste.applyConstraints({ advanced: [adv] }).catch(function(){});
+}
+function refaireMiseAuPoint(e){
+  var piste = pisteVideo(); if (!piste || !piste.getCapabilities) return;
+  var cap = piste.getCapabilities() || {}, r = e.currentTarget.getBoundingClientRect();
+  var x = Math.min(1, Math.max(0, ((e.clientX || r.left + r.width / 2) - r.left) / r.width));
+  var y = Math.min(1, Math.max(0, ((e.clientY || r.top + r.height / 2) - r.top) / r.height));
+  var a = {};
+  if (cap.pointsOfInterest !== undefined || "pointsOfInterest" in cap) a.pointsOfInterest = [{ x: x, y: y }];
+  if (cap.focusMode && cap.focusMode.indexOf("single-shot") > -1) a.focusMode = "single-shot";
+  if (!Object.keys(a).length) return;
+  piste.applyConstraints({ advanced: [a] }).then(function(){
+    setTimeout(function(){ if (cap.focusMode && cap.focusMode.indexOf("continuous") > -1) piste.applyConstraints({ advanced: [{ focusMode: "continuous" }] }).catch(function(){}); }, 1500);
+  }).catch(function(){});
+}
+$("reader").addEventListener("click", refaireMiseAuPoint);
+
 function setupTorch(){ var t = torchFeat(); if (t && t.isSupported()) $("torch").className = "big alt"; }
 $("torch").onclick = function(){
   var t = torchFeat(); if (!t) return;
@@ -989,11 +1016,21 @@ try { if (navigator.audioSession) navigator.audioSession.type = "ambient"; } cat
 var audioCtx = null;
 function contexteAudio(){
   if (!audioCtx) { var AC = window.AudioContext || window.webkitAudioContext; if (AC) audioCtx = new AC(); }
-  if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+  if (audioCtx && audioCtx.state !== "running" && audioCtx.state !== "closed") { try { audioCtx.resume(); } catch(e){} }
   return audioCtx;
 }
 // le son doit être « débloqué » par un premier geste de l'utilisateur
-["touchstart", "click"].forEach(function(ev){ document.addEventListener(ev, function deb(){ contexteAudio(); document.removeEventListener(ev, deb, true); }, true); });
+// iPhone : Safari met le son en pause (par ex. après l'appareil photo) ; on le réactive à chaque geste
+var sonDebloque = false;
+function debloquerSon(){
+  var ctx = contexteAudio(); if (!ctx) return;
+  if (ctx.state !== "running") { try { ctx.resume(); } catch(e){} }
+  if (!sonDebloque) {
+    try { var buf = ctx.createBuffer(1, 1, 22050), src = ctx.createBufferSource(); src.buffer = buf; src.connect(ctx.destination); src.start(0); sonDebloque = true; } catch(e){}
+  }
+}
+["touchstart", "touchend", "click"].forEach(function(ev){ document.addEventListener(ev, debloquerSon, true); });
+document.addEventListener("visibilitychange", function(){ if (!document.hidden && audioCtx && audioCtx.state !== "running") { try { audioCtx.resume(); } catch(e){} } });
 function bip(){
   if (REG.son) {
     try {
