@@ -78,6 +78,10 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 .reshead{display:flex;justify-content:space-between;align-items:center}
 .reshead button{border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:8px;padding:7px 10px;font-size:13px;font-weight:600}
 .quota{margin:0 0 14px}
+.qbig{display:flex;align-items:baseline;gap:8px;margin:2px 0}
+.qbig b{font-size:30px;line-height:1}
+.qbig span{color:var(--muted);font-size:14px}
+.qech{display:flex;justify-content:space-between;font-size:11px;color:var(--muted)}
 .bar{height:8px;border-radius:4px;background:var(--line);overflow:hidden;margin:6px 0 4px}
 .bar span{display:block;height:100%;background:#2e9e4f}
 .bar span.mid{background:#e8a000}.bar span.haut{background:#d64545}
@@ -286,8 +290,10 @@ function afficherStats(){
       var q = j.quota, pct = Math.min(100, Math.round(q.neurones / q.limite * 100));
       var qd = el("div", "quota");
       qd.appendChild(el("p", "lbl", "IA gratuite aujourd'hui"));
+      var big = el("div", "qbig"); big.appendChild(el("b", "", pct + " %")); big.appendChild(el("span", "", "sur 100 % (limite du jour)")); qd.appendChild(big);
       var bar = el("div", "bar"), sp = el("span", pct >= 80 ? "haut" : pct >= 50 ? "mid" : ""); sp.style.width = Math.max(2, pct) + "%"; bar.appendChild(sp); qd.appendChild(bar);
-      qd.appendChild(el("div", "", "≈ " + pct + " % du quota · " + q.appels + " appels à l'IA"));
+      var ech = el("div", "qech"); ech.appendChild(el("span", "", "0 %")); ech.appendChild(el("span", "", "50 %")); ech.appendChild(el("span", "", "100 % = limite")); qd.appendChild(ech);
+      qd.appendChild(el("div", "warn", q.appels + " appels à l'IA aujourd'hui · il reste ≈ " + (100 - pct) + " %"));
       var sem = (q.semaine || []).slice(0, 7).map(function(x){ return x.jour.slice(8, 10) + "/" + x.jour.slice(5, 7) + " : " + Math.round(x.neurones / q.limite * 100) + " %"; }).join(" · ");
       if (sem) qd.appendChild(el("div", "warn", "7 derniers jours — " + sem));
       qd.appendChild(el("div", "warn", "Estimation. Le quota se remet à zéro chaque nuit (1 h, heure suisse). Au-delà, les résumés et la photo s'arrêtent jusqu'au lendemain ; le reste de l'appli fonctionne."));
