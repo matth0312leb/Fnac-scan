@@ -17,7 +17,7 @@ padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bott
 :root[data-theme="dark"]{--bg:#141414;--card:#222;--text:#f2f2f2;--muted:#9a9a9a;--line:#383838}
 *{box-sizing:border-box}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
-body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:16px;max-width:520px;margin-inline:auto}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:16px;padding-bottom:calc(84px + env(safe-area-inset-bottom,0px));max-width:520px;margin-inline:auto}
 h1{font-size:20px;margin:4px 0 14px}
 .tabs{display:flex;gap:8px;margin-bottom:12px}
 .tabs button{flex:1;padding:12px;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:10px;font-size:16px}
@@ -91,11 +91,23 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 .champ.plein .croix{display:block}
 .qrow .champ{flex:1}
 .qrow .champ .croix{top:6px;width:32px;height:32px;line-height:32px;font-size:18px}
+.tabs{display:none!important}
+#bnav{position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;justify-content:center;background:var(--card);border-top:1px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom,0px));box-shadow:0 -4px 16px rgba(0,0,0,.08)}
+#bnav .in{display:flex;width:100%;max-width:520px}
+#bnav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;border:0;background:none;color:var(--muted);font-size:11px;font-weight:600;padding:6px 2px;border-radius:12px;position:relative;-webkit-tap-highlight-color:transparent}
+#bnav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+#bnav button.on{color:var(--text)}
+#bnav button.on svg{stroke:var(--accent)}
+#bnav button.on::before{content:"";position:absolute;top:0;width:28px;height:3px;border-radius:2px;background:var(--accent)}
+#bnav .badge{position:absolute;top:2px;left:calc(50% + 6px);margin:0;background:var(--accent);color:#111;font-size:10px;line-height:16px;min-width:16px;padding:0 4px}
+.reg{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.reg:first-of-type{border-top:0}
+.reg button{border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:8px;padding:8px 12px;font-size:14px;font-weight:600}
 .warn{font-size:12px;color:var(--muted);margin:4px 0 12px}
 .desc.clip{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
 .more{border:0;background:none;color:var(--muted);text-decoration:underline;padding:0;margin:-6px 0 12px;font-size:14px}
 .acts button.sel{background:var(--accent);border-color:var(--accent);color:#111;font-weight:600}
-.cmpbar{position:sticky;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:5}
+.cmpbar{position:sticky;bottom:calc(80px + env(safe-area-inset-bottom,0px));z-index:5}
 .cmpbar .big{box-shadow:0 6px 20px rgba(0,0,0,.3)}
 .hhead button{border:0;background:none;color:var(--muted);font-size:14px;text-decoration:underline;padding:4px}
 .hide{display:none}
@@ -128,12 +140,13 @@ li{padding:10px 0;border-top:1px solid var(--line)}
   <button class="big" id="pGo" type="button">Commencer</button>
   <p class="warn" id="pMsg"></p>
 </div></div>
-<div class="tabs">
-  <button id="t1" class="on" type="button">Scanner</button>
-  <button id="t2" type="button">SKU/EAN</button>
-  <button id="t3" type="button">Mots-clés</button>
-  <button id="t4" type="button">Historique<span class="badge" id="nb">0</span></button>
-</div>
+<nav id="bnav"><div class="in">
+  <button id="t1" class="on" type="button"><svg viewBox="0 0 24 24"><path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2"/><path d="M8 8v8M11 8v8M13.5 8v8M16 8v8"/></svg>Scanner</button>
+  <button id="t2" type="button"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10"/></svg>SKU/EAN</button>
+  <button id="t3" type="button"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5"/></svg>Mots-clés</button>
+  <button id="t4" type="button"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>Historique<span class="badge" id="nb">0</span></button>
+  <button id="t5" type="button"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg>Réglages</button>
+</div></nav>
 
 <div id="p1">
   <div class="card">
@@ -146,7 +159,6 @@ li{padding:10px 0;border-top:1px solid var(--line)}
     <input id="f3" type="file" accept="image/*" capture="environment" class="hide">
     <input id="f2" type="file" accept="image/*" class="hide">
     <div id="filereader" class="hide"></div>
-    <label class="opt"><input type="checkbox" id="auto"> Ouvrir la fiche dès que le code est lu (sauf livres)</label>
   </div>
 </div>
 
@@ -186,13 +198,31 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 <div id="cmpBar" class="cmpbar hide"><button class="big" id="cmpGo" type="button">Comparer les 2 articles</button></div>
 <div id="cmpRes" class="card hide"></div>
 
-<button class="big alt hide" id="statBtn" type="button" style="margin-bottom:12px">📊 Statistiques de l'équipe</button>
-<div id="statCard" class="card hide"></div>
 <div id="histCard" class="card">
   <div class="hhead"><span class="muted">Derniers articles</span><button id="clr" type="button">Tout effacer</button></div>
   <ul id="hist"></ul>
   <p class="muted vide hide" id="vide">Aucun article pour l’instant. Scanne ou saisis un code : il apparaîtra ici.</p>
 </div>
+</div>
+
+<div id="p5" class="hide">
+  <div class="card">
+    <p class="lbl">Profil</p>
+    <div class="reg"><span>Connecté : <b id="regNom">—</b></span><button id="regChange" type="button">Changer</button></div>
+    <p class="warn">Ton historique et tes notes suivent ton prénom sur n'importe quel téléphone.</p>
+  </div>
+  <div class="card">
+    <p class="lbl">Options</p>
+    <label class="opt" style="margin:4px 0"><input type="checkbox" id="auto"> Ouvrir la fiche fnac.ch dès qu'un code est scanné (sauf livres)</label>
+    <p class="warn">Décoché, tu vois d'abord le résumé et les infos dans l'appli.</p>
+  </div>
+  <button class="big alt hide" id="statBtn" type="button" style="margin-bottom:12px">📊 Statistiques de l'équipe</button>
+  <div id="statCard" class="card hide"></div>
+  <div class="card">
+    <p class="lbl">À propos</p>
+    <p class="muted" style="margin:4px 0">Scan produit · outil personnel d'aide en rayon. Pour l'installer : menu du navigateur → « Ajouter à l'écran d'accueil » (Samsung/Chrome) ou bouton Partager → « Sur l'écran d'accueil » (iPhone/Safari).</p>
+    <p class="warn" id="regVer"></p>
+  </div>
 </div>
 
 <script>
@@ -201,15 +231,9 @@ var scanner = null, running = false, last = "", lastAt = 0;
 var $ = function(id){ return document.getElementById(id); };
 
 function tab(n){
-  $("p1").className = n === 1 ? "" : "hide";
-  $("p2").className = n === 2 ? "" : "hide";
-  $("t1").className = n === 1 ? "on" : "";
-  $("t2").className = n === 2 ? "on" : "";
-  $("p3").className = n === 3 ? "" : "hide";
-  $("t3").className = n === 3 ? "on" : "";
-  $("p4").className = n === 4 ? "" : "hide";
-  $("t4").className = n === 4 ? "on" : "";
-  $("mainRes").className = n === 4 ? "hide" : "";
+  for (var i = 1; i <= 5; i++) { $("p" + i).className = n === i ? "" : "hide"; $("t" + i).className = n === i ? "on" : ""; }
+  $("mainRes").className = n >= 4 ? "hide" : "";
+  window.scrollTo(0, 0);
 }
 $("t1").onclick = function(){ tab(1); };
 $("t2").addEventListener("click", stop); $("t3").addEventListener("click", stop);
@@ -217,6 +241,8 @@ $("t2").onclick = function(){ tab(2); $("sku").focus(); };
 $("t3").onclick = function(){ tab(3); $("kw").focus(); };
 $("t4").addEventListener("click", stop);
 $("t4").onclick = function(){ tab(4); };
+$("t5").addEventListener("click", stop);
+$("t5").onclick = function(){ tab(5); };
 function kwUrl(){ return BASE + encodeURIComponent($("kw").value.trim()); }
 $("kwGo").onclick = function(e){
   if (!$("kw").value.trim()) { e.preventDefault(); $("kw").focus(); return; }
@@ -248,6 +274,7 @@ function typeDe(c){ return c.indexOf("s:") === 0 ? "sku" : (isBook(c) ? "livre" 
 function majProfilUI(){
   $("who").textContent = PROFIL.nom ? "👤 " + PROFIL.nom : "profil";
   $("statBtn").className = PROFIL.admin ? "big alt" : "big alt hide";
+  $("regNom").textContent = PROFIL.nom || "—";
 }
 function ouvrirProfil(){
   $("profil").className = ""; $("pNom").value = ""; $("pCle").value = ""; $("pCle").className = "hide"; $("pMsg").textContent = "";
@@ -868,6 +895,8 @@ Array.prototype.forEach.call(document.querySelectorAll(".champ"), function(c){
 });
 $("again").onclick = function(){ tab(1); window.scrollTo({ top: 0, behavior: "smooth" }); if (!running) start(); };
 $("who").onclick = ouvrirProfil;
+$("regChange").onclick = ouvrirProfil;
+try { $("regVer").textContent = "Version du " + new Date(document.lastModified).toLocaleDateString("fr-CH"); } catch(e){}
 $("pGo").onclick = connexion;
 $("pNom").addEventListener("keydown", function(e){ if (e.key === "Enter") connexion(); });
 $("pCle").addEventListener("keydown", function(e){ if (e.key === "Enter") connexion(); });
