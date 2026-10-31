@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Scan produit</title>
+<title>BipBip</title>
 <meta name="theme-color" content="#111111">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
@@ -131,7 +131,7 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 </style>
 </head>
 <body>
-<header class="top"><img class="mark" src="icon-192.png" alt=""><div><div class="ttl">Scan produit</div><div class="sub">Vésenaz · <button class="who" id="who" type="button">profil</button></div></div></header>
+<header class="top"><img class="mark" src="icon-192.png" alt=""><div><div class="ttl">BipBip</div><div class="sub">par Matthieu le GOAT 🐐 · <button class="who" id="who" type="button">profil</button></div></div></header>
 <div id="profil" class="hide"><div class="card">
   <h2>Bienvenue 👋</h2>
   <p class="muted">Ton prénom sert à retrouver ton historique sur n'importe quel téléphone.</p>
@@ -220,7 +220,7 @@ li{padding:10px 0;border-top:1px solid var(--line)}
   <div id="statCard" class="card hide"></div>
   <div class="card">
     <p class="lbl">À propos</p>
-    <p class="muted" style="margin:4px 0">Scan produit · outil personnel d'aide en rayon. Pour l'installer : menu du navigateur → « Ajouter à l'écran d'accueil » (Samsung/Chrome) ou bouton Partager → « Sur l'écran d'accueil » (iPhone/Safari).</p>
+    <p class="muted" style="margin:4px 0">BipBip · créée par Matthieu le GOAT 🐐 · l'assistant de rayon qui fait bip. Pour l'installer : menu du navigateur → « Ajouter à l'écran d'accueil » (Samsung/Chrome) ou bouton Partager → « Sur l'écran d'accueil » (iPhone/Safari).</p>
     <p class="warn" id="regVer"></p>
   </div>
 </div>
@@ -356,6 +356,8 @@ function afficherStats(){
     });
     box.appendChild(t);
     box.appendChild(el("p", "warn", "Uniquement des chiffres : les articles recherchés et les notes de chacun restent privés."));
+    var pb = (j.etapes || []).filter(function(x){ return /délai|:/.test(x); });
+    if (pb.length) box.appendChild(el("p", "warn", "Diagnostic serveur : " + pb.join(" · ")));
   }).catch(function(e){
     clearTimeout(tm);
     erreurStats(e && e.name === "AbortError" ? "Le serveur ne répond pas (plus de 15 s)." : "Erreur : " + ((e && e.message) || "serveur injoignable"));

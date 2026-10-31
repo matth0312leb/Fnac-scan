@@ -487,21 +487,37 @@ async function profils(req, url, env) {
   const route = url.pathname;
 
   if (route === "/stats") {
-    if (p("cle") !== await conf("code_stats")) return { ok: false, erreur: "code incorrect" };
+    // chaque requête a un délai maximum, pour ne jamais bloquer l'écran des statistiques
+    const etapes = [];
+    const t0 = Date.now();
+    const borne = (nomEtape, promesse, defaut) => {
+      let minuteur;
+      return Promise.race([
+        Promise.resolve(promesse).then((v) => { etapes.push(nomEtape + " " + (Date.now() - t0) + " ms"); return v; }),
+        new Promise((ok) => { minuteur = setTimeout(() => { etapes.push(nomEtape + " : délai dépassé"); ok(defaut); }, 4000); }),
+      ]).catch((err) => { etapes.push(nomEtape + " : " + String(err && err.message || err).slice(0, 80)); return defaut; })
+        .finally(() => clearTimeout(minuteur));
+    };
+    const code = await borne("code", conf("code_stats"), null);
+    if (code === null) return { ok: false, erreur: "base injoignable", etapes };
+    if (p("cle") !== code) return { ok: false, erreur: "code incorrect" };
     const semaine = now - 7 * 24 * 3600 * 1000;
-    const rows = (await env.DB.prepare("SELECT nom, type, COUNT(*) n, SUM(CASE WHEN t > ? THEN 1 ELSE 0 END) n7, MAX(t) dernier FROM activite GROUP BY nom, type").bind(semaine).all()).results || [];
-    const noms = (await env.DB.prepare("SELECT nom, affichage, cree, vu FROM profils").all()).results || [];
-    const parNom = {};
-    noms.forEach((x) => { parNom[x.nom] = { nom: x.affichage || x.nom, depuis: x.cree, dernier: x.vu || 0, total: 0, semaine: 0, fonctions: {} }; });
-    rows.forEach((r) => {
-      const s = parNom[r.nom] || (parNom[r.nom] = { nom: r.nom, dernier: 0, total: 0, semaine: 0, fonctions: {} });
-      s.fonctions[r.type] = r.n; s.total += r.n; s.semaine += r.n7; s.dernier = Math.max(s.dernier, r.dernier || 0);
-    });
     const jour = new Date().toISOString().slice(0, 10);
-    const q = await env.DB.prepare("SELECT appels, neurones FROM ia_usage WHERE jour = ?").bind(jour).first().catch(() => null);
-    const hist = ((await env.DB.prepare("SELECT jour, appels, neurones FROM ia_usage ORDER BY jour DESC LIMIT 7").all().catch(() => ({}))).results) || [];
+    const [act, noms, q, hist] = await Promise.all([
+      borne("activité", env.DB.prepare("SELECT nom, type, COUNT(*) AS n, SUM(CASE WHEN t > ? THEN 1 ELSE 0 END) AS n7, MAX(t) AS dernier FROM activite GROUP BY nom, type").bind(semaine).all(), { results: [] }),
+      borne("profils", env.DB.prepare("SELECT nom, affichage, cree, vu FROM profils").all(), { results: [] }),
+      borne("quota", env.DB.prepare("SELECT appels, neurones FROM ia_usage WHERE jour = ?").bind(jour).first(), null),
+      borne("quota 7 j", env.DB.prepare("SELECT jour, appels, neurones FROM ia_usage ORDER BY jour DESC LIMIT 7").all(), { results: [] }),
+    ]);
+    const parNom = {};
+    (noms.results || []).forEach((x) => { parNom[x.nom] = { nom: x.affichage || x.nom, depuis: x.cree, dernier: x.vu || 0, total: 0, semaine: 0, fonctions: {} }; });
+    (act.results || []).forEach((r) => {
+      const s = parNom[r.nom] || (parNom[r.nom] = { nom: r.nom, dernier: 0, total: 0, semaine: 0, fonctions: {} });
+      s.fonctions[r.type || "scan"] = r.n; s.total += r.n; s.semaine += r.n7 || 0; s.dernier = Math.max(s.dernier, r.dernier || 0);
+    });
     return { ok: true, equipe: Object.values(parNom).sort((a, b) => b.total - a.total),
-      quota: { jour, appels: q ? q.appels : 0, neurones: q ? Math.round(q.neurones) : 0, limite: 10000, semaine: hist } };
+      quota: { jour, appels: q ? q.appels : 0, neurones: q ? Math.round(q.neurones) : 0, limite: 10000, semaine: hist.results || [] },
+      etapes };
   }
 
   if (!nom || nom.length < 2) return { ok: false, erreur: "prénom manquant" };
