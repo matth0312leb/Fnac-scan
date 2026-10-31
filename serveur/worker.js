@@ -57,8 +57,8 @@ export default {
       if (url.pathname === "/similaires") return await sendCache(await similaires(code, env));
       if (url.pathname === "/produit") return await sendCache(await produit(code, env));
       if (url.pathname === "/comparer") {
-        const a = (url.searchParams.get("a") || "").replace(/\D/g, ""), b = (url.searchParams.get("b") || "").replace(/\D/g, "");
-        return await sendCache(await comparer(a, b, env));
+        const g = (k) => (url.searchParams.get(k) || "").trim().slice(0, 120);
+        return await sendCache(await comparer(g("a"), g("b"), env, g("na"), g("nb")));
       }
       if (url.pathname === "/test") return send(await diagnostic(code));
       return send({ ok: true, message: "Serveur Scan produit en ligne. Essaie /test?ean=9782070612758" });
@@ -711,9 +711,16 @@ async function fichePour(code, env) {
     p.categorie && "Catégorie : " + p.categorie, p.description && "Description : " + p.description].filter(Boolean).join("\n") };
 }
 
-async function comparer(a, b, env) {
-  if (!/^\d{8,13}$/.test(a) || !/^\d{8,13}$/.test(b)) return { trouve: false, erreur: "deux codes attendus (?a=...&b=...)" };
-  const [fa, fb] = await Promise.all([fichePour(a, env), fichePour(b, env)]);
+// un article à comparer : EAN, "s:SKU" ou "p:nom" (identifié par photo) ; nom = titre déjà connu par l'appli
+async function ficheArticle(code, nom, env) {
+  if (code.startsWith("p:")) nom = code.slice(2).trim() || nom;
+  else if (/^\d{8,13}$/.test(code)) { const f = await fichePour(code, env); if (f.trouve) return f; }
+  if (nom) return { trouve: true, code, nom, texte: "Article : " + nom };
+  return { trouve: false, code };
+}
+async function comparer(a, b, env, na = "", nb = "") {
+  if (!a || !b) return { trouve: false, erreur: "deux articles attendus (?a=...&b=...)" };
+  const [fa, fb] = await Promise.all([ficheArticle(a, na, env), ficheArticle(b, nb, env)]);
   if (!fa.trouve || !fb.trouve) return { trouve: false, introuvables: [fa, fb].filter((x) => !x.trouve).map((x) => x.code) };
   const consigne = "Tu aides un vendeur de la Fnac (Suisse) dont le client hésite entre deux articles. Réponds en français, en JSON strict sans texte autour : " +
     '{"lignes":[{"critere":"critère court","a":"valeur pour l\'article A","b":"valeur pour l\'article B"}],"conseil":"1 à 2 phrases : lequel conseiller selon le profil du client"}. ' +

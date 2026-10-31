@@ -128,6 +128,13 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 .desc.clip{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
 .more{border:0;background:none;color:var(--muted);text-decoration:underline;padding:0;margin:0 0 12px;font-size:14px;display:block}
 .acts button.sel{background:var(--accent);border-color:var(--accent);color:#111;font-weight:600}
+.cmpban{border:2px solid var(--accent);padding:14px 16px}
+.cmpban .lbl{margin:0 0 4px}
+.cmpban .etape{font-size:18px;font-weight:700;margin:0 0 6px}
+.cmpban ol{margin:0 0 10px;padding-left:22px;font-size:15px;line-height:1.5}
+.cmpban ol li{border:0;padding:2px 0;margin:0;display:list-item}
+.cmpban ol li.ok{color:var(--muted)}
+.cmpban .annul{background:none;border:0;color:var(--muted);font-size:15px;text-decoration:underline;padding:4px 0}
 .cmpbar{position:sticky;bottom:calc(80px + env(safe-area-inset-bottom,0px));z-index:5;margin-bottom:14px}
 .cmpbar .big{box-shadow:0 6px 20px rgba(0,0,0,.3)}
 .hhead button{border:0;background:none;color:var(--muted);font-size:14px;text-decoration:underline;padding:4px}
@@ -187,6 +194,13 @@ li{padding:10px 0;border-top:1px solid var(--line)}
   <button id="t5" type="button"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg>Réglages</button>
 </div></nav>
 
+<div id="cmpBan" class="card cmpban hide">
+  <p class="lbl">Comparer 2 articles</p>
+  <p class="etape" id="cmpEtape"></p>
+  <ol id="cmpListe"></ol>
+  <button class="annul" id="cmpStop" type="button">Annuler la comparaison</button>
+</div>
+
 <div id="p1">
   <div class="card">
     <div id="reader" class="hide"></div>
@@ -196,6 +210,7 @@ li{padding:10px 0;border-top:1px solid var(--line)}
     <button class="big alt hide" id="torch" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 3 5 14h6l-1 7 8-11h-6l1-7z"/></svg><span class="lb">Allumer la lampe</span></button>
     <button class="big alt" id="snap" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/></svg><span class="lb">Identifier par photo</span></button>
     <button class="big alt" id="pick" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="m21 16-5-5-9 9"/></svg><span class="lb">Code-barres depuis la galerie</span></button>
+    <button class="big alt" id="cmpMode" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4v16M16 4v16M4 8h8M12 16h8"/></svg><span class="lb">Comparer 2 articles</span></button>
     <input id="f3" type="file" accept="image/*" capture="environment" class="hide">
     <input id="f2" type="file" accept="image/*" class="hide">
     <div id="filereader" class="hide"></div>
@@ -221,6 +236,7 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 </div>
 
 <div id="mainRes">
+<div id="cmpLive" class="card hide"></div>
 <div id="res" class="card hide">
   <div class="reshead"><span class="lbl" style="margin:0">Résultat</span><button id="again" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6"/></svg>Nouveau scan</button></div>
   <div class="code" id="code"></div>
@@ -298,6 +314,7 @@ function lab(id, txt){ var b = $(id), s = b && b.querySelector(".lb"); if (s) s.
 function tab(n){
   for (var i = 1; i <= 5; i++) { $("p" + i).className = n === i ? "" : "hide"; $("t" + i).className = n === i ? "on" : ""; }
   $("mainRes").className = n >= 4 ? "hide" : "";
+  if (typeof majCmp === "function") majCmp();
   window.scrollTo(0, 0);
 }
 $("t1").onclick = function(){ tab(1); };
@@ -737,19 +754,24 @@ function el(tag, cls, txt){ var e = document.createElement(tag); if (cls) e.clas
 function lienGoogle(txt, q){ var a = el("a", "big alt", txt); a.href = claudeUrl(q); a.target = "_blank"; a.rel = "noopener"; return a; }
 $("cmpGo").onclick = function(){
   if (cmpSel.length !== 2) return;
+  lancerComparaison(cmpSel[0], cmpSel[1], $("cmpRes"));
+};
+function titreDe(c){ var x = loadHist().filter(function(y){ return y.c === c; })[0]; return (x && x.ti) || (c.indexOf("p:") === 0 ? c.slice(2) : ""); }
+function lancerComparaison(a, b, box){
   stat("comparer");
-  var a = cmpSel[0], b = cmpSel[1], box = $("cmpRes");
   box.className = "card"; box.innerHTML = '<p class="muted">Comparaison en cours… (10 à 20 secondes)</p>';
   box.scrollIntoView({ behavior: "smooth", block: "start" });
   var ctl = ("AbortController" in window) ? new AbortController() : null;
   var tm = setTimeout(function(){ if (ctl) ctl.abort(); }, 30000);
-  fetch(SERVEUR + "/comparer?a=" + codeNu(a) + "&b=" + codeNu(b), ctl ? { signal: ctl.signal } : {}).then(function(r){ clearTimeout(tm); return r.json(); }).then(function(j){
+  var q = "/comparer?a=" + encodeURIComponent(a) + "&b=" + encodeURIComponent(b) + "&na=" + encodeURIComponent(titreDe(a)) + "&nb=" + encodeURIComponent(titreDe(b));
+  fetch(SERVEUR + q, ctl ? { signal: ctl.signal } : {}).then(function(r){ clearTimeout(tm); return r.json(); }).then(function(j){
     box.innerHTML = "";
     var ia = j && j.ia;
     if (!j || !j.trouve || !ia || !ia.lignes) {
-      box.appendChild(el("p", "muted", j && j.introuvables ? "Article introuvable dans les bases gratuites (" + j.introuvables.join(", ") + "). Essaie Google IA :" : "Comparaison impossible pour le moment. Essaie Google IA :"));
+      box.appendChild(el("p", "muted", j && j.introuvables ? "Article introuvable dans les bases gratuites (" + j.introuvables.map(function(c){ return titreDe(c) || label(c); }).join(", ") + "). Essaie Google IA :" : "Comparaison impossible pour le moment. Essaie Google IA :"));
       box.appendChild(lienGoogle("Comparer avec Google IA", promptCmp(a, b))); return;
     }
+    [[a, j.a], [b, j.b]].forEach(function(x){ if (x[1] && x[1].nom && x[0].indexOf("p:") !== 0) setTitre(x[0], x[1].nom); });
     box.appendChild(el("p", "lbl", "Comparaison"));
     var t = el("table", "cmpt"), th = el("thead"), hr = el("tr");
     hr.appendChild(el("td", "", "")); hr.appendChild(el("td", "", "A · " + j.a.nom)); hr.appendChild(el("td", "", "B · " + j.b.nom));
@@ -765,7 +787,42 @@ $("cmpGo").onclick = function(){
     box.appendChild(el("p", "muted", "Serveur injoignable. Essaie Google IA :"));
     box.appendChild(lienGoogle("Comparer avec Google IA", promptCmp(a, b)));
   });
-};
+}
+
+// ---------- mode « Comparer 2 articles » direct : scanne / photographie / tape 2 articles à la suite ----------
+var CMP = null;   // null = mode inactif, sinon liste des codes déjà pris
+function majCmp(){
+  var actif = !!CMP, onglet = [1,2,3].filter(function(i){ return !$("p" + i).classList.contains("hide"); })[0];
+  $("cmpBan").className = actif && onglet ? "card cmpban" : "card cmpban hide";
+  lab("cmpMode", actif ? "Comparaison en cours…" : "Comparer 2 articles");
+  if (!actif) return;
+  var n = CMP.length;
+  $("cmpEtape").textContent = n === 0 ? "Article 1 sur 2" : "Article 2 sur 2";
+  var ol = $("cmpListe"); ol.innerHTML = "";
+  for (var i = 0; i < 2; i++) {
+    var c = CMP[i], li = el("li", c ? "ok" : "", c ? "✓ " + (titreDe(c) || label(c)) : (i === n ? "Scanne le code-barres, prends une photo ou tape le SKU/EAN" : "…"));
+    ol.appendChild(li);
+  }
+}
+function cmpDemarrer(){
+  CMP = []; $("cmpLive").className = "card hide"; $("cmpLive").innerHTML = "";
+  $("res").className = "card hide";
+  majCmp(); window.scrollTo(0, 0);
+}
+function cmpArreter(){ CMP = null; majCmp(); }
+// renvoie true si l'article a été pris par le mode comparaison
+function cmpAjoute(c){
+  if (!CMP) return false;
+  if (CMP.indexOf(c) > -1) { $("cmpEtape").textContent = "C’est le même article : scanne le 2e"; return true; }
+  CMP.push(c);
+  if (CMP.length < 2) { majCmp(); return true; }
+  var a = CMP[0], b = CMP[1]; CMP = null; majCmp();
+  stop(); $("res").className = "card hide";
+  lancerComparaison(a, b, $("cmpLive"));
+  return "lance";
+}
+$("cmpMode").onclick = function(){ if (CMP) return; cmpDemarrer(); if (!running) start(); };
+$("cmpStop").onclick = cmpArreter;
 
 var prodReq = 0;
 function loadProduit(ean){
@@ -871,7 +928,7 @@ function identifierPhoto(file){
     if (j.type === "livre") {
       bookHtml({ title: j.titre, authors: j.auteur, publisher: j.editeur, bref: ia.resume, sujet: ia.sujet, audience: ia.public, desc: "", photo: true });
     } else renderFiche(j);
-    if (nom) saveHistPhoto(nom.trim());
+    if (nom) { saveHistPhoto(nom.trim()); if (CMP && cmpAjoute("p:" + nom.trim().slice(0, 110)) === "lance") return; }
     box.appendChild(el("p", "warn", "Identifié par photo (lu : « " + (lu.titre || "?") + (lu.plateforme ? " – " + lu.plateforme : "") + " »). Si ce n’est pas le bon article, reprends la photo."));
   }, function(){
     if (my !== prodReq) return;
@@ -936,6 +993,7 @@ function onScan(text){
   if (text === last && now - lastAt < 3000) return;
   last = text; lastAt = now;
   bip();   // le bip uniquement pour un code lu par la caméra ou une photo de code-barres
+  if (CMP) { saveHist(text); cmpAjoute(text); return "cmp"; }
   show(text);
   if ($("auto").checked && !isBook(text)) location.href = urlFor(text);
   return true;
@@ -965,8 +1023,9 @@ function goSku(){
   if (!v) return;
   if (/^\d{12}$/.test(v)) v = "0" + v;
   $("sku").value = ""; $("sku").blur();   // champ vidé : prêt pour le code suivant
-  if (/^\d{13}$/.test(v)) { show(v); return; }
-  show("s:" + v);
+  var c = /^\d{13}$/.test(v) ? v : "s:" + v;
+  if (CMP) { saveHist(c); cmpAjoute(c); return; }
+  show(c);
 }
 // au retour sur l'appli (bouton retour depuis fnac.ch ou Google), le champ est vide
 window.addEventListener("pageshow", function(){ $("sku").value = ""; });
@@ -984,7 +1043,7 @@ function start(){
   });
   // zone de lecture large et image plus nette (meilleur résultat sur iPhone, qui n'a pas le détecteur intégré d'Android)
   var zone = function(w, h){ return { width: Math.max(200, Math.floor(w * 0.85)), height: Math.max(110, Math.floor(Math.min(h * 0.45, w * 0.5))) }; };
-  scanner.start({ facingMode: "environment" }, { fps: 15, qrbox: zone, aspectRatio: 1.333, videoConstraints: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 }, focusMode: "continuous" } }, function(t){ if (onScan(t) !== false) stop(); }, function(){})
+  scanner.start({ facingMode: "environment" }, { fps: 15, qrbox: zone, aspectRatio: 1.333, videoConstraints: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 }, focusMode: "continuous" } }, function(t){ var r = onScan(t); if (r !== false && r !== "cmp") stop(); }, function(){})
     .then(function(){ running = true; lab("start", "Arrêter la caméra"); $("hint").textContent = "Tiens le téléphone à 15–20 cm, code bien à plat. Touche l'image pour refaire la mise au point."; setupTorch(); reglerMiseAuPoint(); })
     .catch(function(){ $("reader").className = "hide"; $("hint").textContent = "Caméra refusée. Autorise la caméra pour ce site dans les réglages du navigateur, ou utilise une photo."; });
 }
