@@ -85,6 +85,12 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 .bar{height:8px;border-radius:4px;background:var(--line);overflow:hidden;margin:6px 0 4px}
 .bar span{display:block;height:100%;background:#2e9e4f}
 .bar span.mid{background:#e8a000}.bar span.haut{background:#d64545}
+.champ{position:relative}
+.champ input{padding-right:46px}
+.croix{position:absolute;right:6px;top:7px;width:36px;height:36px;border:0;border-radius:50%;background:var(--line);color:var(--text);font-size:20px;line-height:36px;padding:0;display:none}
+.champ.plein .croix{display:block}
+.qrow .champ{flex:1}
+.qrow .champ .croix{top:6px;width:32px;height:32px;line-height:32px;font-size:18px}
 .warn{font-size:12px;color:var(--muted);margin:4px 0 12px}
 .desc.clip{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
 .more{border:0;background:none;color:var(--muted);text-decoration:underline;padding:0;margin:-6px 0 12px;font-size:14px}
@@ -146,14 +152,14 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 
 <div id="p2" class="hide">
   <div class="card">
-    <input id="sku" inputmode="numeric" enterkeyhint="search" placeholder="SKU (8 chiffres) ou EAN" autocomplete="off">
+    <div class="champ"><input id="sku" inputmode="numeric" enterkeyhint="search" placeholder="SKU (8 chiffres) ou EAN" autocomplete="off"><button class="croix" type="button" aria-label="Effacer">×</button></div>
     <button class="big" id="go" type="button">Rechercher</button>
   </div>
 </div>
 
 <div id="p3" class="hide">
   <div class="card">
-    <input id="kw" type="search" enterkeyhint="search" placeholder="Ex. casque bose bluetooth" autocomplete="off">
+    <div class="champ"><input id="kw" type="text" enterkeyhint="search" placeholder="Ex. casque bose bluetooth" autocomplete="off"><button class="croix" type="button" aria-label="Effacer">×</button></div>
     <a class="big" id="kwGo" target="_blank" rel="noopener">Rechercher sur fnac.ch</a>
   </div>
 </div>
@@ -165,7 +171,7 @@ li{padding:10px 0;border-top:1px solid var(--line)}
   <div id="bookBox" class="hide"></div>
   <div id="qBox" class="hide">
     <p class="lbl">Question du client</p>
-    <div class="qrow"><input id="qIn" type="text" enterkeyhint="send" placeholder="Ex. pour quel âge ? il y a une suite ?" autocomplete="off"><button id="qGo" type="button">Demander</button></div>
+    <div class="qrow"><div class="champ"><input id="qIn" type="text" enterkeyhint="send" placeholder="Ex. pour quel âge ? il y a une suite ?" autocomplete="off"><button class="croix" type="button" aria-label="Effacer">×</button></div><button id="qGo" type="button">Demander</button></div>
     <div id="qRep"></div>
   </div>
   <a class="big" id="open" target="_blank" rel="noopener">Ouvrir la fiche fnac.ch</a>
@@ -852,6 +858,14 @@ $("torch").onclick = function(){
   t.apply(!torchOn).then(function(){ torchOn = !torchOn; $("torch").textContent = torchOn ? "Éteindre la lampe" : "Allumer la lampe"; }).catch(function(){});
 };
 if ("serviceWorker" in navigator && location.protocol === "https:") { navigator.serviceWorker.register("sw.js").catch(function(){}); }
+// petite croix pour effacer un champ
+Array.prototype.forEach.call(document.querySelectorAll(".champ"), function(c){
+  var i = c.querySelector("input"), x = c.querySelector(".croix");
+  var maj = function(){ c.className = i.value ? "champ plein" : "champ"; };
+  i.addEventListener("input", maj);
+  x.addEventListener("click", function(){ i.value = ""; maj(); i.focus(); });
+  setInterval(maj, 500);   // suit aussi les champs vidés par l'appli
+});
 $("again").onclick = function(){ tab(1); window.scrollTo({ top: 0, behavior: "smooth" }); if (!running) start(); };
 $("who").onclick = ouvrirProfil;
 $("pGo").onclick = connexion;
