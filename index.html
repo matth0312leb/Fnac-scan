@@ -100,6 +100,16 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 #bnav button.on svg{stroke:var(--accent)}
 #bnav button.on::before{content:"";position:absolute;top:0;width:28px;height:3px;border-radius:2px;background:var(--accent)}
 #bnav .badge{position:absolute;top:2px;left:calc(50% + 6px);margin:0;background:var(--accent);color:#111;font-size:10px;line-height:16px;min-width:16px;padding:0 4px}
+.rg{padding:18px 16px;margin-bottom:16px}
+.rg .lbl{margin:0 0 10px}
+.rg .opt{margin:6px 0 0;line-height:1.4;align-items:flex-start}
+.rg .opt input{margin-top:2px;flex:none}
+.aide{font-size:13px;color:var(--muted);line-height:1.5;margin:12px 0 0}
+.apropos{margin:0;line-height:1.7;font-size:16px}
+.inst{display:flex;flex-direction:column;gap:10px}
+.inst div{background:var(--bg);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:3px;font-size:14px;line-height:1.4}
+.inst span{color:var(--muted)}
+#statBtn{margin:0 0 16px}
 .reg{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
 .reg:first-of-type{border-top:0}
 .reg button{border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:8px;padding:8px 12px;font-size:14px;font-weight:600}
@@ -206,22 +216,30 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 </div>
 
 <div id="p5" class="hide">
-  <div class="card">
+  <div class="card rg">
     <p class="lbl">Profil</p>
     <div class="reg"><span>Connecté : <b id="regNom">—</b></span><button id="regChange" type="button">Changer</button></div>
-    <p class="warn">Ton historique et tes notes suivent ton prénom sur n'importe quel téléphone.</p>
+    <p class="aide">Ton historique et tes notes suivent ton prénom, sur n'importe quel téléphone.</p>
   </div>
-  <div class="card">
+
+  <div class="card rg">
     <p class="lbl">Options</p>
-    <label class="opt" style="margin:4px 0"><input type="checkbox" id="auto"> Ouvrir la fiche fnac.ch dès qu'un code est scanné (sauf livres)</label>
-    <p class="warn">Décoché, tu vois d'abord la fiche de l'appli (résumé, question du client…) avant d'ouvrir fnac.ch.</p>
+    <label class="opt"><input type="checkbox" id="auto"> Ouvrir la fiche fnac.ch dès qu'un code est scanné (sauf livres)</label>
+    <p class="aide">Décoché, tu vois d'abord la fiche de l'appli (résumé, question du client…) avant d'ouvrir fnac.ch.</p>
   </div>
-  <button class="big alt hide" id="statBtn" type="button" style="margin-bottom:12px">📊 Statistiques de l'équipe</button>
+
+  <button class="big alt hide" id="statBtn" type="button">📊 Statistiques de l'équipe</button>
   <div id="statCard" class="card hide"></div>
-  <div class="card">
+
+  <div class="card rg">
     <p class="lbl">À propos</p>
-    <p class="muted" style="margin:4px 0">BipBip · créée par Matthieu le GOAT 🐐 · l'assistant de rayon qui fait bip. Pour l'installer : menu du navigateur → « Ajouter à l'écran d'accueil » (Samsung/Chrome) ou bouton Partager → « Sur l'écran d'accueil » (iPhone/Safari).</p>
-    <p class="warn" id="regVer"></p>
+    <p class="apropos"><b>BipBip</b> · l'assistant de rayon qui fait bip<br><span class="muted">Créée par Matthieu le GOAT 🐐</span></p>
+    <p class="lbl" style="margin-top:18px">Installer sur l'écran d'accueil</p>
+    <div class="inst">
+      <div><b>Samsung / Android</b><span>Menu ⋮ du navigateur → « Ajouter à l'écran d'accueil »</span></div>
+      <div><b>iPhone</b><span>Dans Safari, bouton Partager → « Sur l'écran d'accueil »</span></div>
+    </div>
+    <p class="aide" id="regVer"></p>
   </div>
 </div>
 
@@ -389,7 +407,7 @@ function ago(t){
   return "il y a " + Math.round(hh / 24) + " j";
 }
 function renderHist(h){
-  $("nb").textContent = h.length;
+  $("nb").textContent = h.length; $("nb").style.display = h.length ? "" : "none";
   $("vide").className = h.length ? "muted vide hide" : "muted vide";
   $("clr").style.visibility = h.length ? "visible" : "hidden";
   setTimeout(renderCmp, 0);
