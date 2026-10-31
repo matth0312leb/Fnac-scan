@@ -151,7 +151,8 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 .tabs{gap:6px}
 .badge{display:inline-block;min-width:18px;padding:0 5px;margin-left:3px;border-radius:9px;background:var(--line);font-size:12px;line-height:18px}
 .tabs button.on .badge{background:rgba(0,0,0,.18)}
-.hcode{cursor:pointer;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px}
+.hsub{font-size:12px;color:var(--muted);margin-top:2px}
+.hcode{display:block;overflow-wrap:anywhere;cursor:pointer;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px}
 .vide{text-align:center;padding:18px 6px}
 .alt{margin-top:10px;background:var(--bg);color:var(--text);border:1px solid var(--line);font-weight:600;font-size:16px}
 .ic{width:22px;height:22px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
@@ -334,7 +335,14 @@ function codeAChange(){
   $("pMsg").textContent = "Ton code a changé : entre le nouveau.";
 }
 function stat(type){ prof("/profil/activite", { type: type }); }
-function typeDe(c){ return c.indexOf("s:") === 0 ? "sku" : (isBook(c) ? "livre" : "produit"); }
+function typeDe(c){ return c.indexOf("p:") === 0 ? "photo" : c.indexOf("s:") === 0 ? "sku" : (isBook(c) ? "livre" : "produit"); }
+// nom de l'article trouvé : affiché dans l'historique à la place du code
+function setTitre(c, ti){
+  ti = String(ti || "").trim().slice(0, 120); if (!ti) return;
+  var hh = loadHist(), chg = false;
+  hh.forEach(function(y){ if (y.c === c && y.ti !== ti) { y.ti = ti; chg = true; } });
+  if (chg) { storeHist(hh); renderHist(hh); prof("/profil/titre", { article: c, titre: ti }); }
+}
 function majProfilUI(){
   $("who").textContent = PROFIL.nom ? "Salut " + PROFIL.nom + " 👋" : "";
   $("statBtn").className = PROFIL.admin ? "big alt" : "big alt hide";
@@ -438,10 +446,18 @@ function storeHist(h){ try { localStorage.setItem("hist", JSON.stringify(h)); } 
 function saveHist(c){
   var h = loadHist(), old = h.filter(function(x){ return x.c === c; })[0];
   h = h.filter(function(x){ return x.c !== c; });
-  h.unshift({c: c, t: Date.now(), n: old ? old.n : "", s: old ? old.s : ""});
+  h.unshift({c: c, t: Date.now(), n: old ? old.n : "", s: old ? old.s : "", ti: old ? old.ti : ""});
   h = h.slice(0, 30);
   storeHist(h); renderHist(h);
-  prof("/profil/ajouter", { article: c, type: typeDe(c) });
+  prof("/profil/ajouter", { article: c, type: typeDe(c), titre: old && old.ti ? old.ti : "" });
+}
+// article identifié par photo : ajouté à l'historique (déjà compté comme « photo » dans les stats)
+function saveHistPhoto(nom){
+  var c = "p:" + nom.slice(0, 110), h = loadHist(), old = h.filter(function(x){ return x.c === c; })[0];
+  h = h.filter(function(x){ return x.c !== c; });
+  h.unshift({ c: c, t: Date.now(), n: old ? old.n : "", ti: nom });
+  h = h.slice(0, 30); storeHist(h); renderHist(h);
+  prof("/profil/ajouter", { article: c, type: "photo", titre: nom, import: "1" });
 }
 function ago(t){
   if (!t) return "";
@@ -459,15 +475,19 @@ function renderHist(h){
   setTimeout(renderCmp, 0);
   var ul = $("hist"); ul.innerHTML = "";
   h.forEach(function(x){
-    var sku = x.c.indexOf("s:") === 0, code = sku ? x.c.slice(2) : x.c;
+    var sku = x.c.indexOf("s:") === 0, ph = x.c.indexOf("p:") === 0, code = (sku || ph) ? x.c.slice(2) : x.c;
+    var etiquette = ph ? "Photo" : (sku ? "SKU " : (isBook(code) ? "Livre · EAN " : "EAN ")) + code;
     var li = document.createElement("li");
     var top = document.createElement("div"); top.className = "hrow";
-    var b = document.createElement("b"); b.textContent = (sku ? "SKU " : (isBook(code) ? "Livre " : "EAN ")) + code;
+    var bloc = document.createElement("div"); bloc.style.minWidth = "0";
+    var b = document.createElement("b"); b.textContent = x.ti || etiquette;
     b.className = "hcode"; b.title = "Revoir la fiche";
+    bloc.appendChild(b);
+    if (x.ti) { var sc = document.createElement("div"); sc.className = "hsub"; sc.textContent = etiquette; bloc.appendChild(sc); }
     b.onclick = function(){ tab(x.c.indexOf("s:") === 0 ? 2 : 1); last = ""; show(x.c); window.scrollTo({ top: 0, behavior: "smooth" }); };
     var s = document.createElement("span"); s.className = "muted"; s.textContent = ago(x.t);
     var ok = document.createElement("span"); ok.className = "saved";
-    top.appendChild(b); top.appendChild(ok); top.appendChild(s); li.appendChild(top);
+    top.appendChild(bloc); top.appendChild(ok); top.appendChild(s); li.appendChild(top);
     var inp = document.createElement("input"); inp.className = "note"; inp.placeholder = "Prix, remarque…"; inp.value = x.n || "";
     inp.oninput = function(){
       var hh = loadHist(); hh.forEach(function(y){ if (y.c === x.c) y.n = inp.value; }); storeHist(hh);
@@ -491,7 +511,7 @@ function renderHist(h){
   });
 }
 var cmpSel = [];
-function label(c){ return c.indexOf("s:") === 0 ? "SKU fnac.ch " + c.slice(2) : (isBook(c) ? "ISBN " : "EAN ") + c; }
+function label(c){ if (c.indexOf("p:") === 0) return "« " + c.slice(2) + " »"; return c.indexOf("s:") === 0 ? "SKU fnac.ch " + c.slice(2) : (isBook(c) ? "ISBN " : "EAN ") + c; }
 function claudeUrl(q){ return "https://www.google.com/search?udm=50&hl=fr&q=" + encodeURIComponent(q); }
 function noteOf(c){ var x = loadHist().filter(function(y){ return y.c === c; })[0]; return x && x.n ? " (ma note : " + x.n + ")" : ""; }
 function promptOne(c){
@@ -687,7 +707,7 @@ function loadBook(isbn){
   var box = $("bookBox"); box.className = ""; box.innerHTML = '<p class="muted">Recherche du livre…</p>';
   fromServeur(isbn).catch(function(){ return null; }).then(function(s){
     if (my !== bookReq) return;
-    if (s && s.title) { bookHtml(s); return; }
+    if (s && s.title) { bookHtml(s); setTitre(isbn, s.title); return; }
     loadBookNavigateur(isbn, my);
   });
 }
@@ -708,7 +728,7 @@ function loadBookNavigateur(isbn, my){
     });
     if (/^\d{4}-\d{2}/.test(b.date)) b.date = frDate(b.date);
     if (!b.img) b.img = "https://covers.openlibrary.org/b/isbn/" + isbn + "-M.jpg?default=false";
-    bookHtml(b);
+    bookHtml(b); setTitre(isbn, b.title);
   });
 }
 
@@ -757,7 +777,7 @@ function loadProduit(ean){
     if (my !== prodReq) return;
     if (!j || !j.trouve) { produitIntrouvable(); return; }
     if (j.type === "jeu") stat("jeu");
-    renderFiche(j);
+    renderFiche(j); setTitre(ean, (j.ia && j.ia.nom) || j.nom);
   }, function(){ clearTimeout(tm); if (my === prodReq) produitIntrouvable(); });
 }
 function produitIntrouvable(){
@@ -851,6 +871,7 @@ function identifierPhoto(file){
     if (j.type === "livre") {
       bookHtml({ title: j.titre, authors: j.auteur, publisher: j.editeur, bref: ia.resume, sujet: ia.sujet, audience: ia.public, desc: "", photo: true });
     } else renderFiche(j);
+    if (nom) saveHistPhoto(nom.trim());
     box.appendChild(el("p", "warn", "Identifié par photo (lu : « " + (lu.titre || "?") + (lu.plateforme ? " – " + lu.plateforme : "") + " »). Si ce n’est pas le bon article, reprends la photo."));
   }, function(){
     if (my !== prodReq) return;
@@ -867,6 +888,7 @@ $("clr").onclick = function(){
 };
 
 function urlFor(c){
+  if (c.indexOf("p:") === 0) return BASE + encodeURIComponent(c.slice(2));
   if (c.indexOf("s:") === 0) return "https://www.google.com/search?q=" + encodeURIComponent(c.slice(2) + " fnac.ch");
   return BASE + encodeURIComponent(c);
 }
@@ -874,6 +896,14 @@ function show(c){
   COURANT = c;
   montrerQuestion(false);
   $("open").style.display = ""; $("ai").style.display = "";
+  if (c.indexOf("p:") === 0) {   // article identifié par photo, revu depuis l'historique
+    var nomP = c.slice(2);
+    $("code").textContent = nomP; $("open").href = urlFor(c); lab("open", "Chercher sur fnac.ch");
+    $("note").textContent = ""; $("res").className = "card"; saveHistPhoto(nomP);
+    $("ai").href = claudeUrl("Article " + nomP + " : fiche rapide pour un vendeur Fnac, en moins de 150 mots."); lab("ai", "Plus de détails (Google IA)");
+    bookReq++; prodReq++; $("bookBox").className = "hide"; $("bookBox").innerHTML = "";
+    return;
+  }
   var sku = c.indexOf("s:") === 0;
   $("code").textContent = sku ? c.slice(2) : c;
   $("open").href = urlFor(c);

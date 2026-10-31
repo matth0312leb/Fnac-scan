@@ -529,15 +529,15 @@ async function profils(req, url, env) {
     return { ok: true, nom: affichage, admin: nom === await conf("admin_nom") };
   }
   if (route === "/profil/historique") {
-    const rows = (await env.DB.prepare("SELECT code AS c, note AS n, t FROM historique WHERE nom = ? ORDER BY t DESC LIMIT 50").bind(nom).all()).results || [];
+    const rows = (await env.DB.prepare("SELECT code AS c, note AS n, t, titre AS ti FROM historique WHERE nom = ? ORDER BY t DESC LIMIT 50").bind(nom).all()).results || [];
     return { ok: true, historique: rows };
   }
   const type = TYPES.includes(p("type")) ? p("type") : "produit";
   if (route === "/profil/ajouter") {
-    const article = p("article").slice(0, 40);
+    const article = p("article").slice(0, 120);
     if (!article) return { ok: false, erreur: "article manquant" };
     await env.DB.batch([
-      env.DB.prepare("INSERT INTO historique (nom, code, note, t) VALUES (?, ?, '', ?) ON CONFLICT(nom, code) DO UPDATE SET t = excluded.t").bind(nom, article, now),
+      env.DB.prepare("INSERT INTO historique (nom, code, note, t, titre) VALUES (?, ?, '', ?, ?) ON CONFLICT(nom, code) DO UPDATE SET t = excluded.t, titre = CASE WHEN excluded.titre <> '' THEN excluded.titre ELSE historique.titre END").bind(nom, article, now, p("titre").slice(0, 120)),
       p("import") === "1" ? env.DB.prepare("SELECT 1") : env.DB.prepare("INSERT INTO activite (nom, t, type) VALUES (?, ?, ?)").bind(nom, now, type),
       env.DB.prepare("UPDATE profils SET vu = ? WHERE nom = ?").bind(now, nom),
       env.DB.prepare("DELETE FROM historique WHERE nom = ? AND code NOT IN (SELECT code FROM historique WHERE nom = ? ORDER BY t DESC LIMIT 50)").bind(nom, nom),
@@ -549,6 +549,10 @@ async function profils(req, url, env) {
       env.DB.prepare("INSERT INTO activite (nom, t, type) VALUES (?, ?, ?)").bind(nom, now, type),
       env.DB.prepare("UPDATE profils SET vu = ? WHERE nom = ?").bind(now, nom),
     ]);
+    return { ok: true };
+  }
+  if (route === "/profil/titre") {
+    await env.DB.prepare("UPDATE historique SET titre = ? WHERE nom = ? AND code = ?").bind(p("titre").slice(0, 120), nom, p("article")).run();
     return { ok: true };
   }
   if (route === "/profil/note") {
