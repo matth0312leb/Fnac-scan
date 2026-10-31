@@ -26,9 +26,9 @@ h1{font-size:20px;margin:4px 0 14px}
 .tabs{display:flex;gap:8px;margin-bottom:12px}
 .tabs button{flex:1;padding:12px;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:10px;font-size:16px}
 .tabs button.on{background:var(--accent);color:var(--accent-text);border-color:var(--accent);font-weight:600}
-.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 16px;margin-bottom:14px}
 #reader{width:100%;min-height:160px;border-radius:10px;overflow:hidden;margin-bottom:8px}
-.big{display:block;width:100%;padding:16px;border:0;border-radius:12px;background:var(--accent);color:var(--accent-text);font-size:18px;font-weight:700;text-align:center;text-decoration:none}
+.big{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:15px 16px;border:0;border-radius:14px;background:var(--accent);color:var(--accent-text);font-size:18px;font-weight:700;text-align:center;text-decoration:none}
 input{width:100%;padding:14px;font-size:20px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--text);margin-bottom:10px}
 .muted{color:var(--muted);font-size:14px}
 .code{font-size:26px;font-weight:700;letter-spacing:1px;margin:4px 0 12px}
@@ -67,7 +67,9 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 #profil{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px}
 #profil .card{width:100%;max-width:420px;margin:0}
 #profil h2{margin:0 0 6px;font-size:20px}
-.who{font-size:18px;font-weight:700;margin:0 0 4px}
+#bookBox .lbl{margin-top:18px}
+#bookBox .book + .bref{margin-top:2px}
+.who{font-size:20px;font-weight:700;margin:0 0 4px}
 .who:empty{display:none}
 .stat{width:100%;border-collapse:collapse;font-size:14px}
 .stat th,.stat td{text-align:left;padding:7px 4px;border-top:1px solid var(--line);vertical-align:top}
@@ -126,7 +128,7 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 .desc.clip{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
 .more{border:0;background:none;color:var(--muted);text-decoration:underline;padding:0;margin:0 0 12px;font-size:14px;display:block}
 .acts button.sel{background:var(--accent);border-color:var(--accent);color:#111;font-weight:600}
-.cmpbar{position:sticky;bottom:calc(80px + env(safe-area-inset-bottom,0px));z-index:5}
+.cmpbar{position:sticky;bottom:calc(80px + env(safe-area-inset-bottom,0px));z-index:5;margin-bottom:14px}
 .cmpbar .big{box-shadow:0 6px 20px rgba(0,0,0,.3)}
 .hhead button{border:0;background:none;color:var(--muted);font-size:14px;text-decoration:underline;padding:4px}
 .hide{display:none}
@@ -152,17 +154,28 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 .hcode{cursor:pointer;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px}
 .vide{text-align:center;padding:18px 6px}
 .alt{margin-top:10px;background:var(--bg);color:var(--text);border:1px solid var(--line);font-weight:600;font-size:16px}
+.ic{width:22px;height:22px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.big .ic{margin-left:-4px}
+.titre{font-size:18px;font-weight:700;margin:0 0 6px}
+.intro{font-size:14px;color:var(--muted);line-height:1.5;margin:0 0 16px}
+.muted{line-height:1.45}
+#hint{margin:0 0 16px}
+.reshead button{display:inline-flex;align-items:center;gap:6px}
+.reshead .ic{width:16px;height:16px}
+#bipTest{display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:var(--text);font-weight:600;border:1px solid var(--line);border-radius:10px;padding:9px 14px;background:var(--bg)}
+#bipTest .ic{width:16px;height:16px;fill:currentColor;stroke:none}
+.reg button{display:inline-flex;align-items:center;gap:6px}
 </style>
 </head>
 <body>
 <div id="fili" aria-hidden="true"><svg class="fm" viewBox="0 0 512 512"><rect x="14" y="14" width="484" height="484" rx="108" fill="none" stroke="currentColor" stroke-width="28"/><g fill="currentColor"><rect x="104" y="150" width="26" height="212" rx="5"/><rect x="146" y="150" width="12" height="212" rx="4"/><rect x="174" y="150" width="34" height="212" rx="5"/><rect x="224" y="150" width="12" height="212" rx="4"/><rect x="252" y="150" width="24" height="212" rx="5"/></g><g fill="none" stroke="currentColor" stroke-width="26" stroke-linecap="round"><path d="M318 206a72 72 0 0 1 0 100"/><path d="M362 166a130 130 0 0 1 0 180"/></g></svg><div class="fn">BipBip</div></div>
 <header class="top"><img class="mark" src="logo.svg" alt="BipBip"><div><div class="tline"><div class="ttl">Bip<span>Bip</span></div><div class="slogan">l'assistant de rayon qui fait bip</div></div></div></header>
 <div id="profil" class="hide"><div class="card">
-  <h2>Bienvenue 👋</h2>
-  <p class="muted">Ton prénom sert à retrouver ton historique sur n'importe quel téléphone.</p>
+  <h2>Bienvenue sur BipBip 👋</h2>
+  <p class="intro">Entre ton prénom : il te permet de retrouver ton historique sur n'importe quel téléphone.</p>
   <input id="pNom" type="text" placeholder="Ton prénom" autocomplete="given-name" enterkeyhint="go">
   <input id="pCle" type="password" inputmode="numeric" placeholder="Code de ce profil" class="hide">
-  <button class="big" id="pGo" type="button">Commencer</button>
+  <button class="big" id="pGo" type="button">C'est parti</button>
   <p class="warn" id="pMsg"></p>
 </div></div>
 <nav id="bnav"><div class="in">
@@ -177,11 +190,11 @@ li{padding:10px 0;border-top:1px solid var(--line)}
   <div class="card">
     <div id="reader" class="hide"></div>
     <p class="who" id="who"></p>
-    <p class="muted" id="hint">Appuie sur « Scanner en direct », puis vise le code-barres.</p>
-    <button class="big" id="start" type="button">Scanner en direct</button>
-    <button class="big alt hide" id="torch" type="button">Allumer la lampe</button>
-    <button class="big alt" id="snap" type="button">📷 Identifier par photo (couverture, boîte)</button>
-    <button class="big alt" id="pick" type="button">Choisir une photo existante (code-barres)</button>
+    <p class="muted" id="hint">Scanne un code-barres, ou prends en photo une couverture ou une boîte.</p>
+    <button class="big" id="start" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2M4 12h16"/></svg><span class="lb">Scanner un code-barres</span></button>
+    <button class="big alt hide" id="torch" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 3 5 14h6l-1 7 8-11h-6l1-7z"/></svg><span class="lb">Allumer la lampe</span></button>
+    <button class="big alt" id="snap" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/></svg><span class="lb">Identifier par photo</span></button>
+    <button class="big alt" id="pick" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="m21 16-5-5-9 9"/></svg><span class="lb">Code-barres depuis la galerie</span></button>
     <input id="f3" type="file" accept="image/*" capture="environment" class="hide">
     <input id="f2" type="file" accept="image/*" class="hide">
     <div id="filereader" class="hide"></div>
@@ -190,42 +203,46 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 
 <div id="p2" class="hide">
   <div class="card">
-    <div class="champ"><input id="sku" inputmode="numeric" enterkeyhint="search" placeholder="SKU (8 chiffres) ou EAN" autocomplete="off"><button class="croix" type="button" aria-label="Effacer">×</button></div>
-    <button class="big" id="go" type="button">Rechercher</button>
+    <p class="titre">Saisir un code</p>
+    <p class="intro">SKU à 8 chiffres (étiquette du rayon) ou EAN à 13 chiffres (sous le code-barres).</p>
+    <div class="champ"><input id="sku" inputmode="numeric" enterkeyhint="search" placeholder="Ex. 15211846" autocomplete="off"><button class="croix" type="button" aria-label="Effacer">×</button></div>
+    <button class="big" id="go" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4-4"/></svg><span class="lb">Rechercher</span></button>
   </div>
 </div>
 
 <div id="p3" class="hide">
   <div class="card">
+    <p class="titre">Rechercher par mots-clés</p>
+    <p class="intro">Titre, auteur, marque, modèle… La recherche s'ouvre sur fnac.ch.</p>
     <div class="champ"><input id="kw" type="text" enterkeyhint="search" placeholder="Ex. casque bose bluetooth" autocomplete="off"><button class="croix" type="button" aria-label="Effacer">×</button></div>
-    <a class="big" id="kwGo" target="_blank" rel="noopener">Rechercher sur fnac.ch</a>
+    <a class="big" id="kwGo" target="_blank" rel="noopener"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4-4"/></svg><span class="lb">Rechercher sur fnac.ch</span></a>
   </div>
 </div>
 
 <div id="mainRes">
 <div id="res" class="card hide">
-  <div class="reshead"><span class="muted">Dernier code</span><button id="again" type="button">↺ Nouveau scan</button></div>
+  <div class="reshead"><span class="lbl" style="margin:0">Résultat</span><button id="again" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6"/></svg>Nouveau scan</button></div>
   <div class="code" id="code"></div>
   <div id="bookBox" class="hide"></div>
   <div id="qBox" class="hide">
     <p class="lbl">Question du client</p>
-    <div class="qrow"><div class="champ"><input id="qIn" type="text" enterkeyhint="send" placeholder="Ex. pour quel âge ? il y a une suite ?" autocomplete="off"><button class="croix" type="button" aria-label="Effacer">×</button></div><button id="qGo" type="button">Demander</button></div>
+    <div class="qrow"><div class="champ"><input id="qIn" type="text" enterkeyhint="send" placeholder="Ex. pour quel âge ?" autocomplete="off"><button class="croix" type="button" aria-label="Effacer">×</button></div><button id="qGo" type="button">Demander</button></div>
     <div id="qRep"></div>
   </div>
-  <a class="big" id="open" target="_blank" rel="noopener">Ouvrir la fiche fnac.ch</a>
+  <a class="big" id="open" target="_blank" rel="noopener"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg><span class="lb">Ouvrir la fiche fnac.ch</span></a>
   <p class="muted" id="note"></p>
-  <a class="big alt" id="ai" target="_blank" rel="noopener">Résumé pour conseiller (Google IA)</a>
+  <a class="big alt" id="ai" target="_blank" rel="noopener"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c.5 4 2 5.5 6 6-4 .5-5.5 2-6 6-.5-4-2-5.5-6-6 4-.5 5.5-2 6-6zM19 15c.2 1.6.9 2.3 2.5 2.5-1.6.2-2.3.9-2.5 2.5-.2-1.6-.9-2.3-2.5-2.5 1.6-.2 2.3-.9 2.5-2.5z"/></svg><span class="lb">Plus de détails (Google IA)</span></a>
 </div>
 
 </div>
 
 <div id="p4" class="hide">
-<p class="muted" style="margin:0 2px 10px">Touche un code pour revoir sa fiche. « Comparer » sur 2 articles pour les mettre côte à côte.</p>
-<div id="cmpBar" class="cmpbar hide"><button class="big" id="cmpGo" type="button">Comparer les 2 articles</button></div>
+<p class="intro" style="margin:0 2px 14px">Touche un code pour revoir sa fiche. Choisis « Comparer » sur deux articles pour les mettre côte à côte.</p>
+<div id="cmpBar" class="cmpbar hide"><button class="big" id="cmpGo" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4v16M16 4v16M4 8h8M12 16h8"/></svg><span class="lb">Comparer les 2 articles</span></button></div>
 <div id="cmpRes" class="card hide"></div>
 
 <div id="histCard" class="card">
-  <div class="hhead"><span class="muted">Derniers articles</span><button id="clr" type="button">Tout effacer</button></div>
+  <div class="hhead"><span class="lbl" style="margin:0">Derniers articles</span><button id="clr" type="button">Tout effacer</button></div>
   <ul id="hist"></ul>
   <p class="muted vide hide" id="vide">Aucun article pour l’instant. Scanne ou saisis un code : il apparaîtra ici.</p>
 </div>
@@ -234,25 +251,25 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 <div id="p5" class="hide">
   <div class="card rg">
     <p class="lbl">Profil</p>
-    <div class="reg"><span>Connecté : <b id="regNom">—</b></span><button id="regChange" type="button">Changer</button></div>
+    <div class="reg"><span>Connecté : <b id="regNom">—</b></span><button id="regChange" type="button"><svg class="ic" style="width:16px;height:16px" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>Changer</button></div>
     <p class="aide">Ton historique et tes notes suivent ton prénom, sur n'importe quel téléphone.</p>
   </div>
 
   <div class="card rg">
     <p class="lbl">Options</p>
     <label class="opt"><input type="checkbox" id="auto"> Ouvrir la fiche fnac.ch dès qu'un code est scanné (sauf livres)</label>
-    <p class="aide">Décoché, tu vois d'abord la fiche de l'appli (résumé, question du client…) avant d'ouvrir fnac.ch.</p>
+    <p class="aide">Décoché, tu vois d'abord la fiche BipBip (résumé, question du client…) avant d'ouvrir fnac.ch.</p>
   </div>
 
   <div class="card rg">
     <p class="lbl">Bip au scan</p>
     <label class="opt"><input type="checkbox" id="sonOn"> Son « bip »</label>
     <label class="opt" style="margin-top:12px"><input type="checkbox" id="vibOn"> Vibration légère</label>
-    <button class="more" id="bipTest" type="button" style="margin-top:14px">▶ Tester le bip</button>
-    <p class="aide">iPhone : le son se coupe tout seul quand le bouton silencieux est activé. Samsung : il suit le volume multimédia ; décoche « Son » si tu veux uniquement la vibration. La vibration n'existe pas sur iPhone dans un navigateur.</p>
+    <button id="bipTest" type="button" style="margin-top:16px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5v14l11-7z"/></svg>Tester le bip</button>
+    <p class="aide">iPhone : le son se coupe tout seul avec le bouton silencieux (la vibration n'est pas possible dans Safari).<br>Samsung : le son suit le volume multimédia ; décoche « Son » pour ne garder que la vibration.</p>
   </div>
 
-  <button class="big alt hide" id="statBtn" type="button">📊 Statistiques de l'équipe</button>
+  <button class="big alt hide" id="statBtn" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg><span class="lb">Statistiques de l'équipe</span></button>
   <div id="statCard" class="card hide"></div>
 
   <div class="card rg">
@@ -271,6 +288,11 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 var BASE = "https://www.fr.fnac.ch/SearchResult/ResultList.aspx?Search=";
 var scanner = null, running = false, last = "", lastAt = 0;
 var $ = function(id){ return document.getElementById(id); };
+// change le texte d'un bouton sans effacer son icône
+var ICONES = { cam: '<path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/>', livre: '<path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5z"/><path d="M4 19a2 2 0 0 1 2-2h13"/>' };
+// bouton avec icône (créé par le code)
+function btnIc(cls, icone, txt){ var b = document.createElement("button"); b.type = "button"; b.className = cls; b.innerHTML = '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">' + ICONES[icone] + '</svg><span class="lb"></span>'; b.querySelector(".lb").textContent = txt; return b; }
+function lab(id, txt){ var b = $(id), s = b && b.querySelector(".lb"); if (s) s.textContent = txt; else if (b) b.textContent = txt; }
 
 function tab(n){
   for (var i = 1; i <= 5; i++) { $("p" + i).className = n === i ? "" : "hide"; $("t" + i).className = n === i ? "on" : ""; }
@@ -509,7 +531,7 @@ function poserQuestion(){
 }
 var COURANT = "";
 function livresSimilaires(isbn, box, btn){
-  btn.disabled = true; btn.textContent = "Recherche de suggestions… (10 s)";
+  btn.disabled = true; btn.querySelector(".lb").textContent = "Recherche de suggestions…";
   var ctl = ("AbortController" in window) ? new AbortController() : null;
   var tm = setTimeout(function(){ if (ctl) ctl.abort(); }, 30000);
   fetch(SERVEUR + "/similaires?isbn=" + isbn, ctl ? { signal: ctl.signal } : {}).then(function(r){ clearTimeout(tm); return r.json(); }).then(function(j){
@@ -527,7 +549,7 @@ function livresSimilaires(isbn, box, btn){
       li.appendChild(t); li.appendChild(a); ul.appendChild(li);
     });
     box.appendChild(ul);
-  }, function(){ clearTimeout(tm); btn.disabled = false; btn.textContent = "📚 Livres similaires (réessayer)"; });
+  }, function(){ clearTimeout(tm); btn.disabled = false; btn.querySelector(".lb").textContent = "Livres similaires (réessayer)"; });
 }
 function bookHtml(b){
   var box = $("bookBox"); box.innerHTML = "";
@@ -563,7 +585,7 @@ function bookHtml(b){
   box.className = "";
   montrerQuestion(true);
   if (isBook(COURANT) && !b.photo) {
-    var sb = el("button", "big alt", "📚 Livres similaires à proposer"); sb.type = "button";
+    var sb = btnIc("big alt", "livre", "Livres similaires à proposer");
     sb.onclick = function(){ livresSimilaires(COURANT, box, sb); };
     box.appendChild(sb);
   }
@@ -742,8 +764,8 @@ function produitIntrouvable(){
   montrerQuestion(false);
   var box = $("bookBox"); box.className = ""; box.innerHTML = "";
   box.appendChild(el("p", "muted", "Pas trouvé automatiquement : essaie la photo de la boîte, ou la fiche Google IA plus bas."));
-  $("ai").textContent = "Fiche Google IA (jeu, produit…)";
-  var ph = el("button", "big alt", "📷 Identifier par photo de la boîte"); ph.type = "button"; ph.onclick = function(){ $("f3").click(); };
+  lab("ai", "Fiche Google IA (jeu, produit…)");
+  var ph = btnIc("big alt", "cam", "Photo de la boîte"); ph.onclick = function(){ $("f3").click(); };
   box.appendChild(ph);
   box.appendChild(el("p", "warn", ""));
 }
@@ -800,7 +822,7 @@ function identifierPhoto(file){
   stat("photo");
   montrerQuestion(false);
   bookReq++; var my = ++prodReq, box = $("bookBox");
-  $("res").className = "card"; $("code").textContent = "Photo";
+  $("res").className = "card"; $("code").textContent = "Photo…";
   $("note").textContent = ""; box.className = ""; box.innerHTML = '<p class="muted">Lecture de la photo par l’IA… (10 à 20 secondes)</p>';
   $("open").href = BASE; $("ai").href = "#";
   $("open").style.display = "none"; $("ai").style.display = "none";
@@ -813,8 +835,9 @@ function identifierPhoto(file){
   }).then(function(j){
     if (my !== prodReq) return;
     if (!j || !j.trouve) {
+      $("code").textContent = "Photo non lue";
       box.innerHTML = '<p class="muted">L’IA n’a pas réussi à lire la photo. Reprends-la de face, bien éclairée, avec le titre lisible.</p>';
-      var re = el("button", "big", "📷 Reprendre la photo"); re.type = "button"; re.onclick = function(){ $("f3").click(); };
+      var re = btnIc("big", "cam", "Reprendre la photo"); re.onclick = function(){ $("f3").click(); };
       box.appendChild(re);
       if (j && (j.erreur || j.details)) box.appendChild(el("p", "warn", "Détail : " + [j.erreur].concat(j.details || []).filter(Boolean).join(" · ")));
       return;
@@ -822,8 +845,8 @@ function identifierPhoto(file){
     $("open").style.display = ""; $("ai").style.display = "";
     var ia = j.ia || {}, lu = j.lu || {};
     var nom = (j.type === "jeu" ? (ia.nom || (j.jeu && j.jeu.nom) || lu.titre) + (j.plateforme ? " " + j.plateforme : "") : j.type === "livre" ? [j.titre, j.auteur].filter(Boolean).join(" ") : (ia.nom || j.nom)) || "";
-    $("code").textContent = (j.type === "jeu" ? "🎮 " : j.type === "livre" ? "📚 " : "📦 ") + "Photo";
-    $("open").href = BASE + encodeURIComponent(nom); $("open").textContent = "Chercher sur fnac.ch";
+    $("code").textContent = j.type === "jeu" ? "Jeu vidéo" : j.type === "livre" ? "Livre" : "Produit";
+    $("open").href = BASE + encodeURIComponent(nom); lab("open", "Chercher sur fnac.ch");
     $("ai").href = claudeUrl((j.type === "livre" ? "Livre " : j.type === "jeu" ? "Jeu vidéo " : "Produit ") + nom + " : fiche rapide pour un vendeur Fnac, en moins de 150 mots.");
     if (j.type === "livre") {
       bookHtml({ title: j.titre, authors: j.auteur, publisher: j.editeur, bref: ia.resume, sujet: ia.sujet, audience: ia.public, desc: "", photo: true });
@@ -832,7 +855,7 @@ function identifierPhoto(file){
   }, function(){
     if (my !== prodReq) return;
     box.innerHTML = '<p class="muted">Photo non envoyée (serveur injoignable ou trop lent).</p>';
-    var re = el("button", "big", "📷 Reprendre la photo"); re.type = "button"; re.onclick = function(){ $("f3").click(); };
+    var re = btnIc("big", "cam", "Reprendre la photo"); re.onclick = function(){ $("f3").click(); };
     box.appendChild(re);
   });
 }
@@ -854,12 +877,12 @@ function show(c){
   var sku = c.indexOf("s:") === 0;
   $("code").textContent = sku ? c.slice(2) : c;
   $("open").href = urlFor(c);
-  $("open").textContent = sku ? "Chercher ce SKU via Google" : "Ouvrir la fiche fnac.ch";
+  lab("open", sku ? "Chercher ce SKU via Google" : "Ouvrir la fiche fnac.ch");
   $("note").textContent = sku ? "Si le bon produit n’apparaît pas en premier, scanne l’EAN." : "";
   $("res").className = "card";
   saveHist(c);
   $("ai").href = claudeUrl(promptOne(c));
-  $("ai").textContent = "Plus de détails (Google IA)";
+  lab("ai", "Plus de détails (Google IA)");
   if (isBook(c)) { prodReq++; loadBook(c); }
   else if (c.indexOf("s:") === 0) { bookReq++; prodReq++; $("bookBox").className = "hide"; $("bookBox").innerHTML = ""; }
   else { bookReq++; loadProduit(c); }
@@ -930,13 +953,13 @@ function start(){
     verbose: false
   });
   scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 260, height: 120 } }, function(t){ if (onScan(t) !== false) stop(); }, function(){})
-    .then(function(){ running = true; $("start").textContent = "Arrêter"; $("hint").textContent = "Vise le code-barres EAN."; setupTorch(); })
-    .catch(function(){ $("reader").className = "hide"; $("hint").textContent = "Caméra refusée. Autorise la caméra pour ce site dans les réglages du navigateur, ou choisis une photo existante."; });
+    .then(function(){ running = true; lab("start", "Arrêter la caméra"); $("hint").textContent = "Vise le code-barres EAN."; setupTorch(); })
+    .catch(function(){ $("reader").className = "hide"; $("hint").textContent = "Caméra refusée. Autorise la caméra pour ce site dans les réglages du navigateur, ou utilise une photo."; });
 }
 function stop(){
   if (!running || !scanner) return;
-  torchOn = false; $("torch").className = "big alt hide"; $("torch").textContent = "Allumer la lampe";
-  scanner.stop().then(function(){ running = false; $("reader").className = "hide"; $("start").textContent = "Scanner en direct"; $("hint").textContent = "Appuie sur « Scanner en direct », puis vise le code-barres."; }).catch(function(){});
+  torchOn = false; $("torch").className = "big alt hide"; lab("torch", "Allumer la lampe");
+  scanner.stop().then(function(){ running = false; $("reader").className = "hide"; lab("start", "Scanner un code-barres"); $("hint").textContent = "Scanne un code-barres, ou prends en photo une couverture ou une boîte."; }).catch(function(){});
 }
 $("start").onclick = function(){ running ? stop() : start(); };
 var torchOn = false;
@@ -944,7 +967,7 @@ function torchFeat(){ try { return scanner.getRunningTrackCameraCapabilities().t
 function setupTorch(){ var t = torchFeat(); if (t && t.isSupported()) $("torch").className = "big alt"; }
 $("torch").onclick = function(){
   var t = torchFeat(); if (!t) return;
-  t.apply(!torchOn).then(function(){ torchOn = !torchOn; $("torch").textContent = torchOn ? "Éteindre la lampe" : "Allumer la lampe"; }).catch(function(){});
+  t.apply(!torchOn).then(function(){ torchOn = !torchOn; lab("torch", torchOn ? "Éteindre la lampe" : "Allumer la lampe"); }).catch(function(){});
 };
 if ("serviceWorker" in navigator && location.protocol === "https:") { navigator.serviceWorker.register("sw.js").catch(function(){}); }
 // petite croix pour effacer un champ
