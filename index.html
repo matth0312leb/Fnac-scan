@@ -6,6 +6,9 @@
 <title>BipBip</title>
 <meta name="theme-color" content="#111111">
 <link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Caveat:wght@600&display=swap" rel="stylesheet">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -126,8 +129,10 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 #torch{margin-top:10px}
 .top{display:flex;align-items:center;gap:14px;background:#111;color:#fff;margin:-16px -16px 18px;padding:18px 16px;border-bottom:4px solid var(--accent)}
 .mark{width:56px;height:56px;border-radius:12px;display:block}
-.ttl{font-size:19px;font-weight:700}
-.sub{font-size:12px;color:#bdbdbd;margin-top:2px}
+.ttl{font-family:"Fredoka",system-ui,sans-serif;font-size:28px;font-weight:700;line-height:1;letter-spacing:.3px;color:#fff}
+.ttl span{color:var(--accent)}
+.slogan{font-family:"Caveat","Chalkboard SE","Bradley Hand","Segoe Print","Comic Sans MS",cursive;font-size:20px;line-height:1.1;color:#e8e8e8;margin-top:3px}
+.sub{font-size:12px;color:#bdbdbd;margin-top:4px}
 .card{box-shadow:0 2px 12px rgba(0,0,0,.10)}
 .big{transition:transform .1s}
 .big:active{transform:scale(.98)}
@@ -141,7 +146,7 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 </style>
 </head>
 <body>
-<header class="top"><img class="mark" src="icon-192.png" alt=""><div><div class="ttl">BipBip</div><div class="sub">par Matthieu le GOAT 🐐 · <button class="who" id="who" type="button">profil</button></div></div></header>
+<header class="top"><img class="mark" src="icon-192.png" alt=""><div><div class="ttl">Bip<span>Bip</span></div><div class="slogan">l'assistant de rayon qui fait bip</div><div class="sub">par Matthieu le GOAT 🐐 · <button class="who" id="who" type="button">profil</button></div></div></header>
 <div id="profil" class="hide"><div class="card">
   <h2>Bienvenue 👋</h2>
   <p class="muted">Ton prénom sert à retrouver ton historique sur n'importe quel téléphone.</p>

@@ -1,5 +1,5 @@
 // Réseau d'abord (toujours la dernière version), copie locale si pas de connexion.
-var CACHE = "scan-v31";
+var CACHE = "scan-v33";
 var FILES = ["./", "index.html", "manifest.json", "icon-192.png",
   "https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"];
 self.addEventListener("install", function(e){
@@ -15,7 +15,7 @@ self.addEventListener("activate", function(e){
 self.addEventListener("fetch", function(e){
   if (e.request.method !== "GET") return;
   var u = e.request.url;
-  if (u.indexOf(self.location.origin) !== 0 && u.indexOf("cdn.jsdelivr.net") < 0) return;
+  if (u.indexOf(self.location.origin) !== 0 && !/cdn\.jsdelivr\.net|fonts\.(googleapis|gstatic)\.com/.test(u)) return;
   e.respondWith(fetch(e.request).then(function(r){
     var copy = r.clone();
     caches.open(CACHE).then(function(c){ c.put(e.request, copy); });
