@@ -67,7 +67,7 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 #profil{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px}
 #profil .card{width:100%;max-width:420px;margin:0}
 #profil h2{margin:0 0 6px;font-size:20px}
-.who{color:#e1a925;text-decoration:underline;cursor:pointer;background:none;border:0;padding:0;font:inherit}
+.who{color:#bdbdbd;font:inherit}
 .stat{width:100%;border-collapse:collapse;font-size:14px}
 .stat th,.stat td{text-align:left;padding:7px 4px;border-top:1px solid var(--line);vertical-align:top}
 .stat th{color:var(--muted);font-weight:600}
@@ -155,7 +155,7 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 </head>
 <body>
 <div id="fili" aria-hidden="true"><svg class="fm" viewBox="0 0 512 512"><rect x="14" y="14" width="484" height="484" rx="108" fill="none" stroke="currentColor" stroke-width="28"/><g fill="currentColor"><rect x="104" y="150" width="26" height="212" rx="5"/><rect x="146" y="150" width="12" height="212" rx="4"/><rect x="174" y="150" width="34" height="212" rx="5"/><rect x="224" y="150" width="12" height="212" rx="4"/><rect x="252" y="150" width="24" height="212" rx="5"/></g><g fill="none" stroke="currentColor" stroke-width="26" stroke-linecap="round"><path d="M318 206a72 72 0 0 1 0 100"/><path d="M362 166a130 130 0 0 1 0 180"/></g></svg><div class="fn">BipBip</div></div>
-<header class="top"><img class="mark" src="logo.svg" alt="BipBip"><div><div class="tline"><div class="ttl">Bip<span>Bip</span></div><div class="slogan">l'assistant de rayon qui fait bip</div></div><div class="sub"><button class="who" id="who" type="button">profil</button></div></div></header>
+<header class="top"><img class="mark" src="logo.svg" alt="BipBip"><div><div class="tline"><div class="ttl">Bip<span>Bip</span></div><div class="slogan">l'assistant de rayon qui fait bip</div></div><div class="sub"><span class="who" id="who"></span></div></div></header>
 <div id="profil" class="hide"><div class="card">
   <h2>Bienvenue 👋</h2>
   <p class="muted">Ton prénom sert à retrouver ton historique sur n'importe quel téléphone.</p>
@@ -312,7 +312,7 @@ function codeAChange(){
 function stat(type){ prof("/profil/activite", { type: type }); }
 function typeDe(c){ return c.indexOf("s:") === 0 ? "sku" : (isBook(c) ? "livre" : "produit"); }
 function majProfilUI(){
-  $("who").textContent = PROFIL.nom ? "👤 " + PROFIL.nom : "profil";
+  $("who").textContent = PROFIL.nom ? "👤 " + PROFIL.nom : "";
   $("statBtn").className = PROFIL.admin ? "big alt" : "big alt hide";
   $("regNom").textContent = PROFIL.nom || "—";
 }
@@ -987,7 +987,6 @@ function bip(){
 $("bipTest").onclick = function(){ bip(); };
 
 $("again").onclick = function(){ tab(1); window.scrollTo({ top: 0, behavior: "smooth" }); if (!running) start(); };
-$("who").onclick = ouvrirProfil;
 $("regChange").onclick = ouvrirProfil;
 try { $("regVer").textContent = "Version du " + new Date(document.lastModified).toLocaleDateString("fr-CH"); } catch(e){}
 $("pGo").onclick = connexion;
