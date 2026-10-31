@@ -631,7 +631,7 @@ var MOIS = ["janvier","février","mars","avril","mai","juin","juillet","août","
 function frDate(s){
   s = String(s || "").trim(); if (!s) return "";
   var m = s.match(/^(\d{4})-(\d{2})(?:-(\d{2}))?/);
-  if (m) return (m[3] ? (+m[3]) + " " : "") + MOIS[+m[2] - 1] + " " + m[1];
+  if (m) return (m[3] ? (+m[3] === 1 ? "1er" : +m[3]) + " " : "") + MOIS[+m[2] - 1] + " " + m[1];
   return s;
 }
 function audienceFrom(txt){

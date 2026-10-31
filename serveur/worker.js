@@ -33,7 +33,7 @@ export default {
     const code = (url.searchParams.get("ean") || url.searchParams.get("isbn") || "").replace(/\D/g, "");
     const send = (o, s = 200) => new Response(JSON.stringify(o, null, 2), { status: s, headers: cors });
     // mémoire des fiches (stockage KV Cloudflare, 30 jours) : un article déjà vu s'affiche tout de suite
-    const VERSION = "v1";
+    const VERSION = "v2";   // v2 : dates de parution / sortie exactes
     const cle = url.pathname.slice(1) + ":" + VERSION + ":" + [code, url.searchParams.get("a"), url.searchParams.get("b")].filter(Boolean).join("-");
     const frais = url.searchParams.get("frais") === "1";
     if (env.FICHES && !frais && /^\/(livre|produit|comparer|similaires)$/.test(url.pathname)) {
@@ -84,6 +84,62 @@ const strip = (h) => String(h || "").replace(/<script[\s\S]*?<\/script>/gi, " ")
   .replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&#39;|&rsquo;/g, "'")
   .replace(/&quot;/g, '"').replace(/&eacute;/g, "é").replace(/&egrave;/g, "è").replace(/&agrave;/g, "à")
   .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&#(\d+);/g, (m, n) => String.fromCharCode(+n)).replace(/<<|>>/g, "").replace(/[ \t]+/g, " ").trim();
+
+// ---------- dates de parution : on garde la plus précise (jour > mois > année) ----------
+const MOIS_FR = ["janvier","fevrier","mars","avril","mai","juin","juillet","aout","septembre","octobre","novembre","decembre"];
+const MOIS_EN = ["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"];
+// renvoie { iso: "AAAA-MM-JJ" | "AAAA-MM" | "AAAA", prec: 3 | 2 | 1 } ou null
+function lireDate(v) {
+  const t = String(v || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
+  if (!t) return null;
+  const ok = (a, m, j) => {
+    a = +a; m = m ? +m : 0; j = j ? +j : 0;
+    if (a < 1450 || a > 2100 || m > 12 || j > 31) return null;
+    const z = (n) => String(n).padStart(2, "0");
+    if (m && j) return { iso: a + "-" + z(m) + "-" + z(j), prec: 3 };
+    if (m) return { iso: a + "-" + z(m), prec: 2 };
+    return { iso: String(a), prec: 1 };
+  };
+  let m;
+  if ((m = t.match(/(\d{4})-(\d{2})(?:-(\d{2}))?/))) return ok(m[1], m[2], m[3] && m[3] !== "00" ? m[3] : 0);
+  if ((m = t.match(/\b(\d{1,2})[\/.](\d{1,2})[\/.](\d{4})\b/))) return ok(m[3], m[2], m[1]);
+  if ((m = t.match(/\b(\d{1,2})(?:er)?\s+([a-z]+)\.?\s+(\d{4})\b/))) {
+    const i = MOIS_FR.findIndex((x) => x.startsWith(m[2].slice(0, 3))), k = MOIS_EN.indexOf(m[2].slice(0, 3));
+    if (i > -1 || k > -1) return ok(m[3], (i > -1 ? i : k) + 1, m[1]);
+  }
+  if ((m = t.match(/\b([a-z]+)\.?\s+(\d{1,2}),?\s+(\d{4})\b/))) {
+    const k = MOIS_EN.indexOf(m[1].slice(0, 3));
+    if (k > -1) return ok(m[3], k + 1, m[2]);
+  }
+  if ((m = t.match(/\b([a-z]+)\.?\s+(\d{4})\b/))) {
+    const i = MOIS_FR.findIndex((x) => x.startsWith(m[1].slice(0, 3))), k = MOIS_EN.indexOf(m[1].slice(0, 3));
+    if ((i > -1 || k > -1) && m[1].length >= 3) return ok(m[2], (i > -1 ? i : k) + 1, 0);
+  }
+  if ((m = t.match(/(?<!\d)(1[4-9]\d{2}|20\d{2})(?!\d)/))) return ok(m[1]);
+  return null;
+}
+// choisit la date la plus précise ; si les catalogues donnent l'année de l'édition, une date plus précise doit tomber la même année
+function meilleureDate(candidats, anneeEdition) {
+  const ds = candidats.map(lireDate).filter(Boolean);
+  if (!ds.length) return "";
+  const an = anneeEdition ? (lireDate(anneeEdition) || {}).iso : "";
+  const bons = ds.filter((d) => !an || d.prec === 1 || d.iso.slice(0, 4) === an.slice(0, 4));
+  const liste = bons.length ? bons : ds;
+  liste.sort((x, y) => y.prec - x.prec);
+  return liste[0].iso;
+}
+// recherche web (Bing) de la date de parution d'un ISBN, sur les sites de libraires qui l'affichent
+async function webDateLivre(isbn) {
+  const r = await get("https://www.bing.com/search?setlang=fr&cc=CH&q=" + isbn + "+%22date+de+parution%22",
+    { timeout: 6000, headers: { "Accept": "text/html", "Accept-Language": "fr-CH,fr;q=0.9" } });
+  if (r.status !== 200) return { trouve: false, status: r.status };
+  const texte = strip(r.text.replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ");
+  const re = /(?:date de (?:parution|publication|sortie)|parution|paru le|publi[ée] le|sortie le)\s*[:\-–]?\s*(?:le\s+)?(\d{1,2}[\/.]\d{1,2}[\/.]\d{4}|\d{1,2}(?:er)?\s+[a-zéû]+\.?\s+\d{4})/gi;
+  const vus = {};
+  for (const m of texte.matchAll(re)) { const d = lireDate(m[1]); if (d && d.prec === 3) vus[d.iso] = (vus[d.iso] || 0) + 1; }
+  const tri = Object.entries(vus).sort((a, b) => b[1] - a[1]);
+  return tri.length ? { trouve: true, date: tri[0][0], toutes: vus } : { trouve: false, status: 200 };
+}
 
 // ---------- sources ----------
 async function bnf(isbn) {
@@ -169,16 +225,26 @@ async function diagnostic(code) {
   if (!code) return { erreur: "ajoute ?ean=..." };
   const [b, g, o, s, u] = await Promise.all([bnf(code), google(code), openlib(code), suisse(code), upc(code)]);
   const w = u.trouve ? await wikidataJeu(titreJeu(u.nom)) : { trouve: false };
-  const [u1, opf, web, tp] = await Promise.all([upcUn(code), openProducts(code), webNom(code, true), toppreise(code)]);
+  const [u1, opf, web, tp, wd] = await Promise.all([upcUn(code), openProducts(code), webNom(code, true), toppreise(code), /^97[89]/.test(code) ? webDateLivre(code) : { trouve: false }]);
   const etat = (x) => x.trouve ? "OK" : "rien (" + (x.status || x.err || "?") + ")";
   return {
     code,
     resume: { BnF: etat(b), swisscovery: etat(s), "Google Books": etat(g), "Open Library": etat(o), "Produits (UPCitemdb / Open Products Facts / web)": u.trouve ? "OK via " + (u.source || "UPCitemdb") + " : " + u.nom : etat(u), "Wikidata (jeux)": u.trouve ? etat(w) + " — recherche : " + titreJeu(u.nom) + (estJeu(u) ? " (détecté comme jeu)" : " (pas détecté comme jeu)") : "non testé" },
     toppreise: tp.trouve ? "Fnac trouvé : CHF " + tp.prix_fnac : (tp.status === 200 ? (tp.fnac_present ? "Fnac mentionné" : "page OK, Fnac absent") : "rien / bloqué (" + tp.status + ")"),
+    date_parution: /^97[89]/.test(code) ? { retenue: meilleureDate([g.date, o.date, b.date, s.date, wd.date], b.date || s.date), google: g.date, openlibrary: o.date, bnf: b.date, swisscovery: s.date, web: wd } : undefined,
     details: { toppreise: tp, bnf: b, swisscovery: s, google: g, openlibrary: o, produit_final: u, upcitemdb_seul: u1, open_products_facts: opf, web: web, wikidata: w },
   };
 }
 
+async function dateLivre(isbn, b, g, o, s) {
+  const edition = b.date || s.date || "";
+  let d = meilleureDate([g.date, o.date, b.date, s.date], edition);
+  if (!d || d.length < 10) {   // pas encore le jour exact : on cherche sur les sites de libraires
+    const w = await webDateLivre(isbn).catch(() => ({ trouve: false }));
+    if (w.trouve) d = meilleureDate([w.date, d], edition) || d;
+  }
+  return d;
+}
 async function livre(isbn, env) {
   if (!/^\d{13}$/.test(isbn)) return { trouve: false, erreur: "ISBN à 13 chiffres attendu" };
   const [b, g, o, s] = await Promise.all([bnf(isbn), google(isbn), openlib(isbn), suisse(isbn)]);
@@ -188,7 +254,7 @@ async function livre(isbn, env) {
     titre: pick(b.titre, s.titre, g.titre, o.titre),
     auteur: pick(b.auteur, s.auteur, g.auteur, o.auteur),
     editeur: pick(b.editeur, s.editeur, g.editeur, o.editeur),
-    date: pick(g.date, b.date, s.date, o.date),
+    date: "",
     pages: pick(b.pages, s.pages, g.pages, o.pages),
     genre: pick(g.genre),
     age: pick(s.public),
@@ -196,6 +262,7 @@ async function livre(isbn, env) {
     description: pick(s.description, g.description),
     sources: { BnF: b.trouve, swisscovery: s.trouve, Google: g.trouve, OpenLibrary: o.trouve },
   };
+  if (fiche.trouve) fiche.date = await dateLivre(isbn, b, g, o, s);
   if (fiche.trouve && env && env.AI) fiche.ia = await resumeIA(env, fiche, [b.sujets, s.sujets].filter(Boolean).join(" ; "));
   return fiche;
 }
@@ -400,7 +467,28 @@ async function extraitWikipedia(urlFr, urlEn) {
   return null;
 }
 
-async function wikidataJeu(titre) {
+async function sortieJeu(item, plateforme) {
+  const q = `SELECT ?date ?prec ?lieu ?platL WHERE { wd:${item} p:P577 ?st. ?st psv:P577 ?v. ?v wikibase:timeValue ?date; wikibase:timePrecision ?prec.
+    OPTIONAL { ?st pq:P291 ?lieu. } OPTIONAL { ?st pq:P400 ?plat. ?plat rdfs:label ?platL. FILTER(LANG(?platL) = "en") } } LIMIT 100`;
+  const r = await get("https://query.wikidata.org/sparql?format=json&query=" + encodeURIComponent(q),
+    { timeout: 8000, headers: { "Accept": "application/sparql-results+json", "User-Agent": "ScanProduit/1.0 (https://matth0312leb.github.io/Fnac-scan/)" } });
+  if (r.status !== 200) return "";
+  let rows; try { rows = JSON.parse(r.text).results.bindings; } catch (e) { return ""; }
+  const EUROPE = ["Q46", "Q142", "Q39", "Q458", "Q13780930", "Q145", "Q183"];
+  const pl = String(plateforme || "").toLowerCase().replace("ps5", "playstation 5").replace("ps4", "playstation 4").replace("xbox series x|s", "xbox series");
+  const cands = rows.map((x) => {
+    const prec = +x.prec.value, iso = x.date.value.slice(0, 10);
+    const lieu = x.lieu ? x.lieu.value.split("/").pop() : "", plat = x.platL ? x.platL.value.toLowerCase() : "";
+    return {
+      iso: prec >= 11 ? iso : prec === 10 ? iso.slice(0, 7) : iso.slice(0, 4), prec,
+      score: (prec >= 11 ? 4 : prec === 10 ? 2 : 0) + (!lieu || EUROPE.includes(lieu) ? 2 : 0) + (lieu && EUROPE.includes(lieu) ? 1 : 0) +
+        (pl && plat ? (plat.includes(pl) || pl.includes(plat) ? 3 : -3) : 0),
+    };
+  }).filter((c) => /^\d{4}/.test(c.iso) && !c.iso.startsWith("-"));
+  cands.sort((a, b) => b.score - a.score || (a.iso < b.iso ? -1 : 1));
+  return cands[0] ? cands[0].iso : "";
+}
+async function wikidataJeu(titre, plateforme) {
   if (!titre || titre.length < 2) return { trouve: false };
   const esc = titre.replace(/["\\]/g, " ");
   const q = `SELECT ?item ?itemLabel ?date ?pegiLabel ?modeLabel ?genreLabel ?devLabel ?platLabel ?wfr ?wen WHERE {
@@ -431,7 +519,7 @@ async function wikidataJeu(titre) {
   const pegi = uniq("pegiLabel").map((s) => (s.match(/\d+/) || [s])[0]).sort((a, b) => a - b);
   return {
     trouve: true, wikidata: first, nom: uniq("itemLabel")[0] || "",
-    sortie: dates[0] ? dates[0].slice(0, 10) : "",
+    sortie: (await sortieJeu(first.split("/").pop(), plateforme).catch(() => "")) || (dates[0] ? dates[0].slice(0, 4) : ""),
     pegi: pegi.length ? "PEGI " + pegi[pegi.length - 1] : "",
     modes: uniq("modeLabel").join(", "), genres: uniq("genreLabel").slice(0, 3).join(", "),
     studio: uniq("devLabel").slice(0, 2).join(", "), plateformes: uniq("platLabel").slice(0, 6).join(", "),
@@ -459,7 +547,7 @@ async function produitIA(p, env) {
 
 async function jeu(p, env) {
   const titre = titreJeu(p.nom);
-  const w = await wikidataJeu(titre);
+  const w = await wikidataJeu(titre, p.plateforme || plateformeDe(p.nom));
   const infos = ["Jeu vidéo : " + p.nom, "Titre nettoyé : " + titre, plateformeDe(p.nom) && "Plateforme de cette boîte : " + plateformeDe(p.nom),
     w.trouve && "Wikidata – nom : " + w.nom, w.sortie && "Sortie : " + w.sortie, w.pegi && "Classification : " + w.pegi,
     w.modes && "Modes : " + w.modes, w.genres && "Genres : " + w.genres, w.studio && "Studio : " + w.studio,
@@ -700,7 +788,7 @@ async function fichePour(code, env) {
     const [b, g, o, s] = await Promise.all([bnf(code), google(code), openlib(code), suisse(code)]);
     const pick = (...v) => v.find((x) => x && String(x).trim()) || "";
     const f = { titre: pick(b.titre, s.titre, g.titre, o.titre), auteur: pick(b.auteur, s.auteur, g.auteur, o.auteur),
-      editeur: pick(b.editeur, s.editeur, g.editeur, o.editeur), date: pick(g.date, b.date, s.date, o.date),
+      editeur: pick(b.editeur, s.editeur, g.editeur, o.editeur), date: meilleureDate([g.date, o.date, b.date, s.date], b.date || s.date),
       pages: pick(b.pages, s.pages, g.pages, o.pages), genre: pick(g.genre), age: pick(s.public), description: pick(s.description, g.description) };
     if (!f.titre) return { trouve: false, code };
     return { trouve: true, code, nom: f.titre + (f.auteur ? " (" + f.auteur + ")" : ""), texte: "Livre\n" + infosLivre(f, [b.sujets, s.sujets].filter(Boolean).join(" ; ")) };
