@@ -105,7 +105,7 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 .reg button{border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:8px;padding:8px 12px;font-size:14px;font-weight:600}
 .warn{font-size:12px;color:var(--muted);margin:4px 0 12px}
 .desc.clip{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
-.more{border:0;background:none;color:var(--muted);text-decoration:underline;padding:0;margin:-6px 0 12px;font-size:14px}
+.more{border:0;background:none;color:var(--muted);text-decoration:underline;padding:0;margin:0 0 12px;font-size:14px;display:block}
 .acts button.sel{background:var(--accent);border-color:var(--accent);color:#111;font-weight:600}
 .cmpbar{position:sticky;bottom:calc(80px + env(safe-area-inset-bottom,0px));z-index:5}
 .cmpbar .big{box-shadow:0 6px 20px rgba(0,0,0,.3)}
@@ -505,7 +505,13 @@ function bookHtml(b){
   });
   if (dl.children.length) box.appendChild(dl);
   var p = document.createElement("p"); p.className = "desc";
-  if (b.desc) {
+  if (b.desc && b.bref) {
+    // le résumé de l'IA suffit : le texte de l'éditeur reste replié, à ouvrir si besoin
+    var ed = document.createElement("button"); ed.type = "button"; ed.className = "more"; ed.textContent = "Voir le texte de l'éditeur";
+    p.textContent = b.desc; p.style.display = "none";
+    ed.onclick = function(){ var ouvert = p.style.display !== "none"; p.style.display = ouvert ? "none" : ""; ed.textContent = ouvert ? "Voir le texte de l'éditeur" : "Masquer le texte de l'éditeur"; };
+    box.appendChild(ed); box.appendChild(p);
+  } else if (b.desc) {
     p.textContent = b.desc; p.classList.add("clip"); box.appendChild(p);
     var mo = document.createElement("button"); mo.type = "button"; mo.className = "more"; mo.textContent = "Lire la suite";
     mo.onclick = function(){ p.classList.remove("clip"); mo.remove(); };
