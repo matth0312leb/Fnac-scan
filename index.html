@@ -211,11 +211,6 @@ li{padding:10px 0;border-top:1px solid var(--line)}
     <div class="reg"><span>Connecté : <b id="regNom">—</b></span><button id="regChange" type="button">Changer</button></div>
     <p class="warn">Ton historique et tes notes suivent ton prénom sur n'importe quel téléphone.</p>
   </div>
-  <div class="card">
-    <p class="lbl">Options</p>
-    <label class="opt" style="margin:4px 0"><input type="checkbox" id="auto"> Ouvrir la fiche fnac.ch dès qu'un code est scanné (sauf livres)</label>
-    <p class="warn">Décoché, tu vois d'abord le résumé et les infos dans l'appli.</p>
-  </div>
   <button class="big alt hide" id="statBtn" type="button" style="margin-bottom:12px">📊 Statistiques de l'équipe</button>
   <div id="statCard" class="card hide"></div>
   <div class="card">
@@ -810,9 +805,7 @@ function eanOk(c){
   d.reverse().forEach(function(n, i){ s += n * (i % 2 === 0 ? 3 : 1); });
   return (10 - s % 10) % 10 === chk;
 }
-var AUTO_KEY = "autoOpen";
-try { $("auto").checked = localStorage.getItem(AUTO_KEY) !== "0"; } catch(e){ $("auto").checked = true; }
-$("auto").onchange = function(){ try { localStorage.setItem(AUTO_KEY, this.checked ? "1" : "0"); } catch(e){} };
+// la fiche fnac.ch s'ouvre toujours dès qu'un code (hors livre) est scanné
 
 function onScan(text){
   text = String(text).trim();
@@ -822,7 +815,7 @@ function onScan(text){
   if (text === last && now - lastAt < 3000) return;
   last = text; lastAt = now;
   show(text);
-  if ($("auto").checked && !isBook(text)) location.href = urlFor(text);
+  if (!isBook(text)) location.href = urlFor(text);
   return true;
 }
 
