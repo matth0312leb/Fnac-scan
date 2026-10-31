@@ -233,6 +233,14 @@ li{padding:10px 0;border-top:1px solid var(--line)}
     <p class="aide">Décoché, tu vois d'abord la fiche de l'appli (résumé, question du client…) avant d'ouvrir fnac.ch.</p>
   </div>
 
+  <div class="card rg">
+    <p class="lbl">Bip au scan</p>
+    <label class="opt"><input type="checkbox" id="sonOn"> Son « bip »</label>
+    <label class="opt" style="margin-top:12px"><input type="checkbox" id="vibOn"> Vibration légère</label>
+    <button class="more" id="bipTest" type="button" style="margin-top:14px">▶ Tester le bip</button>
+    <p class="aide">iPhone : le son se coupe tout seul quand le bouton silencieux est activé. Samsung : il suit le volume multimédia ; décoche « Son » si tu veux uniquement la vibration. La vibration n'existe pas sur iPhone dans un navigateur.</p>
+  </div>
+
   <button class="big alt hide" id="statBtn" type="button">📊 Statistiques de l'équipe</button>
   <div id="statCard" class="card hide"></div>
 
@@ -844,7 +852,7 @@ function show(c){
   if (isBook(c)) { prodReq++; loadBook(c); }
   else if (c.indexOf("s:") === 0) { bookReq++; prodReq++; $("bookBox").className = "hide"; $("bookBox").innerHTML = ""; }
   else { bookReq++; loadProduit(c); }
-  if (navigator.vibrate) { try { navigator.vibrate(60); } catch(e){} }
+  bip();
 }
 
 function eanOk(c){
@@ -936,6 +944,39 @@ Array.prototype.forEach.call(document.querySelectorAll(".champ"), function(c){
   x.addEventListener("click", function(){ i.value = ""; maj(); i.focus(); });
   setInterval(maj, 500);   // suit aussi les champs vidés par l'appli
 });
+// ---------- bip sonore et vibration au scan ----------
+var REG = { son: true, vib: true };
+try { REG.son = localStorage.getItem("bipSon") !== "0"; REG.vib = localStorage.getItem("bipVib") !== "0"; } catch(e){}
+$("sonOn").checked = REG.son; $("vibOn").checked = REG.vib;
+$("sonOn").onchange = function(){ REG.son = this.checked; try { localStorage.setItem("bipSon", this.checked ? "1" : "0"); } catch(e){} };
+$("vibOn").onchange = function(){ REG.vib = this.checked; try { localStorage.setItem("bipVib", this.checked ? "1" : "0"); } catch(e){} };
+// iPhone (iOS 17+) : catégorie « ambiante », coupée automatiquement par le bouton silencieux
+try { if (navigator.audioSession) navigator.audioSession.type = "ambient"; } catch(e){}
+var audioCtx = null;
+function contexteAudio(){
+  if (!audioCtx) { var AC = window.AudioContext || window.webkitAudioContext; if (AC) audioCtx = new AC(); }
+  if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+  return audioCtx;
+}
+// le son doit être « débloqué » par un premier geste de l'utilisateur
+["touchstart", "click"].forEach(function(ev){ document.addEventListener(ev, function deb(){ contexteAudio(); document.removeEventListener(ev, deb, true); }, true); });
+function bip(){
+  if (REG.son) {
+    try {
+      var ctx = contexteAudio();
+      if (ctx) {
+        var t = ctx.currentTime, o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = "square"; o.frequency.setValueAtTime(1750, t);
+        g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.12, t + 0.008);
+        g.gain.setValueAtTime(0.12, t + 0.07); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.1);
+        o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t + 0.11);
+      }
+    } catch(e){}
+  }
+  if (REG.vib && navigator.vibrate) { try { navigator.vibrate(25); } catch(e){} }
+}
+$("bipTest").onclick = function(){ bip(); };
+
 $("again").onclick = function(){ tab(1); window.scrollTo({ top: 0, behavior: "smooth" }); if (!running) start(); };
 $("who").onclick = ouvrirProfil;
 $("regChange").onclick = ouvrirProfil;
