@@ -816,9 +816,12 @@ function goSku(){
   var v = $("sku").value.replace(/\s+/g, "");
   if (!v) return;
   if (/^\d{12}$/.test(v)) v = "0" + v;
+  $("sku").value = ""; $("sku").blur();   // champ vidé : prêt pour le code suivant
   if (/^\d{13}$/.test(v)) { show(v); return; }
   show("s:" + v);
 }
+// au retour sur l'appli (bouton retour depuis fnac.ch ou Google), le champ est vide
+window.addEventListener("pageshow", function(){ $("sku").value = ""; });
 $("go").onclick = goSku;
 $("sku").addEventListener("keydown", function(e){ if (e.key === "Enter") goSku(); });
 
