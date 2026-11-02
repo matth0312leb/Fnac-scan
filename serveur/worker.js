@@ -594,12 +594,12 @@ async function profils(req, url, env) {
     const jour = new Date().toISOString().slice(0, 10);
     const [act, noms, q, hist] = await Promise.all([
       borne("activité", env.DB.prepare("SELECT nom, type, COUNT(*) AS n, SUM(CASE WHEN t > ? THEN 1 ELSE 0 END) AS n7, MAX(t) AS dernier FROM activite GROUP BY nom, type").bind(semaine).all(), { results: [] }),
-      borne("profils", env.DB.prepare("SELECT nom, affichage, cree, vu FROM profils").all(), { results: [] }),
+      borne("profils", env.DB.prepare("SELECT nom, affichage, cree, vu, pin IS NOT NULL AS code FROM profils").all(), { results: [] }),
       borne("quota", env.DB.prepare("SELECT appels, neurones FROM ia_usage WHERE jour = ?").bind(jour).first(), null),
       borne("quota 7 j", env.DB.prepare("SELECT jour, appels, neurones FROM ia_usage ORDER BY jour DESC LIMIT 7").all(), { results: [] }),
     ]);
     const parNom = {};
-    (noms.results || []).forEach((x) => { parNom[x.nom] = { id: x.nom, nom: x.affichage || x.nom, depuis: x.cree, dernier: x.vu || 0, total: 0, semaine: 0, fonctions: {} }; });
+    (noms.results || []).forEach((x) => { parNom[x.nom] = { id: x.nom, code: !!x.code, nom: x.affichage || x.nom, depuis: x.cree, dernier: x.vu || 0, total: 0, semaine: 0, fonctions: {} }; });
     (act.results || []).forEach((r) => {
       const s = parNom[r.nom] || (parNom[r.nom] = { id: r.nom, nom: r.nom, dernier: 0, total: 0, semaine: 0, fonctions: {} });
       s.fonctions[r.type || "scan"] = r.n; s.total += r.n; s.semaine += r.n7 || 0; s.dernier = Math.max(s.dernier, r.dernier || 0);
@@ -623,7 +623,31 @@ async function profils(req, url, env) {
     else if (al && !al.nouveau) return { ok: false, erreur: "profil supprimé", supprime: true };
     else if (al) { nom = al.nouveau; affichage = al.affichage; renomme = al.affichage; }
   }
-  const reponse = (o) => (renomme ? { ...o, renomme } : o);
+  // code personnel à 4 chiffres (champ « cle »), stocké haché ; 5 erreurs = profil bloqué 15 minutes
+  let pinAFaire = false, poserPin = "";
+  if (!admin) {
+    const pr = await env.DB.prepare("SELECT pin, essais, bloque FROM profils WHERE nom = ?").bind(nom).first().catch(() => null);
+    const pin = p("cle");
+    if (pr && pr.pin) {
+      if ((pr.bloque || 0) > now) return { ok: false, erreur: "trop d'essais", protege: true, bloque: true };
+      if (!(await pinOk(pin, pr.pin))) {
+        const essais = (pr.essais || 0) + 1;
+        await env.DB.prepare("UPDATE profils SET essais = ?, bloque = ? WHERE nom = ?").bind(essais >= 5 ? 0 : essais, essais >= 5 ? now + 15 * 60 * 1000 : 0, nom).run();
+        return { ok: false, erreur: "code", protege: true, bloque: essais >= 5 };
+      }
+      if (pr.essais) await env.DB.prepare("UPDATE profils SET essais = 0 WHERE nom = ?").bind(nom).run();
+    } else if (/^\d{4}$/.test(pin) && (route === "/profil/connexion" || route === "/profil/definir-code")) {
+      poserPin = await pinHache(pin);
+    } else if (route === "/profil/connexion") {
+      return { ok: false, erreur: "code à choisir", definir: true, nouveau: !pr };
+    } else pinAFaire = true;   // ancien profil sans code : il continue de marcher, l'appli lui demande d'en choisir un
+  }
+  const reponse = (o) => ({ ...o, ...(renomme ? { renomme } : {}), ...(pinAFaire ? { pin_a_definir: true } : {}) });
+  if (route === "/profil/definir-code") {
+    if (!poserPin) return { ok: false, erreur: "code à 4 chiffres attendu" };
+    await env.DB.prepare("UPDATE profils SET pin = ?, essais = 0, bloque = 0 WHERE nom = ?").bind(poserPin, nom).run();
+    return { ok: true };
+  }
 
   if (route.startsWith("/profil/admin-")) return await gestionProfils(route, p, admin, env, now);
 
@@ -631,6 +655,7 @@ async function profils(req, url, env) {
 
   if (route === "/profil/connexion") {
     await env.DB.prepare("INSERT INTO profils (nom, affichage, cree, vu) VALUES (?, ?, ?, ?) ON CONFLICT(nom) DO UPDATE SET vu = excluded.vu").bind(nom, affichage, now, now).run();
+    if (poserPin) await env.DB.prepare("UPDATE profils SET pin = ?, essais = 0, bloque = 0 WHERE nom = ?").bind(poserPin, nom).run();
     return reponse({ ok: true, nom: affichage, admin: nom === await conf("admin_nom") });
   }
   if (route === "/profil/historique") {
@@ -675,6 +700,16 @@ async function profils(req, url, env) {
   return { ok: false, erreur: "route inconnue" };
 }
 
+async function pinHache(pin, sel) {
+  sel = sel || [...crypto.getRandomValues(new Uint8Array(8))].map((b) => b.toString(16).padStart(2, "0")).join("");
+  const h = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("bipbip:" + sel + ":" + pin));
+  return sel + ":" + [...new Uint8Array(h)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+async function pinOk(pin, stocke) {
+  if (!/^\d{4}$/.test(String(pin || "")) || !stocke) return false;
+  return (await pinHache(pin, stocke.split(":")[0])) === stocke;
+}
+
 // ---------- gestion des profils par l'administrateur (renommer, fusionner, supprimer) ----------
 async function gestionProfils(route, p, admin, env, now) {
   if (!admin) return { ok: false, erreur: "réservé à l'administrateur" };
@@ -683,6 +718,10 @@ async function gestionProfils(route, p, admin, env, now) {
   const ancien = cle(p("cible"));
   const adminNom = (await env.DB.prepare("SELECT valeur FROM config WHERE cle = 'admin_nom'").first() || {}).valeur;
   if (!ancien || ancien === adminNom) return { ok: false, erreur: "profil invalide" };
+  if (route === "/profil/admin-code") {   // code oublié : le collègue en choisira un nouveau à sa prochaine ouverture
+    await env.DB.prepare("UPDATE profils SET pin = NULL, essais = 0, bloque = 0 WHERE nom = ?").bind(ancien).run();
+    return { ok: true };
+  }
   if (route === "/profil/admin-supprimer") {
     await env.DB.batch([
       env.DB.prepare("DELETE FROM historique WHERE nom = ?").bind(ancien),

@@ -206,9 +206,9 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 <header class="top"><img class="mark" src="logo.svg" alt="BipBip"><div><div class="tline"><div class="ttl">Bip<span>Bip</span></div><div class="slogan">l'assistant de rayon qui fait bip</div></div></div></header>
 <div id="profil" class="hide"><div class="card">
   <h2>Bienvenue sur BipBip 👋</h2>
-  <p class="intro">Entre ton prénom : il te permet de retrouver ton historique sur n'importe quel téléphone.</p>
-  <input id="pNom" type="text" placeholder="Ton prénom" autocomplete="given-name" enterkeyhint="go">
-  <input id="pCle" type="password" inputmode="numeric" placeholder="Code de ce profil" class="hide">
+  <p class="intro">Entre ton prénom et ton code à 4 chiffres : ils te permettent de retrouver ton historique sur n'importe quel téléphone. Nouveau ? Choisis un code et retiens-le.</p>
+  <input id="pNom" type="text" placeholder="Ton prénom" autocomplete="given-name" enterkeyhint="next">
+  <input id="pCle" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="Code à 4 chiffres" autocomplete="off" enterkeyhint="go">
   <button class="big" id="pGo" type="button">C'est parti</button>
   <p class="warn" id="pMsg"></p>
 </div></div>
@@ -397,6 +397,12 @@ function prof(route, data){
       if (j && j.protege) codeAChange();
       // profil renommé ou fusionné par l'administrateur : on suit le nouveau prénom
       if (j && j.renomme && j.renomme !== PROFIL.nom) { PROFIL.nom = j.renomme; try { localStorage.setItem("profilNom", PROFIL.nom); } catch(e){} majProfilUI(); }
+      // ancien profil sans code (ou code réinitialisé par l'administrateur) : on lui en fait choisir un
+      if (j && j.pin_a_definir && !window.__pinDemande && $("profil").className !== "") {
+        window.__pinDemande = true;
+        ouvrirProfil(); $("pNom").value = PROFIL.nom; setTimeout(function(){ $("pCle").focus(); }, 80);
+        $("pMsg").textContent = "Nouveau : protège ton profil avec un code à 4 chiffres. Personne d’autre ne pourra utiliser ton prénom.";
+      }
       // profil supprimé : on repart d'un prénom neuf
       if (j && j.supprime && PROFIL.nom) { PROFIL = { nom: "", cle: "", admin: false }; try { localStorage.removeItem("profilNom"); localStorage.removeItem("profilCle"); localStorage.removeItem("profilAdmin"); } catch(e){} storeHist([]); renderHist([]); majProfilUI(); ouvrirProfil(); }
       return j;
@@ -405,8 +411,8 @@ function prof(route, data){
 }
 function codeAChange(){
   if ($("profil").className === "") return;
-  ouvrirProfil(); $("pNom").value = PROFIL.nom; $("pCle").className = ""; $("pCle").focus();
-  $("pMsg").textContent = "Ton code a changé : entre le nouveau.";
+  ouvrirProfil(); $("pNom").value = PROFIL.nom; setTimeout(function(){ $("pCle").focus(); }, 80);
+  $("pMsg").textContent = "Entre ton code à 4 chiffres.";
 }
 function stat(type){ prof("/profil/activite", { type: type }); }
 function typeDe(c){ return c.indexOf("p:") === 0 ? "photo" : c.indexOf("s:") === 0 ? "sku" : (isBook(c) ? "livre" : "produit"); }
@@ -423,7 +429,7 @@ function majProfilUI(){
   $("regNom").textContent = PROFIL.nom || "—";
 }
 function ouvrirProfil(){
-  $("profil").className = ""; $("pNom").value = ""; $("pCle").value = ""; $("pCle").className = "hide"; $("pMsg").textContent = "";
+  $("profil").className = ""; $("pNom").value = ""; $("pCle").value = ""; $("pMsg").textContent = "";
   setTimeout(function(){ $("pNom").focus(); }, 50);
 }
 function chargerHistoriqueServeur(importer){
@@ -447,7 +453,8 @@ function connexion(){
   $("pMsg").textContent = "Connexion…";
   fetch(SERVEUR + "/profil/connexion", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nom: nom, cle: cle }) })
     .then(function(r){ return r.json(); }).then(function(j){
-      if (j && j.protege) { $("pCle").className = ""; $("pCle").focus(); $("pMsg").textContent = cle ? "Code incorrect." : "Ce profil est protégé : entre son code."; return; }
+      if (j && j.protege) { $("pCle").value = ""; $("pCle").focus(); $("pMsg").textContent = j.bloque ? "Trop d’essais : réessaie dans 15 minutes." : cle ? "Code incorrect. Oublié ? Demande à Matthieu de le réinitialiser." : "Entre ton code à 4 chiffres."; return; }
+      if (j && j.definir) { $("pCle").focus(); $("pMsg").textContent = cle ? "Le code doit faire 4 chiffres." : j.nouveau ? "Nouveau profil : choisis un code à 4 chiffres et retiens-le." : "Pour protéger ton profil, choisis un code à 4 chiffres et retiens-le."; return; }
       if (!j || !j.ok) { $("pMsg").textContent = "Connexion impossible, réessaie."; return; }
       var premier = !PROFIL.nom || PROFIL.nom.toLowerCase() !== nom.toLowerCase();
       if (premier && PROFIL.nom) storeHist([]);   // changement de profil : on ne mélange pas les historiques
@@ -465,8 +472,13 @@ function gererProfil(tr, p){
   td.appendChild(el("p", "aide", "Renommer « " + p.nom + " ». Si tu tapes un prénom qui existe déjà, les deux profils sont fusionnés (historique et statistiques réunis)."));
   var inp = el("input"); inp.value = p.nom; inp.maxLength = 30; inp.style.cssText = "font-size:16px;padding:10px;margin:6px 0";
   var row = el("div"); row.style.cssText = "display:flex;gap:8px;flex-wrap:wrap";
-  var bR = el("button", "act", "Renommer / fusionner"), bS = el("button", "act danger", "Supprimer le profil"), msg = el("p", "aide", "");
-  bR.type = bS.type = "button";
+  var bR = el("button", "act", "Renommer / fusionner"), bC = el("button", "act", "Réinitialiser son code"), bS = el("button", "act danger", "Supprimer le profil"), msg = el("p", "aide", p.code ? "Code personnel : défini." : "Code personnel : pas encore choisi.");
+  bR.type = bS.type = bC.type = "button";
+  bC.onclick = function(){
+    if (!window.confirm("Réinitialiser le code de « " + p.nom + " » ? Il en choisira un nouveau à sa prochaine ouverture de BipBip.")) return;
+    msg.textContent = "…";
+    prof("/profil/admin-code", { cible: p.id }).then(function(j){ fin(j, "Code réinitialisé : il en choisira un nouveau en ouvrant BipBip."); });
+  };
   var fin = function(j, txt){
     if (!j || !j.ok) { msg.textContent = (j && j.erreur) || "Échec, réessaie."; return; }
     msg.textContent = txt;
@@ -483,7 +495,7 @@ function gererProfil(tr, p){
     msg.textContent = "…";
     prof("/profil/admin-supprimer", { cible: p.id }).then(function(j){ fin(j, "Profil supprimé."); });
   };
-  row.appendChild(bR); row.appendChild(bS);
+  row.appendChild(bR); row.appendChild(bC); row.appendChild(bS);
   td.appendChild(inp); td.appendChild(row); td.appendChild(msg); ligne.appendChild(td);
   tr.parentNode.insertBefore(ligne, suiv);
 }
@@ -524,7 +536,7 @@ function afficherStats(){
     t.appendChild(hd);
     j.equipe.forEach(function(p){
       var tr = el("tr"), c1 = el("td");
-      c1.appendChild(el("b", "", p.nom));
+      c1.appendChild(el("b", "", p.nom + (p.code ? " 🔒" : "")));
       var det = Object.keys(p.fonctions).sort(function(a, b){ return p.fonctions[b] - p.fonctions[a]; }).map(function(k){ return p.fonctions[k] + " " + (NOMS[k] || k); }).join(" · ");
       if (det) { c1.appendChild(el("br")); c1.appendChild(el("span", "det", det)); }
       if (p.id && p.id !== PROFIL.nom.toLowerCase()) {
@@ -1240,7 +1252,7 @@ $("again").onclick = function(){ tab(1); window.scrollTo({ top: 0, behavior: "sm
 $("regChange").onclick = ouvrirProfil;
 try { $("regVer").textContent = "Version du " + new Date(document.lastModified).toLocaleDateString("fr-CH"); } catch(e){}
 $("pGo").onclick = connexion;
-$("pNom").addEventListener("keydown", function(e){ if (e.key === "Enter") connexion(); });
+$("pNom").addEventListener("keydown", function(e){ if (e.key === "Enter") { if ($("pCle").value) connexion(); else $("pCle").focus(); } });
 $("pCle").addEventListener("keydown", function(e){ if (e.key === "Enter") connexion(); });
 $("statBtn").onclick = afficherStats;
 renderHist(loadHist());
