@@ -570,8 +570,8 @@ async function profils(req, url, env) {
   const corps = req.method === "POST" ? await req.json().catch(() => ({})) : {};
   const p = (k) => String(corps[k] ?? url.searchParams.get(k) ?? "").trim();
   const conf = async (k) => { const r = await env.DB.prepare("SELECT valeur FROM config WHERE cle = ?").bind(k).first(); return r ? r.valeur : ""; };
-  const affichage = p("nom").replace(/\s+/g, " ").slice(0, 30);
-  const nom = affichage.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+  let affichage = p("nom").replace(/\s+/g, " ").slice(0, 30);
+  let nom = affichage.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
   const now = Date.now();
   const route = url.pathname;
 
@@ -599,9 +599,9 @@ async function profils(req, url, env) {
       borne("quota 7 j", env.DB.prepare("SELECT jour, appels, neurones FROM ia_usage ORDER BY jour DESC LIMIT 7").all(), { results: [] }),
     ]);
     const parNom = {};
-    (noms.results || []).forEach((x) => { parNom[x.nom] = { nom: x.affichage || x.nom, depuis: x.cree, dernier: x.vu || 0, total: 0, semaine: 0, fonctions: {} }; });
+    (noms.results || []).forEach((x) => { parNom[x.nom] = { id: x.nom, nom: x.affichage || x.nom, depuis: x.cree, dernier: x.vu || 0, total: 0, semaine: 0, fonctions: {} }; });
     (act.results || []).forEach((r) => {
-      const s = parNom[r.nom] || (parNom[r.nom] = { nom: r.nom, dernier: 0, total: 0, semaine: 0, fonctions: {} });
+      const s = parNom[r.nom] || (parNom[r.nom] = { id: r.nom, nom: r.nom, dernier: 0, total: 0, semaine: 0, fonctions: {} });
       s.fonctions[r.type || "scan"] = r.n; s.total += r.n; s.semaine += r.n7 || 0; s.dernier = Math.max(s.dernier, r.dernier || 0);
     });
     return { ok: true, equipe: Object.values(parNom).sort((a, b) => b.total - a.total),
@@ -612,16 +612,30 @@ async function profils(req, url, env) {
   if (!nom || nom.length < 2) return { ok: false, erreur: "prénom manquant" };
   // protection du profil administrateur
   if (nom === await conf("admin_nom") && p("cle") !== await conf("code_stats")) return { ok: false, erreur: "code", protege: true };
+  const admin = nom === await conf("admin_nom");
+
+  // profil renommé ou supprimé par l'administrateur : le téléphone du collègue est prévenu à sa prochaine requête
+  let renomme = "";
+  if (!admin) {
+    const al = await env.DB.prepare("SELECT nouveau, affichage FROM renommages WHERE ancien = ?").bind(nom).first().catch(() => null);
+    // supprimé : refusé pour le vieux téléphone, mais une reconnexion volontaire avec ce prénom le recrée
+    if (al && !al.nouveau && route === "/profil/connexion") await env.DB.prepare("DELETE FROM renommages WHERE ancien = ?").bind(nom).run();
+    else if (al && !al.nouveau) return { ok: false, erreur: "profil supprimé", supprime: true };
+    else if (al) { nom = al.nouveau; affichage = al.affichage; renomme = al.affichage; }
+  }
+  const reponse = (o) => (renomme ? { ...o, renomme } : o);
+
+  if (route.startsWith("/profil/admin-")) return await gestionProfils(route, p, admin, env, now);
 
   if (route.startsWith("/chat/")) return await chat(route, p, nom, affichage, nom === await conf("admin_nom"), env, now);
 
   if (route === "/profil/connexion") {
     await env.DB.prepare("INSERT INTO profils (nom, affichage, cree, vu) VALUES (?, ?, ?, ?) ON CONFLICT(nom) DO UPDATE SET vu = excluded.vu").bind(nom, affichage, now, now).run();
-    return { ok: true, nom: affichage, admin: nom === await conf("admin_nom") };
+    return reponse({ ok: true, nom: affichage, admin: nom === await conf("admin_nom") });
   }
   if (route === "/profil/historique") {
     const rows = (await env.DB.prepare("SELECT code AS c, note AS n, t, titre AS ti FROM historique WHERE nom = ? ORDER BY t DESC LIMIT 50").bind(nom).all()).results || [];
-    return { ok: true, historique: rows };
+    return reponse({ ok: true, historique: rows });
   }
   const type = TYPES.includes(p("type")) ? p("type") : "produit";
   if (route === "/profil/ajouter") {
@@ -633,30 +647,77 @@ async function profils(req, url, env) {
       env.DB.prepare("UPDATE profils SET vu = ? WHERE nom = ?").bind(now, nom),
       env.DB.prepare("DELETE FROM historique WHERE nom = ? AND code NOT IN (SELECT code FROM historique WHERE nom = ? ORDER BY t DESC LIMIT 50)").bind(nom, nom),
     ]);
-    return { ok: true };
+    return reponse({ ok: true });
   }
   if (route === "/profil/activite") {
     await env.DB.batch([
       env.DB.prepare("INSERT INTO activite (nom, t, type) VALUES (?, ?, ?)").bind(nom, now, type),
       env.DB.prepare("UPDATE profils SET vu = ? WHERE nom = ?").bind(now, nom),
     ]);
-    return { ok: true };
+    return reponse({ ok: true });
   }
   if (route === "/profil/titre") {
     await env.DB.prepare("UPDATE historique SET titre = ? WHERE nom = ? AND code = ?").bind(p("titre").slice(0, 120), nom, p("article")).run();
-    return { ok: true };
+    return reponse({ ok: true });
   }
   if (route === "/profil/note") {
     await env.DB.prepare("UPDATE historique SET note = ? WHERE nom = ? AND code = ?").bind(p("note").slice(0, 200), nom, p("article")).run();
-    return { ok: true };
+    return reponse({ ok: true });
   }
   if (route === "/profil/supprimer") {
     await env.DB.prepare("DELETE FROM historique WHERE nom = ? AND code = ?").bind(nom, p("article")).run();
-    return { ok: true };
+    return reponse({ ok: true });
   }
   if (route === "/profil/vider") {
     await env.DB.prepare("DELETE FROM historique WHERE nom = ?").bind(nom).run();
+    return reponse({ ok: true });
+  }
+  return { ok: false, erreur: "route inconnue" };
+}
+
+// ---------- gestion des profils par l'administrateur (renommer, fusionner, supprimer) ----------
+async function gestionProfils(route, p, admin, env, now) {
+  if (!admin) return { ok: false, erreur: "réservé à l'administrateur" };
+  await env.DB.prepare("CREATE TABLE IF NOT EXISTS renommages (ancien TEXT PRIMARY KEY, nouveau TEXT, affichage TEXT, t INTEGER)").run();
+  const cle = (x) => String(x || "").replace(/\s+/g, " ").trim().slice(0, 30).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const ancien = cle(p("cible"));
+  const adminNom = (await env.DB.prepare("SELECT valeur FROM config WHERE cle = 'admin_nom'").first() || {}).valeur;
+  if (!ancien || ancien === adminNom) return { ok: false, erreur: "profil invalide" };
+  if (route === "/profil/admin-supprimer") {
+    await env.DB.batch([
+      env.DB.prepare("DELETE FROM historique WHERE nom = ?").bind(ancien),
+      env.DB.prepare("DELETE FROM activite WHERE nom = ?").bind(ancien),
+      env.DB.prepare("DELETE FROM profils WHERE nom = ?").bind(ancien),
+      env.DB.prepare("INSERT INTO renommages (ancien, nouveau, affichage, t) VALUES (?, '', '', ?) ON CONFLICT(ancien) DO UPDATE SET nouveau = '', affichage = '', t = excluded.t").bind(ancien, now),
+    ]);
     return { ok: true };
+  }
+  if (route === "/profil/admin-renommer") {
+    const affichage = p("vers").replace(/\s+/g, " ").trim().slice(0, 30), nouveau = cle(affichage);
+    if (nouveau.length < 2) return { ok: false, erreur: "nouveau prénom manquant" };
+    if (nouveau === adminNom) return { ok: false, erreur: "prénom réservé" };
+    if (nouveau === ancien) {   // simple changement de majuscules / accents
+      await env.DB.prepare("UPDATE profils SET affichage = ? WHERE nom = ?").bind(affichage, ancien).run();
+      return { ok: true };
+    }
+    const existe = await env.DB.prepare("SELECT nom FROM profils WHERE nom = ?").bind(nouveau).first();
+    const ops = [
+      // l'historique est fusionné (le plus récent l'emporte en cas de doublon)
+      env.DB.prepare("INSERT INTO historique (nom, code, note, t, titre) SELECT ?, code, note, t, titre FROM historique WHERE nom = ? ON CONFLICT(nom, code) DO UPDATE SET t = MAX(historique.t, excluded.t), note = CASE WHEN historique.note <> '' THEN historique.note ELSE excluded.note END, titre = CASE WHEN historique.titre <> '' THEN historique.titre ELSE excluded.titre END").bind(nouveau, ancien),
+      env.DB.prepare("DELETE FROM historique WHERE nom = ?").bind(ancien),
+      env.DB.prepare("UPDATE activite SET nom = ? WHERE nom = ?").bind(nouveau, ancien),
+      existe
+        ? env.DB.prepare("UPDATE profils SET cree = MIN(cree, (SELECT cree FROM profils WHERE nom = ?)), vu = MAX(vu, (SELECT vu FROM profils WHERE nom = ?)), affichage = ? WHERE nom = ?").bind(ancien, ancien, affichage, nouveau)
+        : env.DB.prepare("UPDATE profils SET nom = ?, affichage = ? WHERE nom = ?").bind(nouveau, affichage, ancien),
+      env.DB.prepare("DELETE FROM profils WHERE nom = ?").bind(ancien),
+      env.DB.prepare("INSERT INTO renommages (ancien, nouveau, affichage, t) VALUES (?, ?, ?, ?) ON CONFLICT(ancien) DO UPDATE SET nouveau = excluded.nouveau, affichage = excluded.affichage, t = excluded.t").bind(ancien, nouveau, affichage, now),
+      // les anciens alias qui pointaient vers l'ancien prénom suivent ; le nouveau prénom redevient libre
+      env.DB.prepare("UPDATE renommages SET nouveau = ?, affichage = ? WHERE nouveau = ?").bind(nouveau, affichage, ancien),
+      env.DB.prepare("DELETE FROM renommages WHERE ancien = ?").bind(nouveau),
+    ];
+    await env.DB.batch(ops);
+    try { await env.DB.prepare("UPDATE messages SET nom = ?, affichage = ? WHERE nom = ?").bind(nouveau, affichage, ancien).run(); } catch (e) {}
+    return { ok: true, fusion: !!existe };
   }
   return { ok: false, erreur: "route inconnue" };
 }

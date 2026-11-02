@@ -93,6 +93,10 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 .bar span{display:block;height:100%;background:#2e9e4f}
 .bar span.mid{background:#e8a000}.bar span.haut{background:#d64545}
 .champ{position:relative}
+.stat .gerer{margin-top:6px;border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:8px;padding:4px 10px;font-size:12px;font-weight:600}
+.stat tr.gestion td{background:var(--bg);border-radius:8px;padding:10px}
+.stat .act{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:8px;padding:8px 12px;font-size:14px;font-weight:600}
+.stat .act.danger{color:#d64545;border-color:#d64545}
 /* chat du magasin */
 #chatHead{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 16px}
 #chatHead b{font-size:17px}
@@ -389,7 +393,14 @@ function prof(route, data){
   var body = Object.assign({ nom: PROFIL.nom, cle: PROFIL.cle }, data || {});
   return fetch(SERVEUR + route, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
     .then(function(r){ return r.json(); })
-    .then(function(j){ if (j && j.protege) codeAChange(); return j; })
+    .then(function(j){
+      if (j && j.protege) codeAChange();
+      // profil renommé ou fusionné par l'administrateur : on suit le nouveau prénom
+      if (j && j.renomme && j.renomme !== PROFIL.nom) { PROFIL.nom = j.renomme; try { localStorage.setItem("profilNom", PROFIL.nom); } catch(e){} majProfilUI(); }
+      // profil supprimé : on repart d'un prénom neuf
+      if (j && j.supprime && PROFIL.nom) { PROFIL = { nom: "", cle: "", admin: false }; try { localStorage.removeItem("profilNom"); localStorage.removeItem("profilCle"); localStorage.removeItem("profilAdmin"); } catch(e){} storeHist([]); renderHist([]); majProfilUI(); ouvrirProfil(); }
+      return j;
+    })
     .catch(function(){ return null; });
 }
 function codeAChange(){
@@ -446,6 +457,36 @@ function connexion(){
       chargerHistoriqueServeur(true);
     }, function(){ $("pMsg").textContent = "Serveur injoignable, réessaie."; });
 }
+// administrateur : renommer, fusionner (renommer vers un prénom qui existe déjà) ou supprimer un profil
+function gererProfil(tr, p){
+  var suiv = tr.nextSibling;
+  if (suiv && suiv.className === "gestion") { suiv.remove(); return; }
+  var ligne = el("tr", "gestion"), td = el("td"); td.colSpan = 4;
+  td.appendChild(el("p", "aide", "Renommer « " + p.nom + " ». Si tu tapes un prénom qui existe déjà, les deux profils sont fusionnés (historique et statistiques réunis)."));
+  var inp = el("input"); inp.value = p.nom; inp.maxLength = 30; inp.style.cssText = "font-size:16px;padding:10px;margin:6px 0";
+  var row = el("div"); row.style.cssText = "display:flex;gap:8px;flex-wrap:wrap";
+  var bR = el("button", "act", "Renommer / fusionner"), bS = el("button", "act danger", "Supprimer le profil"), msg = el("p", "aide", "");
+  bR.type = bS.type = "button";
+  var fin = function(j, txt){
+    if (!j || !j.ok) { msg.textContent = (j && j.erreur) || "Échec, réessaie."; return; }
+    msg.textContent = txt;
+    setTimeout(function(){ $("statCard").className = "card hide"; afficherStats(); }, 700);
+  };
+  bR.onclick = function(){
+    var v = inp.value.trim();
+    if (v.length < 2) { inp.focus(); return; }
+    msg.textContent = "…";
+    prof("/profil/admin-renommer", { cible: p.id, vers: v }).then(function(j){ fin(j, j && j.fusion ? "Profils fusionnés." : "Profil renommé."); });
+  };
+  bS.onclick = function(){
+    if (!window.confirm("Supprimer le profil « " + p.nom + " » ? Son historique et ses statistiques seront effacés.")) return;
+    msg.textContent = "…";
+    prof("/profil/admin-supprimer", { cible: p.id }).then(function(j){ fin(j, "Profil supprimé."); });
+  };
+  row.appendChild(bR); row.appendChild(bS);
+  td.appendChild(inp); td.appendChild(row); td.appendChild(msg); ligne.appendChild(td);
+  tr.parentNode.insertBefore(ligne, suiv);
+}
 function afficherStats(){
   var box = $("statCard");
   if (box.className === "card") { box.className = "card hide"; return; }
@@ -486,6 +527,11 @@ function afficherStats(){
       c1.appendChild(el("b", "", p.nom));
       var det = Object.keys(p.fonctions).sort(function(a, b){ return p.fonctions[b] - p.fonctions[a]; }).map(function(k){ return p.fonctions[k] + " " + (NOMS[k] || k); }).join(" · ");
       if (det) { c1.appendChild(el("br")); c1.appendChild(el("span", "det", det)); }
+      if (p.id && p.id !== PROFIL.nom.toLowerCase()) {
+        var g = el("button", "gerer", "Gérer"); g.type = "button";
+        g.onclick = function(){ gererProfil(tr, p); };
+        c1.appendChild(el("br")); c1.appendChild(g);
+      }
       tr.appendChild(c1); tr.appendChild(el("td", "", String(p.total))); tr.appendChild(el("td", "", String(p.semaine))); tr.appendChild(el("td", "", p.dernier ? ago(p.dernier) : "—"));
       t.appendChild(tr);
     });
