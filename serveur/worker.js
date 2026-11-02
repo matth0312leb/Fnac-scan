@@ -673,8 +673,10 @@ async function question(q, contexte, env) {
 
 // ---------- identification par photo ----------
 async function vision(env, image, details) {
-  const question = "Tu regardes la photo d'un article vendu à la Fnac (jeu vidéo, livre, BD, film, produit high-tech…). Lis le texte visible sur la couverture ou la boîte. Un jeu vidéo est une boîte plate avec le logo d'une console (PS5, Switch, Xbox) et un logo PEGI ; un livre, un album jeunesse ou une BD a un auteur et un éditeur (Gallimard, Margot, Dargaud…) et pas de console. " +
-    'Réponds UNIQUEMENT en JSON : {"type":"jeu|livre|produit","titre":"titre exact lu (jeu ou livre) ou nom du produit","plateforme":"console si jeu vidéo (PS5, Nintendo Switch…), sinon vide","marque":"marque ou éditeur","modele":"modèle si produit","auteur":"auteur si livre","pegi":"chiffre PEGI visible, sinon vide"}. N\'invente rien : laisse vide ce que tu ne lis pas.';
+  const question = "Tu regardes la photo d'un article vendu à la Fnac. Dis d'abord QUEL OBJET c'est, puis lis le texte visible. " +
+    "Trois cas : « produit » = tout appareil ou accessoire (enceinte, casque, écouteurs, console de jeu elle-même, manette, téléphone, tablette, TV, appareil photo, câble, jouet…) ; " +
+    "« jeu » = uniquement un jeu vidéo (boîtier plat de jeu avec la jaquette d'un jeu, un logo de console et un logo PEGI) ; « livre » = livre, BD, manga ou album jeunesse (auteur, éditeur). Une console ou une manette est un « produit », pas un « jeu ». En cas de doute, choisis « produit ». " +
+    'Réponds UNIQUEMENT en JSON : {"objet":"ce que c\'est en 1 à 3 mots (ex. enceinte bluetooth, console, jeu vidéo, roman, album jeunesse)","type":"produit|jeu|livre","titre":"titre exact lu (jeu ou livre) ou nom du produit","plateforme":"console seulement si c\'est un jeu vidéo, sinon vide","marque":"marque ou éditeur","modele":"modèle si produit","auteur":"auteur si livre","pegi":"chiffre PEGI visible, sinon vide"}. N\'invente rien : laisse vide ce que tu ne lis pas.';
   const texteDe = (r) => {
     if (r == null) return "";
     if (typeof r === "string") return r;
@@ -722,7 +724,7 @@ async function vision(env, image, details) {
   const desc = brut.filter((t) => t && t.length > 10).join("\n");
   if (desc) {
     const o = await demanderIA(env, "Voici ce qu'une IA a lu sur la photo d'un article. Réponds UNIQUEMENT en JSON : " +
-      '{"type":"jeu|livre|produit","titre":"","plateforme":"","marque":"","modele":"","auteur":"","pegi":""}. Laisse vide ce qui n\'est pas indiqué.', desc.slice(0, 2000), 200);
+      '{"objet":"ce que c\'est en 1 à 3 mots","type":"produit|jeu|livre","titre":"","plateforme":"","marque":"","modele":"","auteur":"","pegi":""}. Une console, une manette, une enceinte, un casque… est un « produit ». Laisse vide ce qui n\'est pas indiqué.', desc.slice(0, 2000), 200);
     if (o && (o.titre || o.title)) { details.push("titre extrait de la description"); return { ...o, titre: o.titre || o.title, modeleIA: "description" }; }
   }
   return null;
@@ -774,6 +776,9 @@ async function chercherLivre(titre, auteur, editeur) {
   return tous[0] || null;
 }
 
+const APPAREIL = /\b(enceintes?|speakers?|haut-parleurs?|casques?|headphones?|headset|[ée]couteurs|earbuds|airpods|consoles?|manettes?|controllers?|gamepad|joy-?con|dualsense|t[ée]l[ée]phone|smartphone|iphone|galaxy|tablette|ipad|t[ée]l[ée]viseur|tv|[ée]cran|moniteur|monitor|appareil photo|camera|cam[ée]ra|objectif|drone|montre connect[ée]e|smartwatch|watch|chargeur|charger|c[âa]ble|batterie externe|power ?bank|clavier|keyboard|souris|mouse|imprimante|printer|routeur|disque dur|ssd|cl[ée] usb|ordinateur|laptop|pc portable|macbook|barre de son|soundbar|platine|tourne-disque|radio|r[ée]veil|aspirateur|robot|trottinette|jouet|figurine|peluche|lego)\b/i;
+const APPAREIL_FORT = /\b(enceintes?|haut-parleurs?|casques? audio|headphones?|[ée]couteurs|earbuds|airpods|manettes?|controllers?|dualsense|joy-?con|barre de son|soundbar|chargeur|power ?bank|batterie externe|console de jeux?)\b/i;
+const MARQUES_TECH = /\b(jbl|bose|sonos|marshall|ultimate ears|beats|sony|samsung|apple|logitech|razer|steelseries|corsair|hyperx|turtle beach|philips|lg|xiaomi|huawei|garmin|gopro|dji|canon|nikon|fujifilm|nintendo|playstation|xbox|microsoft|lenovo|asus|acer|hp|dell|anker|belkin|bang ?& ?olufsen|sennheiser|jabra|devialet|harman|denon|yamaha|pioneer|panasonic|tcl|hisense|dyson)\b/i;
 async function photo(image, env) {
   if (!/^data:image\/(jpeg|jpg|png|webp);base64,/.test(image)) return { trouve: false, erreur: "image attendue (data:image/jpeg;base64,...)" };
   if (image.length > 3000000) return { trouve: false, erreur: "image trop lourde" };
@@ -784,6 +789,14 @@ async function photo(image, env) {
   let type = String(v.type || "").toLowerCase();
   // « plateforme » ne compte que si c'est une vraie console (l'IA renvoie parfois « aucune », « N/A »…)
   v.plateforme = PLATEFORMES.test(String(v.plateforme || "")) ? v.plateforme : "";
+  // un appareil (enceinte, console elle-même, casque…) est toujours un produit, quoi qu'ait répondu l'IA
+  const texteLu = [v.objet, v.titre, v.marque, v.modele].join(" ");
+  const objetJeuOuLivre = /jeu vid[ée]o|video game|livre|roman|bd|manga|album|book/i.test(String(v.objet || ""));
+  if (!v.auteur && !v.pegi && !objetJeuOuLivre && (APPAREIL.test(String(v.objet || "")) || APPAREIL_FORT.test([v.titre, v.modele].join(" ")))) type = "produit";
+  if (type.startsWith("jeu") && !v.plateforme && !v.pegi && MARQUES_TECH.test(texteLu)) type = "produit";
+  // « jeu » dont le titre n'est que le nom de la console (« PlayStation 5 Pro », « Nintendo Switch 2 ») : c'est la console elle-même
+  if (type.startsWith("jeu") && !v.pegi && !String(v.titre || "").replace(PLATEFORMES, "").replace(/\b(pro|slim|digital|edition|édition|oled|lite|console|nintendo|sony|microsoft|\d+\s*(go|to|gb|tb))\b/gi, "").replace(/[^a-z0-9]/gi, "")) type = "produit";
+  details.push("vu : " + (v.objet || "?") + " → " + (type || "?"));
   const aCouverture = !v.plateforme && !v.pegi;   // ni console ni PEGI : probablement pas un jeu vidéo
   // livre (ou jeu sans console) : on cherche le titre dans les catalogues pour retrouver l'ISBN
   if (type.startsWith("livre") || (aCouverture && (type.startsWith("jeu") || v.auteur))) {
@@ -791,13 +804,16 @@ async function photo(image, env) {
     details.push("catalogue : " + (trouve ? trouve.titre + " (" + trouve.isbn + ")" : "aucun livre correspondant"));
     if (trouve) return { trouve: true, type: "livre", source: "photo", isbn: trouve.isbn, titre: trouve.titre, auteur: v.auteur || "", editeur: v.marque || "", lu: v, details };
     if (type.startsWith("jeu")) type = v.auteur ? "livre" : "jeu";
+    // « livre » sans auteur et introuvable dans les catalogues : plus probablement un produit
+    else if (!v.auteur && !/livre|roman|bd|manga|album|book/i.test(String(v.objet || ""))) type = "produit";
   }
-  if (type.startsWith("jeu") || v.plateforme) {
+  if (type.startsWith("produit")) v.plateforme = "";
+  if (type.startsWith("jeu") || (v.plateforme && !type.startsWith("livre"))) {
     const p = { trouve: true, source: "photo", nom: [v.titre, v.plateforme].filter(Boolean).join(" "), marque: v.marque || "", modele: "",
       categorie: "Jeu vidéo", description: v.pegi ? "PEGI " + v.pegi + " visible sur la boîte" : "", image: "", plateforme: plateformeDe(v.plateforme || "") || v.plateforme || "" };
     const r = await jeu(p, env);
-    // pas de console, pas de PEGI et inconnu de Wikidata : ce n'est sans doute pas un jeu vidéo → traité comme un livre
-    if (aCouverture && !(r.jeu && r.jeu.trouve)) type = "livre";
+    // pas de console, pas de PEGI et inconnu de Wikidata : ce n'est sans doute pas un jeu vidéo → produit (ou livre s'il y a un auteur)
+    if (aCouverture && !(r.jeu && r.jeu.trouve)) type = v.auteur ? "livre" : "produit";
     else {
       if (v.pegi && r.jeu && !r.jeu.pegi) r.jeu.pegi = "PEGI " + v.pegi;
       if (v.marque && r.jeu && !r.jeu.studio) r.jeu.studio = v.marque;
