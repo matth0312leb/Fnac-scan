@@ -93,6 +93,28 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 .bar span{display:block;height:100%;background:#2e9e4f}
 .bar span.mid{background:#e8a000}.bar span.haut{background:#d64545}
 .champ{position:relative}
+/* chat du magasin */
+#chatHead{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 16px}
+#chatHead b{font-size:17px}
+#chatHead .sub{font-size:12px;color:var(--muted);display:block;margin-top:2px}
+#chatHead button{border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:8px;padding:7px 10px;font-size:13px;font-weight:600;flex:none}
+#chatList{display:flex;flex-direction:column;gap:6px;padding:4px 2px 12px;min-height:40vh}
+#chatList .jour{align-self:center;font-size:12px;color:var(--muted);margin:10px 0 4px}
+#chatList .vide{align-self:center;color:var(--muted);font-size:14px;text-align:center;margin:40px 20px}
+.msg{max-width:80%;align-self:flex-start;background:var(--card);border:1px solid var(--line);border-radius:16px 16px 16px 4px;padding:8px 12px;font-size:16px;line-height:1.35;word-wrap:break-word;white-space:pre-wrap}
+.msg.moi{align-self:flex-end;background:var(--accent);color:var(--accent-text);border-color:transparent;border-radius:16px 16px 4px 16px}
+.msg .qui{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:2px}
+.msg .h{display:block;font-size:11px;opacity:.6;text-align:right;margin-top:2px}
+.msg .suppr{display:none;margin-top:6px;border:0;background:rgba(0,0,0,.12);color:inherit;border-radius:8px;font-size:13px;padding:5px 10px}
+.msg.ouvert .suppr{display:inline-block}
+#chatBar{position:sticky;bottom:calc(76px + env(safe-area-inset-bottom,0px));z-index:5;display:flex;gap:8px;align-items:flex-end;background:var(--bg);padding:8px 0 6px}
+#chatIn{flex:1;margin:0;font-size:16px;padding:12px 14px;border-radius:22px;resize:none;max-height:120px;font-family:inherit;line-height:1.3;border:1px solid var(--line);background:var(--card);color:var(--text)}
+#chatGo{flex:none;width:46px;height:46px;border:0;border-radius:50%;background:var(--accent);color:var(--accent-text);display:flex;align-items:center;justify-content:center}
+#chatGo svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#chatCode{text-transform:uppercase;letter-spacing:4px;text-align:center;font-weight:700}
+.salons{margin:8px 0 0;padding:0;list-style:none}
+.salons li{display:flex;justify-content:space-between;padding:8px 0}
+.salons code{font-weight:700;letter-spacing:2px}
 .champ input{padding-right:46px}
 .croix{position:absolute;right:6px;top:7px;width:36px;height:36px;border:0;border-radius:50%;background:var(--line);color:var(--text);font-size:20px;line-height:36px;padding:0;display:none}
 .champ.plein .croix{display:block}
@@ -191,6 +213,7 @@ li{padding:10px 0;border-top:1px solid var(--line)}
   <button id="t2" type="button"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10"/></svg>SKU/EAN</button>
   <button id="t3" type="button"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5"/></svg>Mots-clés</button>
   <button id="t4" type="button"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>Historique<span class="badge" id="nb">0</span></button>
+  <button id="t6" type="button"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg>Chat<span class="badge" id="nbChat" style="display:none">0</span></button>
   <button id="t5" type="button"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg>Réglages</button>
 </div></nav>
 
@@ -265,6 +288,27 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 </div>
 </div>
 
+<div id="p6" class="hide">
+  <div id="chatJoin" class="card">
+    <p class="titre">Chat du magasin</p>
+    <p class="intro">Discute avec les collègues de ton magasin. Entre le code à 6 caractères de ton magasin (un collègue qui l'a déjà peut te le donner : il est affiché en haut du chat).</p>
+    <input id="chatCode" maxlength="6" autocomplete="off" autocapitalize="characters" enterkeyhint="go" placeholder="CODE">
+    <button class="big" id="chatJoinGo" type="button"><span class="lb">Rejoindre le chat</span></button>
+    <p class="muted" id="chatJoinMsg"></p>
+    <div id="chatAdmin" class="hide">
+      <p class="lbl" style="margin-top:18px">Administrateur</p>
+      <input id="chatNouveau" maxlength="40" autocomplete="off" placeholder="Nom du magasin (ex. Vésenaz)" style="font-size:16px">
+      <button class="big alt" id="chatCreer" type="button"><span class="lb">Créer le chat de ce magasin</span></button>
+      <ul class="salons" id="chatSalons"></ul>
+    </div>
+  </div>
+  <div id="chatRoom" class="hide">
+    <div id="chatHead" class="card"><div><b id="chatSalon"></b><span class="sub">Code à partager : <b id="chatCodeAff"></b> · messages effacés après 30 jours</span></div><button id="chatQuit" type="button">Changer</button></div>
+    <div id="chatList"></div>
+    <div id="chatBar"><textarea id="chatIn" rows="1" maxlength="500" placeholder="Écris un message…" enterkeyhint="send"></textarea><button id="chatGo" type="button" aria-label="Envoyer"><svg viewBox="0 0 24 24"><path d="M4 12 20 4l-6 16-3-7z"/></svg></button></div>
+  </div>
+</div>
+
 <div id="p5" class="hide">
   <div class="card rg">
     <p class="lbl">Profil</p>
@@ -312,7 +356,7 @@ function btnIc(cls, icone, txt){ var b = document.createElement("button"); b.typ
 function lab(id, txt){ var b = $(id), s = b && b.querySelector(".lb"); if (s) s.textContent = txt; else if (b) b.textContent = txt; }
 
 function tab(n){
-  for (var i = 1; i <= 5; i++) { $("p" + i).className = n === i ? "" : "hide"; $("t" + i).className = n === i ? "on" : ""; }
+  for (var i = 1; i <= 6; i++) { $("p" + i).className = n === i ? "" : "hide"; $("t" + i).className = n === i ? "on" : ""; }
   $("mainRes").className = n >= 4 ? "hide" : "";
   if (typeof majCmp === "function") majCmp();
   window.scrollTo(0, 0);
@@ -324,6 +368,8 @@ $("t3").onclick = function(){ tab(3); $("kw").focus(); };
 $("t4").addEventListener("click", stop);
 $("t4").onclick = function(){ tab(4); };
 $("t5").addEventListener("click", stop);
+$("t6").addEventListener("click", stop);
+$("t6").onclick = function(){ tab(6); ouvrirChat(); };
 $("t5").onclick = function(){ tab(5); };
 function kwUrl(){ return BASE + encodeURIComponent($("kw").value.trim()); }
 $("kwGo").onclick = function(e){
@@ -1154,6 +1200,136 @@ $("statBtn").onclick = afficherStats;
 renderHist(loadHist());
 majProfilUI();
 if (PROFIL.nom) chargerHistoriqueServeur(false); else ouvrirProfil();
+
+// ---------- chat du magasin ----------
+var CHAT = { code: "", salon: "", dernier: 0, vu: 0, minuteur: null, envoi: false };
+try { CHAT.code = localStorage.getItem("chatCode") || ""; CHAT.salon = localStorage.getItem("chatSalon") || ""; CHAT.vu = +(localStorage.getItem("chatVu") || 0); } catch(e){}
+function chatOuvert(){ return !$("p6").classList.contains("hide"); }
+function sauverChat(){ try { localStorage.setItem("chatCode", CHAT.code); localStorage.setItem("chatSalon", CHAT.salon); localStorage.setItem("chatVu", String(CHAT.vu)); } catch(e){} }
+function heure(t){ var d = new Date(t); return ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2); }
+function jourDe(t){
+  var d = new Date(t), auj = new Date(); auj.setHours(0,0,0,0);
+  var j = new Date(t); j.setHours(0,0,0,0);
+  var diff = Math.round((auj - j) / 86400000);
+  return diff === 0 ? "Aujourd’hui" : diff === 1 ? "Hier" : d.getDate() + " " + MOIS[d.getMonth()];
+}
+function moi(n){ return PROFIL.nom && String(n) === PROFIL.nom.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, ""); }
+function ouvrirChat(){
+  $("chatAdmin").className = PROFIL.admin ? "" : "hide";
+  if (PROFIL.admin) listerSalons();
+  if (!CHAT.code) { $("chatJoin").className = "card"; $("chatRoom").className = "hide"; return; }
+  $("chatJoin").className = "card hide"; $("chatRoom").className = "";
+  $("chatSalon").textContent = CHAT.salon || "Chat du magasin"; $("chatCodeAff").textContent = CHAT.code;
+  if (!CHAT.dernier) $("chatList").innerHTML = '<p class="vide">Chargement…</p>';
+  chargerMessages(true);
+}
+function rejoindre(code){
+  code = String(code || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (code.length !== 6) { $("chatJoinMsg").textContent = "Le code fait 6 caractères."; return; }
+  $("chatJoinMsg").textContent = "Connexion…";
+  prof("/chat/rejoindre", { code: code }).then(function(j){
+    if (!j) { $("chatJoinMsg").textContent = "Serveur injoignable, réessaie."; return; }
+    if (!j.ok) { $("chatJoinMsg").textContent = j.inconnu ? "Code inconnu. Vérifie-le auprès d’un collègue." : "Impossible de rejoindre, réessaie."; return; }
+    CHAT.code = j.code; CHAT.salon = j.salon; CHAT.dernier = 0; CHAT.vu = 0; sauverChat();
+    $("chatCode").value = ""; $("chatJoinMsg").textContent = ""; $("chatList").innerHTML = "";
+    ouvrirChat();
+  });
+}
+$("chatJoinGo").onclick = function(){ rejoindre($("chatCode").value); };
+$("chatCode").addEventListener("keydown", function(e){ if (e.key === "Enter") rejoindre(this.value); });
+$("chatQuit").onclick = function(){
+  CHAT.code = ""; CHAT.salon = ""; CHAT.dernier = 0; CHAT.vu = 0; sauverChat(); majBadgeChat(0);
+  $("chatList").innerHTML = ""; ouvrirChat();
+};
+$("chatCreer").onclick = function(){
+  var n = $("chatNouveau").value.trim();
+  if (n.length < 2) { $("chatNouveau").focus(); return; }
+  prof("/chat/creer", { salon: n }).then(function(j){
+    if (!j || !j.ok) { $("chatJoinMsg").textContent = (j && j.erreur) || "Création impossible."; return; }
+    $("chatNouveau").value = ""; rejoindre(j.code);
+  });
+};
+function listerSalons(){
+  prof("/chat/salons", {}).then(function(j){
+    var ul = $("chatSalons"); ul.innerHTML = "";
+    ((j && j.salons) || []).forEach(function(x){
+      var li = el("li"), b = el("button", "", "Rejoindre");
+      b.type = "button"; b.style.cssText = "border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:8px;padding:5px 10px;font-size:13px";
+      b.onclick = function(){ rejoindre(x.code); };
+      var g = el("span"); g.appendChild(document.createTextNode(x.nom + " · ")); g.appendChild(el("code", "", x.code));
+      li.appendChild(g); li.appendChild(b); ul.appendChild(li);
+    });
+  });
+}
+function ajouterMessages(liste, premier){
+  var box = $("chatList");
+  if (premier) box.innerHTML = "";
+  var vide = box.querySelector(".vide"); if (vide && liste.length) vide.remove();
+  var bas = window.innerHeight + window.scrollY >= document.body.scrollHeight - 120;
+  liste.forEach(function(m){
+    if (box.querySelector('[data-id="' + m.id + '"]')) return;
+    var j = jourDe(m.t);
+    if (box.getAttribute("data-jour") !== j) { box.appendChild(el("p", "jour", j)); box.setAttribute("data-jour", j); }
+    var d = el("div", "msg" + (moi(m.n) ? " moi" : "")); d.setAttribute("data-id", m.id);
+    if (!moi(m.n)) d.appendChild(el("span", "qui", m.a));
+    d.appendChild(document.createTextNode(m.x));
+    d.appendChild(el("span", "h", heure(m.t)));
+    if (moi(m.n) || PROFIL.admin) {
+      var sp = el("button", "suppr", "Supprimer"); sp.type = "button";
+      sp.onclick = function(e){ e.stopPropagation(); prof("/chat/supprimer", { code: CHAT.code, id: m.id }).then(function(){ d.remove(); }); };
+      d.appendChild(sp);
+      d.onclick = function(){ d.classList.toggle("ouvert"); };
+    }
+    box.appendChild(d);
+    CHAT.dernier = Math.max(CHAT.dernier, m.id);
+  });
+  if (premier && !liste.length) box.innerHTML = '<p class="vide">Aucun message pour l’instant.<br>Écris le premier !</p>';
+  if (chatOuvert() && (premier || bas)) window.scrollTo(0, document.body.scrollHeight);
+}
+function chargerMessages(premier){
+  if (!CHAT.code) return Promise.resolve();
+  return prof("/chat/messages", { code: CHAT.code, apres: premier ? 0 : CHAT.dernier }).then(function(j){
+    if (!j) return;
+    if (!j.ok) { if (j.inconnu) { CHAT.code = ""; sauverChat(); if (chatOuvert()) ouvrirChat(); } return; }
+    if (j.salon && j.salon !== CHAT.salon) { CHAT.salon = j.salon; sauverChat(); $("chatSalon").textContent = j.salon; }
+    var liste = j.messages || [];
+    if (chatOuvert()) {
+      ajouterMessages(liste, premier);
+      CHAT.vu = Math.max(CHAT.vu, CHAT.dernier); sauverChat(); majBadgeChat(0);
+    } else {
+      if (liste.length) CHAT.dernier = 0;   // la liste sera rechargée en entier à l'ouverture
+      var nouveaux = liste.filter(function(m){ return m.id > CHAT.vu && !moi(m.n); }).length;
+      majBadgeChat(nouveaux);
+    }
+  });
+}
+function majBadgeChat(n){ var b = $("nbChat"); b.textContent = n > 9 ? "9+" : String(n); b.style.display = n ? "" : "none"; }
+function envoyer(){
+  var t = $("chatIn").value.trim();
+  if (!t || CHAT.envoi) return;
+  CHAT.envoi = true;
+  prof("/chat/envoyer", { code: CHAT.code, texte: t }).then(function(j){
+    CHAT.envoi = false;
+    if (!j || !j.ok) { $("chatIn").placeholder = "Pas envoyé, réessaie…"; return; }
+    $("chatIn").value = ""; ajusterChamp(); $("chatIn").placeholder = "Écris un message…";
+    chargerMessages(false);
+  });
+}
+function ajusterChamp(){ var i = $("chatIn"); i.style.height = "auto"; i.style.height = Math.min(i.scrollHeight + 2, 120) + "px"; }
+$("chatGo").onclick = envoyer;
+$("chatIn").addEventListener("input", ajusterChamp);
+$("chatIn").addEventListener("keydown", function(e){ if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); envoyer(); } });
+// nouveaux messages : toutes les 4 s quand le chat est ouvert, toutes les 45 s sinon (pour la pastille)
+function boucleChat(){
+  clearTimeout(CHAT.minuteur);
+  var delai = chatOuvert() ? 4000 : 45000;
+  CHAT.minuteur = setTimeout(function(){ (document.hidden ? Promise.resolve() : chargerMessages(false)).then(boucleChat, boucleChat); }, delai);
+}
+document.addEventListener("visibilitychange", function(){ if (!document.hidden && CHAT.code) { chargerMessages(chatOuvert() && !CHAT.dernier); boucleChat(); } });
+$("t6").addEventListener("click", boucleChat);
+for (var ti = 1; ti <= 5; ti++) $("t" + ti).addEventListener("click", boucleChat);
+if (CHAT.code) { setTimeout(function(){ chargerMessages(false); }, 1500); }
+boucleChat();
 </script>
 </body>
 </html>

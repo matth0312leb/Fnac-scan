@@ -29,7 +29,7 @@ export default {
     };
     if (req.method === "OPTIONS") return new Response(null, { headers: cors });
     // statistiques, profils, questions et photos : jamais gardés en mémoire par le navigateur
-    if (/^\/(stats|profil\/|question|photo|test)/.test(url.pathname)) cors["Cache-Control"] = "no-store";
+    if (/^\/(stats|profil\/|chat\/|question|photo|test)/.test(url.pathname)) cors["Cache-Control"] = "no-store";
     const code = (url.searchParams.get("ean") || url.searchParams.get("isbn") || "").replace(/\D/g, "");
     const send = (o, s = 200) => new Response(JSON.stringify(o, null, 2), { status: s, headers: cors });
     // mémoire des fiches (stockage KV Cloudflare, 30 jours) : un article déjà vu s'affiche tout de suite
@@ -48,7 +48,7 @@ export default {
         let body; try { body = await req.json(); } catch (e) { return send({ trouve: false, erreur: "image attendue" }, 400); }
         return send(await photo(String(body.image || ""), env));
       }
-      if (url.pathname.startsWith("/profil/") || url.pathname === "/stats") return send(await profils(req, url, env));
+      if (url.pathname.startsWith("/profil/") || url.pathname.startsWith("/chat/") || url.pathname === "/stats") return send(await profils(req, url, env));
       if (url.pathname === "/question" && req.method === "POST") {
         let body; try { body = await req.json(); } catch (e) { return send({ ok: false, erreur: "question attendue" }, 400); }
         return send(await question(String(body.question || ""), String(body.contexte || ""), env));
@@ -613,6 +613,8 @@ async function profils(req, url, env) {
   // protection du profil administrateur
   if (nom === await conf("admin_nom") && p("cle") !== await conf("code_stats")) return { ok: false, erreur: "code", protege: true };
 
+  if (route.startsWith("/chat/")) return await chat(route, p, nom, affichage, nom === await conf("admin_nom"), env, now);
+
   if (route === "/profil/connexion") {
     await env.DB.prepare("INSERT INTO profils (nom, affichage, cree, vu) VALUES (?, ?, ?, ?) ON CONFLICT(nom) DO UPDATE SET vu = excluded.vu").bind(nom, affichage, now, now).run();
     return { ok: true, nom: affichage, admin: nom === await conf("admin_nom") };
@@ -654,6 +656,58 @@ async function profils(req, url, env) {
   }
   if (route === "/profil/vider") {
     await env.DB.prepare("DELETE FROM historique WHERE nom = ?").bind(nom).run();
+    return { ok: true };
+  }
+  return { ok: false, erreur: "route inconnue" };
+}
+
+// ---------- chat d'équipe par magasin ----------
+// Un « salon » par magasin, rejoint avec un code à 6 caractères que l'administrateur crée et partage à ses collègues.
+let tablesChatOk = false;
+async function chat(route, p, nom, affichage, admin, env, now) {
+  if (!tablesChatOk) {
+    await env.DB.batch([
+      env.DB.prepare("CREATE TABLE IF NOT EXISTS salons (code TEXT PRIMARY KEY, nom TEXT, cree_par TEXT, cree INTEGER)"),
+      env.DB.prepare("CREATE TABLE IF NOT EXISTS messages (id INTEGER PRIMARY KEY AUTOINCREMENT, salon TEXT, nom TEXT, affichage TEXT, texte TEXT, t INTEGER)"),
+      env.DB.prepare("CREATE INDEX IF NOT EXISTS messages_salon ON messages (salon, id)"),
+    ]);
+    tablesChatOk = true;
+  }
+  if (route === "/chat/creer") {
+    if (!admin) return { ok: false, erreur: "réservé à l'administrateur" };
+    const nomSalon = p("salon").replace(/\s+/g, " ").slice(0, 40);
+    if (nomSalon.length < 2) return { ok: false, erreur: "nom du magasin manquant" };
+    const L = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789", alea = crypto.getRandomValues(new Uint8Array(6));
+    const code = [...alea].map((n) => L[n % L.length]).join("");
+    await env.DB.prepare("INSERT INTO salons (code, nom, cree_par, cree) VALUES (?, ?, ?, ?)").bind(code, nomSalon, nom, now).run();
+    return { ok: true, code, salon: nomSalon };
+  }
+  if (route === "/chat/salons") {
+    if (!admin) return { ok: false, erreur: "réservé à l'administrateur" };
+    const r = await env.DB.prepare("SELECT code, nom FROM salons ORDER BY cree").all();
+    return { ok: true, salons: r.results || [] };
+  }
+  const code = p("code").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
+  const salon = code ? await env.DB.prepare("SELECT code, nom FROM salons WHERE code = ?").bind(code).first() : null;
+  if (!salon) return { ok: false, erreur: "code inconnu", inconnu: true };
+  if (route === "/chat/rejoindre") return { ok: true, code: salon.code, salon: salon.nom };
+  if (route === "/chat/messages") {
+    const apres = parseInt(p("apres"), 10) || 0;
+    const r = await env.DB.prepare("SELECT id, affichage AS a, nom AS n, texte AS x, t FROM messages WHERE salon = ? AND id > ? ORDER BY id DESC LIMIT 80").bind(code, apres).all();
+    return { ok: true, salon: salon.nom, messages: (r.results || []).reverse() };
+  }
+  if (route === "/chat/envoyer") {
+    const texte = p("texte").replace(/\r/g, "").replace(/\n{3,}/g, "\n\n").slice(0, 500);
+    if (!texte) return { ok: false, erreur: "message vide" };
+    await env.DB.batch([
+      env.DB.prepare("INSERT INTO messages (salon, nom, affichage, texte, t) VALUES (?, ?, ?, ?, ?)").bind(code, nom, affichage, texte, now),
+      // les messages s'effacent tout seuls après 30 jours
+      env.DB.prepare("DELETE FROM messages WHERE salon = ? AND t < ?").bind(code, now - 30 * 24 * 3600 * 1000),
+    ]);
+    return { ok: true };
+  }
+  if (route === "/chat/supprimer") {
+    await env.DB.prepare("DELETE FROM messages WHERE id = ? AND salon = ? AND (nom = ? OR ?)").bind(parseInt(p("id"), 10) || 0, code, nom, admin ? 1 : 0).run();
     return { ok: true };
   }
   return { ok: false, erreur: "route inconnue" };
