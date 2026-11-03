@@ -770,6 +770,7 @@ async function chat(route, p, nom, affichage, admin, env, now) {
       env.DB.prepare("CREATE TABLE IF NOT EXISTS salons (code TEXT PRIMARY KEY, nom TEXT, cree_par TEXT, cree INTEGER)"),
       env.DB.prepare("CREATE TABLE IF NOT EXISTS messages (id INTEGER PRIMARY KEY AUTOINCREMENT, salon TEXT, nom TEXT, affichage TEXT, texte TEXT, t INTEGER)"),
       env.DB.prepare("CREATE INDEX IF NOT EXISTS messages_salon ON messages (salon, id)"),
+      env.DB.prepare("CREATE TABLE IF NOT EXISTS planning (salon TEXT, debut TEXT, donnees TEXT, maj INTEGER, PRIMARY KEY (salon, debut))"),
     ]);
     tablesChatOk = true;
   }
@@ -791,6 +792,20 @@ async function chat(route, p, nom, affichage, admin, env, now) {
   const salon = code ? await env.DB.prepare("SELECT code, nom FROM salons WHERE code = ?").bind(code).first() : null;
   if (!salon) return { ok: false, erreur: "code inconnu", inconnu: true };
   if (route === "/chat/rejoindre") return { ok: true, code: salon.code, salon: salon.nom };
+  // planning de la semaine du magasin (visible des membres du chat, avec leur code personnel)
+  if (route === "/chat/planning") {
+    const depuis = new Date(now - 8 * 24 * 3600 * 1000).toISOString().slice(0, 10);
+    const r = await env.DB.prepare("SELECT debut, donnees, maj FROM planning WHERE salon = ? AND debut >= ? ORDER BY debut LIMIT 4").bind(code, depuis).all();
+    return { ok: true, semaines: (r.results || []).map((x) => { let d = {}; try { d = JSON.parse(x.donnees); } catch (e) {} return { ...d, debut: x.debut, maj: x.maj }; }) };
+  }
+  if (route === "/chat/planning-maj") {
+    if (!admin) return { ok: false, erreur: "réservé à l'administrateur" };
+    const debut = p("debut");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(debut)) return { ok: false, erreur: "date de début attendue (AAAA-MM-JJ)" };
+    await env.DB.prepare("INSERT INTO planning (salon, debut, donnees, maj) VALUES (?, ?, ?, ?) ON CONFLICT(salon, debut) DO UPDATE SET donnees = excluded.donnees, maj = excluded.maj").bind(code, debut, p("donnees").slice(0, 20000), now).run();
+    await env.DB.prepare("DELETE FROM planning WHERE salon = ? AND debut < ?").bind(code, new Date(now - 60 * 24 * 3600 * 1000).toISOString().slice(0, 10)).run();
+    return { ok: true };
+  }
   if (route === "/chat/messages") {
     const apres = parseInt(p("apres"), 10) || 0;
     const r = await env.DB.prepare("SELECT id, affichage AS a, nom AS n, texte AS x, t FROM messages WHERE salon = ? AND id > ? ORDER BY id DESC LIMIT 80").bind(code, apres).all();
