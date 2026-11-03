@@ -106,16 +106,24 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 .jours button b{display:block;font-size:16px}
 .jours button.on{background:var(--accent);color:var(--accent-text);border-color:transparent}
 .jours button.auj:not(.on){border-color:var(--accent)}
-.pers{padding:10px 0;border-top:1px solid var(--line)}
+.pers{padding:12px 0;border-top:1px solid var(--line)}
+.pers .pause{margin:2px 0 0;font-size:13px;color:var(--muted)}
+.masemc summary{display:flex;justify-content:space-between;align-items:center;cursor:pointer;list-style:none;font-size:16px}
+.masemc summary::-webkit-details-marker{display:none}
+.masemc summary b::after{content:"  ▾";color:var(--muted);font-size:13px}
+.masemc[open] summary b::after{content:"  ▴"}
+.masemc summary span{color:var(--muted);font-size:15px}
+.masemc[open] summary{margin-bottom:8px}
+.masem tr.off td,.masem tr.off th{color:var(--muted);font-weight:400}
 .pers:first-of-type{border-top:0}
 .pers .l1{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
-.pers .l1 b{font-size:16px}.pers .l1 span{font-size:14px;color:var(--muted);text-align:right}
+.pers .l1 b{font-size:17px}.pers .l1 span{font-size:17px;font-weight:600;text-align:right;white-space:nowrap}
 .pers.moi .l1 b::after{content:" (toi)";color:var(--muted);font-weight:500}
-.frise{position:relative;height:10px;border-radius:5px;background:var(--line);margin-top:7px;overflow:hidden}
+.frise{position:relative;height:6px;border-radius:3px;background:var(--line);margin-top:8px;overflow:hidden}
 .frise i{position:absolute;top:0;bottom:0;background:var(--accent);border-radius:5px}
 .echelle{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin:6px 0 0}
 .repos{font-size:14px;color:var(--muted);margin:12px 0 0}
-.masem td,.masem th{padding:7px 4px;border-top:1px solid var(--line);font-size:14px;text-align:left;vertical-align:top}
+.masem td,.masem th{padding:9px 4px;border-top:1px solid var(--line);font-size:15px;text-align:left;vertical-align:top}
 .masem{width:100%;border-collapse:collapse}
 .masem th{color:var(--muted);font-weight:600;width:52px}
 .masem td.h{text-align:right;color:var(--muted);white-space:nowrap}
@@ -1421,7 +1429,10 @@ $("vChat").onclick = function(){ vue(false); };
 $("vPlan").onclick = function(){ vue(true); };
 function minutes(h){ var p = String(h).split(":"); return +p[0] * 60 + +p[1]; }
 function duree(m){ var h = Math.floor(m / 60), r = m % 60; return h + " h" + (r ? " " + ("0" + r).slice(-2) : ""); }
-function hFr(h){ return h.replace(/^0/, "").replace(":", " h ").replace(/ h 00$/, " h"); }
+function hFr(h){ return h.replace(/^0/, "").replace(":", "h").replace(/h00$/, "h"); }
+// « 7h45 – 17h » (arrivée – départ) et les pauses à part
+function amplitude(pl){ return hFr(pl[0][0]) + " – " + hFr(pl[pl.length - 1][1]); }
+function pauses(pl){ var r = []; for (var i = 1; i < pl.length; i++) r.push(hFr(pl[i - 1][1]) + "–" + hFr(pl[i][0])); return r.length ? "pause " + r.join(", ") : ""; }
 function jourISO(debut, i){ var d = new Date(debut + "T12:00:00"); d.setDate(d.getDate() + i); return d; }
 function estMoi(prenom){
   var a = String(PROFIL.nom || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
@@ -1466,8 +1477,6 @@ function dessinerPlanning(){
   });
   c.appendChild(js);
   // qui travaille ce jour-là, trié par heure d'arrivée, avec une frise 7 h – 20 h
-  var jd = jourISO(w.debut, PLAN.jour);
-  c.appendChild(el("p", "lbl", JOURS_LONG[PLAN.jour] + " " + jd.getDate() + " " + MOIS[jd.getMonth()]));
   var MIN = 7 * 60, MAX = 20 * 60;
   var presents = [], absents = [];
   (w.personnes || []).forEach(function(p){
@@ -1481,8 +1490,9 @@ function dessinerPlanning(){
   presents.forEach(function(x){
     var d = el("div", "pers" + (estMoi(x.p.prenom) ? " moi" : "")), l1 = el("div", "l1");
     l1.appendChild(el("b", "", x.p.prenom));
-    l1.appendChild(el("span", "", x.j.plages ? x.j.plages.map(function(pl){ return hFr(pl[0]) + "–" + hFr(pl[1]); }).join(" · ") : x.j.note));
+    l1.appendChild(el("span", "", x.j.plages ? amplitude(x.j.plages) : x.j.note));
     d.appendChild(l1);
+    if (x.j.plages && pauses(x.j.plages)) d.appendChild(el("p", "pause", pauses(x.j.plages)));
     if (x.j.plages) {
       var f = el("div", "frise");
       x.j.plages.forEach(function(pl){ var i = el("i"); i.style.left = ((minutes(pl[0]) - MIN) / (MAX - MIN) * 100) + "%"; i.style.width = ((minutes(pl[1]) - minutes(pl[0])) / (MAX - MIN) * 100) + "%"; f.appendChild(i); });
@@ -1490,27 +1500,29 @@ function dessinerPlanning(){
     }
     c.appendChild(d);
   });
-  if (presents.some(function(x){ return x.j.plages; })) { var e = el("div", "echelle"); ["7 h", "10 h", "13 h", "16 h", "20 h"].forEach(function(h){ e.appendChild(el("span", "", h)); }); c.appendChild(e); }
   if (absents.length) c.appendChild(el("p", "repos", "En repos : " + absents.join(", ")));
   box.appendChild(c);
   // ma semaine
   var moiP = (w.personnes || []).filter(function(p){ return estMoi(p.prenom); })[0];
   if (moiP) {
-    var c2 = el("div", "card"), tab = el("table", "masem"), tot = 0;
-    c2.appendChild(el("p", "lbl", "Ma semaine"));
+    var c2 = el("details", "card masemc"), tab = el("table", "masem"), tot = 0, som = el("summary");
+    c2.appendChild(som);
     (moiP.jours || []).forEach(function(j, i){
       var d = jourISO(w.debut, i), tr = el("tr", d.toDateString() === auj.toDateString() ? "auj" : ""), m = 0;
       (j.plages || []).forEach(function(pl){ m += minutes(pl[1]) - minutes(pl[0]); }); tot += m;
       tr.appendChild(el("th", "", JOURS[i] + " " + d.getDate()));
-      tr.appendChild(el("td", "", j.plages && j.plages.length ? j.plages.map(function(pl){ return hFr(pl[0]) + "–" + hFr(pl[1]); }).join(" · ") : j.note || "Repos"));
+      if (!(j.plages && j.plages.length)) tr.className += " off";
+      tr.appendChild(el("td", "", j.plages && j.plages.length ? amplitude(j.plages) : j.note || "Repos"));
       tr.appendChild(el("td", "h", m ? duree(m) : ""));
       tab.appendChild(tr);
     });
     c2.appendChild(tab);
-    c2.appendChild(el("p", "aide", "Total de la semaine : " + duree(tot)));
+    som.appendChild(el("b", "", "Ma semaine")); som.appendChild(el("span", "", duree(tot)));
+    try { c2.open = localStorage.getItem("maSemaine") === "1"; } catch(e){}
+    c2.addEventListener("toggle", function(){ try { localStorage.setItem("maSemaine", c2.open ? "1" : "0"); } catch(e){} });
     box.appendChild(c2);
   }
-  box.appendChild(el("p", "aide", "Planning recopié à partir de celui du responsable. En cas de doute, c’est l’original qui fait foi."));
+  box.appendChild(el("p", "aide", "Recopié du planning du responsable : l’original fait foi."));
 }
 
 // nouveaux messages : toutes les 4 s quand le chat est ouvert, toutes les 45 s sinon (pour la pastille)
