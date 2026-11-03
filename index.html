@@ -69,7 +69,7 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 #profil h2{margin:0 0 6px;font-size:20px}
 #bookBox .lbl{margin-top:18px}
 #bookBox .book + .bref{margin-top:2px}
-.who{font-size:20px;font-weight:700;margin:0 0 4px}
+.who{font-size:20px;font-weight:700;margin:0 0 14px}
 .who:empty{display:none}
 .stat{width:100%;border-collapse:collapse;font-size:14px}
 .stat th,.stat td{text-align:left;padding:7px 4px;border-top:1px solid var(--line);vertical-align:top}
@@ -93,6 +93,19 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 .bar span{display:block;height:100%;background:#2e9e4f}
 .bar span.mid{background:#e8a000}.bar span.haut{background:#d64545}
 .champ{position:relative}
+#hint:empty{display:none}
+.ou{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:13px;margin:16px 0 12px}
+.ou::before,.ou::after{content:"";flex:1;height:1px;background:var(--line)}
+.cherche{display:flex;gap:8px;align-items:flex-start}
+.cherche .champ{flex:1}
+.cherche input{margin:0;font-size:18px;padding:13px 14px}
+#go{flex:none;width:52px;height:52px;border:0;border-radius:12px;background:var(--accent);color:var(--accent-text);display:flex;align-items:center;justify-content:center}
+#go svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round}
+#skuAide{margin:6px 2px 0;min-height:18px}
+.tuiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:18px}
+.tuiles button{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:6px;border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:14px;padding:12px 4px 10px;font-size:13px;font-weight:600;line-height:1.25;text-align:center;min-height:84px}
+.tuiles button .ic{width:26px;height:26px;margin:0}
+.tuiles button:active{transform:scale(.97)}
 /* sous-onglets Chat / Planning et planning de l'équipe */
 .seg{display:flex;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px;margin:0 0 14px}
 .seg button{flex:1;border:0;background:none;color:var(--muted);font-size:15px;font-weight:700;padding:9px;border-radius:9px}
@@ -248,9 +261,7 @@ li{padding:10px 0;border-top:1px solid var(--line)}
   <p class="warn" id="pMsg"></p>
 </div></div>
 <nav id="bnav"><div class="in">
-  <button id="t1" class="on" type="button"><svg viewBox="0 0 24 24"><path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2"/><path d="M8 8v8M11 8v8M13.5 8v8M16 8v8"/></svg>Scanner</button>
-  <button id="t2" type="button"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10"/></svg>SKU/EAN</button>
-  <button id="t3" type="button"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5"/></svg>Mots-clés</button>
+  <button id="t1" class="on" type="button"><svg viewBox="0 0 24 24"><path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2"/><path d="M8 8v8M11 8v8M13.5 8v8M16 8v8"/></svg>Rechercher</button>
   <button id="t4" type="button"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>Historique<span class="badge" id="nb">0</span></button>
   <button id="t6" type="button"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg>Équipe<span class="badge" id="nbChat" style="display:none">0</span></button>
   <button id="t5" type="button"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg>Réglages</button>
@@ -267,35 +278,24 @@ li{padding:10px 0;border-top:1px solid var(--line)}
   <div class="card">
     <div id="reader" class="hide"></div>
     <p class="who" id="who"></p>
-    <p class="muted" id="hint">Scanne un code-barres, ou prends en photo une couverture ou une boîte.</p>
+    <p class="muted" id="hint"></p>
     <button class="big" id="start" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2M4 12h16"/></svg><span class="lb">Scanner un code-barres</span></button>
     <button class="big alt hide" id="torch" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 3 5 14h6l-1 7 8-11h-6l1-7z"/></svg><span class="lb">Allumer la lampe</span></button>
-    <button class="big alt" id="snap" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/></svg><span class="lb">Identifier par photo</span></button>
-    <button class="big alt" id="pick" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="m21 16-5-5-9 9"/></svg><span class="lb">Code-barres depuis la galerie</span></button>
-    <button class="big alt" id="cmpMode" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4v16M16 4v16M4 8h8M12 16h8"/></svg><span class="lb">Comparer 2 articles</span></button>
+    <div class="ou"><span>ou</span></div>
+    <div class="cherche"><div class="champ"><input id="sku" type="text" enterkeyhint="search" placeholder="Code ou mots-clés" autocomplete="off" autocorrect="off" spellcheck="false"><button class="croix" type="button" aria-label="Effacer">×</button></div><button id="go" type="button" aria-label="Rechercher"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4-4"/></svg></button></div>
+    <p class="aide" id="skuAide">8 chiffres : SKU · 13 chiffres : EAN · du texte : recherche sur fnac.ch</p>
+    <div class="tuiles">
+      <button id="snap" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/></svg><span class="lb">Photo d’un article</span></button>
+      <button id="pick" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="m21 16-5-5-9 9"/></svg><span class="lb">Code-barres en galerie</span></button>
+      <button id="cmpMode" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4v16M16 4v16M4 8h8M12 16h8"/></svg><span class="lb">Comparer 2&nbsp;articles</span></button>
+    </div>
     <input id="f3" type="file" accept="image/*" capture="environment" class="hide">
     <input id="f2" type="file" accept="image/*" class="hide">
     <div id="filereader" class="hide"></div>
   </div>
 </div>
 
-<div id="p2" class="hide">
-  <div class="card">
-    <p class="titre">Saisir un code</p>
-    <p class="intro">SKU à 8 chiffres (étiquette du rayon) ou EAN à 13 chiffres (sous le code-barres).</p>
-    <div class="champ"><input id="sku" inputmode="numeric" enterkeyhint="search" placeholder="Ex. 15211846" autocomplete="off"><button class="croix" type="button" aria-label="Effacer">×</button></div>
-    <button class="big" id="go" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4-4"/></svg><span class="lb">Rechercher</span></button>
-  </div>
-</div>
 
-<div id="p3" class="hide">
-  <div class="card">
-    <p class="titre">Rechercher par mots-clés</p>
-    <p class="intro">Titre, auteur, marque, modèle… La recherche s'ouvre sur fnac.ch.</p>
-    <div class="champ"><input id="kw" type="text" enterkeyhint="search" placeholder="Ex. casque bose bluetooth" autocomplete="off"><button class="croix" type="button" aria-label="Effacer">×</button></div>
-    <a class="big" id="kwGo" target="_blank" rel="noopener"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4-4"/></svg><span class="lb">Rechercher sur fnac.ch</span></a>
-  </div>
-</div>
 
 <div id="mainRes">
 <div id="cmpLive" class="card hide"></div>
@@ -399,30 +399,18 @@ function btnIc(cls, icone, txt){ var b = document.createElement("button"); b.typ
 function lab(id, txt){ var b = $(id), s = b && b.querySelector(".lb"); if (s) s.textContent = txt; else if (b) b.textContent = txt; }
 
 function tab(n){
-  for (var i = 1; i <= 6; i++) { $("p" + i).className = n === i ? "" : "hide"; $("t" + i).className = n === i ? "on" : ""; }
+  [1, 4, 5, 6].forEach(function(i){ $("p" + i).className = n === i ? "" : "hide"; $("t" + i).className = n === i ? "on" : ""; });
   $("mainRes").className = n >= 4 ? "hide" : "";
   if (typeof majCmp === "function") majCmp();
   window.scrollTo(0, 0);
 }
 $("t1").onclick = function(){ tab(1); };
-$("t2").addEventListener("click", stop); $("t3").addEventListener("click", stop);
-$("t2").onclick = function(){ tab(2); $("sku").focus(); };
-$("t3").onclick = function(){ tab(3); $("kw").focus(); };
 $("t4").addEventListener("click", stop);
 $("t4").onclick = function(){ tab(4); };
 $("t5").addEventListener("click", stop);
 $("t6").addEventListener("click", stop);
 $("t6").onclick = function(){ tab(6); ouvrirChat(); };
 $("t5").onclick = function(){ tab(5); };
-function kwUrl(){ return BASE + encodeURIComponent($("kw").value.trim()); }
-$("kwGo").onclick = function(e){
-  if (!$("kw").value.trim()) { e.preventDefault(); $("kw").focus(); return; }
-  stat("motscles");
-  this.href = kwUrl();
-};
-$("kw").onkeydown = function(e){
-  if (e.key === "Enter" && this.value.trim()) { stat("motscles"); window.open(kwUrl(), "_blank", "noopener"); }
-};
 
 // ---------- profil (prénom) ----------
 var PROFIL = { nom: "", cle: "", admin: false };
@@ -935,7 +923,7 @@ function lancerComparaison(a, b, box){
 // ---------- mode « Comparer 2 articles » direct : scanne / photographie / tape 2 articles à la suite ----------
 var CMP = null;   // null = mode inactif, sinon liste des codes déjà pris
 function majCmp(){
-  var actif = !!CMP, onglet = [1,2,3].filter(function(i){ return !$("p" + i).classList.contains("hide"); })[0];
+  var actif = !!CMP, onglet = [1].filter(function(i){ return !$("p" + i).classList.contains("hide"); })[0];
   $("cmpBan").className = actif && onglet ? "card cmpban" : "card cmpban hide";
   lab("cmpMode", actif ? "Comparaison en cours…" : "Comparer 2 articles");
   if (!actif) return;
@@ -943,7 +931,7 @@ function majCmp(){
   $("cmpEtape").textContent = n === 0 ? "Article 1 sur 2" : "Article 2 sur 2";
   var ol = $("cmpListe"); ol.innerHTML = "";
   for (var i = 0; i < 2; i++) {
-    var c = CMP[i], li = el("li", c ? "ok" : "", c ? "✓ " + (titreDe(c) || label(c)) : (i === n ? "Scanne le code-barres, prends une photo ou tape le SKU/EAN" : "…"));
+    var c = CMP[i], li = el("li", c ? "ok" : "", c ? "✓ " + (titreDe(c) || label(c)) : (i === n ? "Scanne le code-barres, prends une photo, ou tape un code ou un nom" : "…"));
     ol.appendChild(li);
   }
 }
@@ -1168,9 +1156,21 @@ $("qIn").addEventListener("keydown", function(e){ if (e.key === "Enter") poserQu
 $("snap").onclick = function(){ stop(); $("f3").click(); };
 $("f3").onchange = function(){ identifierPhoto(this.files[0]); this.value = ""; };
 
+function natureSaisie(t){
+  var v = String(t || "").replace(/\s+/g, "");
+  if (!v) return "";
+  return /^\d+$/.test(v) ? (v.length >= 12 ? "ean" : "sku") : "mots";
+}
 function goSku(){
-  var v = $("sku").value.replace(/\s+/g, "");
-  if (!v) return;
+  var brut = $("sku").value.trim();
+  if (!brut) { $("sku").focus(); return; }
+  if (natureSaisie(brut) === "mots") {
+    $("sku").value = ""; $("sku").blur(); majAideSaisie();
+    if (CMP) { saveHistPhoto(brut); cmpAjoute("p:" + brut.slice(0, 110)); return; }   // comparaison par nom
+    stat("motscles"); window.open(BASE + encodeURIComponent(brut), "_blank", "noopener");
+    return;
+  }
+  var v = brut.replace(/\s+/g, "");
   if (/^\d{12}$/.test(v)) v = "0" + v;
   $("sku").value = ""; $("sku").blur();   // champ vidé : prêt pour le code suivant
   var c = /^\d{13}$/.test(v) ? v : "s:" + v;
@@ -1178,7 +1178,12 @@ function goSku(){
   show(c);
 }
 // au retour sur l'appli (bouton retour depuis fnac.ch ou Google), le champ est vide
-window.addEventListener("pageshow", function(){ $("sku").value = ""; });
+window.addEventListener("pageshow", function(){ $("sku").value = ""; majAideSaisie(); });
+function majAideSaisie(){
+  var n = natureSaisie($("sku").value), v = $("sku").value.replace(/\s+/g, "");
+  $("skuAide").textContent = n === "ean" ? "EAN : la fiche s’ouvre dans BipBip" : n === "sku" ? (v.length === 8 ? "SKU : recherche du produit" : "Code : " + v.length + " chiffres (SKU = 8, EAN = 13)") : n === "mots" ? "Mots-clés : la recherche s’ouvre sur fnac.ch" : "8 chiffres : SKU · 13 chiffres : EAN · du texte : recherche sur fnac.ch";
+}
+$("sku").addEventListener("input", majAideSaisie);
 $("go").onclick = goSku;
 $("sku").addEventListener("keydown", function(e){ if (e.key === "Enter") goSku(); });
 
@@ -1200,7 +1205,7 @@ function start(){
 function stop(){
   if (!running || !scanner) return;
   torchOn = false; $("torch").className = "big alt hide"; lab("torch", "Allumer la lampe");
-  scanner.stop().then(function(){ running = false; $("reader").className = "hide"; lab("start", "Scanner un code-barres"); $("hint").textContent = "Scanne un code-barres, ou prends en photo une couverture ou une boîte."; }).catch(function(){});
+  scanner.stop().then(function(){ running = false; $("reader").className = "hide"; lab("start", "Scanner un code-barres"); $("hint").textContent = ""; }).catch(function(){});
 }
 $("start").onclick = function(){ running ? stop() : start(); };
 var torchOn = false;
@@ -1533,7 +1538,7 @@ function boucleChat(){
 }
 document.addEventListener("visibilitychange", function(){ if (!document.hidden && CHAT.code) { chargerMessages(chatOuvert() && !CHAT.dernier); boucleChat(); } });
 $("t6").addEventListener("click", boucleChat);
-for (var ti = 1; ti <= 5; ti++) $("t" + ti).addEventListener("click", boucleChat);
+[1, 4, 5].forEach(function(ti){ $("t" + ti).addEventListener("click", boucleChat); });
 if (CHAT.code) { setTimeout(function(){ chargerMessages(false); }, 1500); }
 boucleChat();
 </script>
