@@ -1602,6 +1602,7 @@ function vue(v){
     $(x[1]).className = v === x[0] ? "on" : ""; $(x[2]).className = v === x[0] ? "" : "hide";
   });
   if (v === "plan") chargerPlanning(); else if (v === "info") chargerInfos(); else if (v === "rea") chargerReassort(); else { CHAT.dernier = 0; chargerMessages(true); }
+  if (typeof boucleChat === "function") boucleChat();   // rythme de rafraîchissement du chat (4 s quand il est affiché)
 }
 $("vRea").onclick = function(){ vue("rea"); };
 $("vChat").onclick = function(){ vue("chat"); };
