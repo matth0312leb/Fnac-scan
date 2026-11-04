@@ -1652,13 +1652,23 @@ function dessinerUne(x){
     c.appendChild(plus);
 }
 function dateLongue(iso){ var d = new Date(iso + "T12:00:00"); return JOURS_LONG[(d.getDay() + 6) % 7].toLowerCase() + " " + (d.getDate() === 1 ? "1er" : d.getDate()) + " " + MOIS[d.getMonth()] + (d.getFullYear() !== new Date().getFullYear() ? " " + d.getFullYear() : ""); }
-function formInfo(ouvert){
+// x : publication à modifier (sinon nouvelle publication)
+function formInfo(ouvert, x){
   $("infoForm").className = ouvert ? "card" : "card hide"; $("infoNouv").className = ouvert ? "big hide" : "big";
-  if (ouvert) { $("infoTitre").value = ""; $("infoTexte").value = ""; $("infoDate").value = ""; $("infoFin").value = ""; $("infoMsg").textContent = ""; photoInfo(""); setTimeout(function(){ $("infoTitre").focus(); }, 50); }
+  INFO.edit = ouvert && x ? x.id : 0; INFO.photoChangee = false;
+  if (!ouvert) return;
+  $("infoForm").querySelector(".lbl").textContent = x ? "Modifier la publication" : "Nouvelle publication";
+  lab("infoGo", x ? "Enregistrer" : "Publier");
+  $("infoTitre").value = x ? x.titre : ""; $("infoTexte").value = x ? x.texte || "" : "";
+  $("infoDate").value = x ? x.d || "" : ""; $("infoFin").value = x ? x.f || "" : ""; $("infoMsg").textContent = "";
+  INFO.cat = x ? x.c : "nouveaute";
+  Array.prototype.forEach.call($("infoCats").querySelectorAll("button"), function(b){ b.className = b.getAttribute("data-c") === INFO.cat ? "on" : ""; });
+  photoInfo(x && x.img ? (PHOTOS[x.id] || "") : ""); INFO.photoChangee = false;
+  if (x) { $("vueInfo").scrollIntoView({ behavior: "smooth", block: "start" }); } else setTimeout(function(){ $("infoTitre").focus(); }, 50);
 }
 // photo jointe : prise sur le moment ou choisie dans la galerie (capture d'écran…), réduite avant l'envoi
 function photoInfo(img){
-  INFO.image = img;
+  INFO.image = img; INFO.photoChangee = true;
   $("infoPhotoBox").className = img ? "" : "hide"; if (img) $("infoPhotoVue").src = img;
   lab("infoPhoto", img ? "Changer la photo" : "Ajouter une photo ou une capture");
 }
@@ -1680,10 +1690,13 @@ Array.prototype.forEach.call($("infoCats").querySelectorAll("button"), function(
 $("infoGo").onclick = function(){
   var titre = $("infoTitre").value.trim();
   if (titre.length < 2) { $("infoMsg").textContent = "Donne un titre à ta publication."; $("infoTitre").focus(); return; }
-  $("infoMsg").textContent = INFO.image ? "Envoi de la photo…" : "Publication…";
-  prof("/chat/poster", { code: CHAT.code, categorie: INFO.cat, titre: titre, texte: $("infoTexte").value.trim(), date: $("infoDate").value, fin: $("infoFin").value, image: INFO.image || "" }).then(function(j){
-    if (!j || !j.ok) { $("infoMsg").textContent = (j && j.erreur) || "Pas publié, réessaie."; return; }
-    formInfo(false); chargerInfos(); majUne();
+  var envoiPhoto = INFO.image && INFO.photoChangee;
+  $("infoMsg").textContent = envoiPhoto ? "Envoi de la photo…" : INFO.edit ? "Enregistrement…" : "Publication…";
+  var donnees = { code: CHAT.code, categorie: INFO.cat, titre: titre, texte: $("infoTexte").value.trim(), date: $("infoDate").value, fin: $("infoFin").value, image: envoiPhoto ? INFO.image : "" };
+  if (INFO.edit) { donnees.id = INFO.edit; donnees.retirerImage = !INFO.image && INFO.photoChangee ? "1" : ""; if (envoiPhoto) PHOTOS[INFO.edit] = INFO.image; else if (donnees.retirerImage) delete PHOTOS[INFO.edit]; }
+  prof(INFO.edit ? "/chat/post-modifier" : "/chat/poster", donnees).then(function(j){
+    if (!j || !j.ok) { $("infoMsg").textContent = (j && j.erreur) ? j.erreur.charAt(0).toUpperCase() + j.erreur.slice(1) + "." : "Pas enregistré, réessaie."; return; }
+    formInfo(false); $("uneCard").removeAttribute("data-une"); chargerInfos(); majUne();
   });
 };
 function chargerInfos(){
@@ -1691,7 +1704,7 @@ function chargerInfos(){
   if (!box.children.length) box.innerHTML = '<p class="muted" style="text-align:center;margin:24px 0">Chargement…</p>';
   return prof("/chat/posts", { code: CHAT.code }).then(function(j){
     if (!j || !j.ok) { box.innerHTML = '<p class="muted" style="text-align:center;margin:24px 0">Infos indisponibles pour le moment.</p>'; return; }
-    var posts = j.posts || [];
+    var posts = j.posts || []; INFO.peutTout = !!j.peutTout;
     box.innerHTML = "";
     if (!posts.length) box.innerHTML = '<div class="card vide-info"><p>Rien de publié pour l’instant.</p><p class="aide">Une nouveauté, une sortie de jeu ou de livre, une opération en magasin ? Publie-la ici pour toute l’équipe.</p></div>';
     var auj = new Date(); auj.setHours(0, 0, 0, 0);
@@ -1713,8 +1726,10 @@ function chargerInfos(){
       var pied = el("div", "ppied");
       pied.appendChild(el("span", "", (moi(x.n) ? "Toi" : x.a) + " · " + ago(x.t)));
       var acts = el("span", "pacts");
-      if (PROFIL.admin) { var e = el("button", "", x.e ? "Désépingler" : "Épingler"); e.type = "button"; e.onclick = function(){ prof("/chat/post-epingler", { code: CHAT.code, id: x.id }).then(function(){ chargerInfos(); majUne(); }); }; acts.appendChild(e); }
-      if (moi(x.n) || PROFIL.admin) { var sp = el("button", "", "Supprimer"); sp.type = "button"; sp.onclick = function(){ if (window.confirm("Supprimer cette publication ?")) prof("/chat/post-supprimer", { code: CHAT.code, id: x.id }).then(function(){ chargerInfos(); majUne(); }); }; acts.appendChild(sp); }
+      var tout = INFO.peutTout || PROFIL.admin;   // le responsable et l'administrateur gèrent toutes les publications
+      if (moi(x.n) || tout) { var md = el("button", "", "Modifier"); md.type = "button"; md.onclick = function(){ formInfo(true, x); }; acts.appendChild(md); }
+      if (tout) { var e = el("button", "", x.e ? "Désépingler" : "Épingler"); e.type = "button"; e.onclick = function(){ prof("/chat/post-epingler", { code: CHAT.code, id: x.id }).then(function(){ chargerInfos(); majUne(); }); }; acts.appendChild(e); }
+      if (moi(x.n) || tout) { var sp = el("button", "", "Supprimer"); sp.type = "button"; sp.onclick = function(){ if (window.confirm("Supprimer cette publication ?")) prof("/chat/post-supprimer", { code: CHAT.code, id: x.id }).then(function(){ chargerInfos(); majUne(); }); }; acts.appendChild(sp); }
       pied.appendChild(acts); c.appendChild(pied);
       box.appendChild(c);
     });

@@ -916,7 +916,7 @@ async function chat(route, p, nom, affichage, admin, env, now) {
   // ---------- Infos : publications du magasin (nouveautés, sorties, infos) ----------
   if (route === "/chat/posts") {
     const r = await env.DB.prepare("SELECT id, nom AS n, affichage AS a, categorie AS c, titre, texte, date_evt AS d, date_fin AS f, epingle AS e, t, img FROM posts WHERE salon = ? ORDER BY epingle DESC, t DESC LIMIT 60").bind(code).all();
-    return { ok: true, posts: r.results || [] };
+    return { ok: true, peutTout: responsable, posts: r.results || [] };
   }
   if (route === "/chat/poster") {
     const CATS = ["nouveaute", "sortie", "info", "operation"];
@@ -940,7 +940,7 @@ async function chat(route, p, nom, affichage, admin, env, now) {
   }
   if (route === "/chat/post-supprimer") {
     const id = parseInt(p("id"), 10) || 0;
-    const r = await env.DB.prepare("DELETE FROM posts WHERE id = ? AND salon = ? AND (nom = ? OR ?) RETURNING id").bind(id, code, nom, admin ? 1 : 0).first();
+    const r = await env.DB.prepare("DELETE FROM posts WHERE id = ? AND salon = ? AND (nom = ? OR ?) RETURNING id").bind(id, code, nom, responsable ? 1 : 0).first();
     if (r) await env.DB.prepare("DELETE FROM post_images WHERE post_id = ?").bind(id).run();
     return { ok: true };
   }
@@ -948,8 +948,33 @@ async function chat(route, p, nom, affichage, admin, env, now) {
     const r = await env.DB.prepare("SELECT i.image FROM post_images i JOIN posts p ON p.id = i.post_id WHERE i.post_id = ? AND p.salon = ?").bind(parseInt(p("id"), 10) || 0, code).first();
     return r ? { ok: true, image: r.image } : { ok: false, erreur: "photo introuvable" };
   }
+  // modifier : l'auteur, ou le responsable / l'administrateur pour toutes les publications
+  if (route === "/chat/post-modifier") {
+    const id = parseInt(p("id"), 10) || 0;
+    const post = await env.DB.prepare("SELECT nom FROM posts WHERE id = ? AND salon = ?").bind(id, code).first();
+    if (!post) return { ok: false, erreur: "publication introuvable" };
+    if (post.nom !== nom && !responsable) return { ok: false, erreur: "seul l'auteur ou le responsable peut la modifier" };
+    const CATS = ["nouveaute", "sortie", "info", "operation"];
+    const titre = p("titre").replace(/\s+/g, " ").slice(0, 120), texte = p("texte").replace(/\r/g, "").replace(/\n{3,}/g, "\n\n").slice(0, 1500);
+    if (titre.length < 2) return { ok: false, erreur: "titre manquant" };
+    const d = /^\d{4}-\d{2}-\d{2}$/.test(p("date")) ? p("date") : "";
+    let fin = /^\d{4}-\d{2}-\d{2}$/.test(p("fin")) ? p("fin") : "";
+    if (fin && d && fin < d) fin = d;
+    const image = p("image"), ops = [];
+    if (image && (!/^data:image\/(jpeg|png|webp);base64,/.test(image) || image.length > 1500000)) return { ok: false, erreur: "photo trop lourde ou illisible" };
+    ops.push(env.DB.prepare("UPDATE posts SET categorie = ?, titre = ?, texte = ?, date_evt = ?, date_fin = ? WHERE id = ?").bind(CATS.includes(p("categorie")) ? p("categorie") : "info", titre, texte, d, fin, id));
+    if (image) {   // nouvelle photo
+      ops.push(env.DB.prepare("INSERT INTO post_images (post_id, image) VALUES (?, ?) ON CONFLICT(post_id) DO UPDATE SET image = excluded.image").bind(id, image));
+      ops.push(env.DB.prepare("UPDATE posts SET img = 1 WHERE id = ?").bind(id));
+    } else if (p("retirerImage") === "1") {
+      ops.push(env.DB.prepare("DELETE FROM post_images WHERE post_id = ?").bind(id));
+      ops.push(env.DB.prepare("UPDATE posts SET img = 0 WHERE id = ?").bind(id));
+    }
+    await env.DB.batch(ops);
+    return { ok: true };
+  }
   if (route === "/chat/post-epingler") {
-    if (!admin) return { ok: false, erreur: "réservé à l'administrateur" };
+    if (!responsable) return { ok: false, erreur: "réservé au responsable" };
     await env.DB.prepare("UPDATE posts SET epingle = CASE WHEN epingle = 1 THEN 0 ELSE 1 END WHERE id = ? AND salon = ?").bind(parseInt(p("id"), 10) || 0, code).run();
     return { ok: true };
   }
