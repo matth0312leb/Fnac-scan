@@ -638,7 +638,7 @@ function majProfilUI(){
 }
 // rôle et droits à jour (au démarrage, après connexion)
 function appliquerDroits(j){
-  if (!j || !j.ok) return;
+  if (!j || !j.ok || !j.role) return;   // réponse sans rôle (ancien serveur) : on garde ce qu'on sait
   PROFIL.admin = !!j.admin; PROFIL.role = j.role || "equipe"; PROFIL.droits = j.droits || [];
   if (j.catalogue) CATALOGUE = j.catalogue;
   try { localStorage.setItem("profilAdmin", PROFIL.admin ? "1" : "0"); localStorage.setItem("profilRole", PROFIL.role); localStorage.setItem("profilDroits", JSON.stringify(PROFIL.droits)); localStorage.setItem("catalogueDroits", JSON.stringify(CATALOGUE)); } catch(e){}
