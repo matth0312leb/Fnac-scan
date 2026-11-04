@@ -246,10 +246,14 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 .stat .act{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:8px;padding:8px 12px;font-size:14px;font-weight:600}
 .stat .act.danger{color:#d64545;border-color:#d64545}
 /* chat du magasin */
-#chatHead{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 16px}
-#chatHead b{font-size:17px}
-#chatHead .sub{font-size:12px;color:var(--muted);display:block;margin-top:2px}
-#chatHead button{border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:8px;padding:7px 10px;font-size:13px;font-weight:600;flex:none}
+#chatHead{padding:4px 16px}
+#chatPli{display:flex;align-items:center;justify-content:space-between;width:100%;border:0;background:none;color:var(--text);padding:10px 0;font:inherit;text-align:left}
+#chatPli b{font-size:17px}
+#chatPli svg{width:22px;height:22px;fill:none;stroke:var(--muted);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .2s}
+#chatPli[aria-expanded="true"] svg{transform:rotate(180deg)}
+#chatDetail{padding:0 0 12px}
+#chatHead .sub{font-size:13px;color:var(--muted);margin:0 0 6px}
+#chatQuit{border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:8px;padding:7px 10px;font-size:13px;font-weight:600;margin-top:4px}
 #chatList{display:flex;flex-direction:column;gap:6px;padding:4px 2px 12px;min-height:40vh}
 #chatList .jour{align-self:center;font-size:12px;color:var(--muted);margin:10px 0 4px}
 #chatList .vide{align-self:center;color:var(--muted);font-size:14px;text-align:center;margin:40px 20px}
@@ -447,7 +451,7 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 <div id="p6" class="hide">
   <div id="chatJoin" class="card">
     <p class="titre">Chat du magasin</p>
-    <p class="intro">Discute avec les collègues de ton magasin. Entre le code à 6 caractères de ton magasin (un collègue qui l'a déjà peut te le donner : il est affiché en haut du chat).</p>
+    <p class="intro">Infos, planning, réassort et chat de ton magasin. Entre le code à 6 caractères de ton magasin : demande-le à Matthieu.</p>
     <input id="chatCode" maxlength="6" autocomplete="off" autocapitalize="characters" enterkeyhint="go" placeholder="CODE">
     <button class="big" id="chatJoinGo" type="button"><span class="lb">Rejoindre le chat</span></button>
     <p class="muted" id="chatJoinMsg"></p>
@@ -459,14 +463,21 @@ li{padding:10px 0;border-top:1px solid var(--line)}
     </div>
   </div>
   <div id="chatRoom" class="hide">
-    <div id="chatHead" class="card"><div><b id="chatSalon"></b><span class="sub">Code à partager : <b id="chatCodeAff"></b> · messages effacés après 30 jours</span></div><button id="chatQuit" type="button">Changer</button></div>
-    <div class="seg"><button id="vChat" class="on" type="button">Chat</button><button id="vPlan" type="button">Planning</button><button id="vInfo" type="button">Infos<i class="pt hide" id="ptInfo"></i></button><button id="vRea" type="button">Réassort<i class="pt hide" id="ptRea"></i></button></div>
-    <div id="vueChat">
+    <div id="chatHead" class="card">
+      <button id="chatPli" type="button" aria-expanded="false"><b id="chatSalon"></b><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+      <div id="chatDetail" class="hide">
+        <p class="sub" id="chatCodeLigne">Code du magasin (visible par toi seul) : <b id="chatCodeAff"></b></p>
+        <p class="sub">Messages du chat effacés après 30 jours.</p>
+        <button id="chatQuit" type="button">Changer de magasin</button>
+      </div>
+    </div>
+    <div class="seg"><button id="vInfo" class="on" type="button">Infos<i class="pt hide" id="ptInfo"></i></button><button id="vPlan" type="button">Planning</button><button id="vRea" type="button">Réassort<i class="pt hide" id="ptRea"></i></button><button id="vChat" type="button">Chat<i class="pt hide" id="ptChat"></i></button></div>
+    <div id="vueChat" class="hide">
     <div id="chatList"></div>
     <div id="chatBar"><textarea id="chatIn" rows="1" maxlength="500" placeholder="Écris un message…" enterkeyhint="send"></textarea><button id="chatGo" type="button" aria-label="Envoyer"><svg viewBox="0 0 24 24"><path d="M4 12 20 4l-6 16-3-7z"/></svg></button></div>
     </div>
     <div id="vuePlan" class="hide"></div>
-    <div id="vueInfo" class="hide">
+    <div id="vueInfo">
       <button class="big" id="infoNouv" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span class="lb">Publier une info</span></button>
       <div id="infoForm" class="card hide">
         <p class="lbl">Nouvelle publication</p>
@@ -1470,7 +1481,9 @@ function ouvrirChat(){
   if (PROFIL.admin) listerSalons();
   if (!CHAT.code) { $("chatJoin").className = "card"; $("chatRoom").className = "hide"; return; }
   $("chatJoin").className = "card hide"; $("chatRoom").className = "";
-  $("chatSalon").textContent = CHAT.salon || "Chat du magasin"; $("chatCodeAff").textContent = CHAT.code;
+  $("chatSalon").textContent = CHAT.salon || "Mon magasin";
+  // le code du magasin n'est montré qu'à l'administrateur
+  $("chatCodeAff").textContent = PROFIL.admin ? CHAT.code : ""; $("chatCodeLigne").className = PROFIL.admin ? "sub" : "sub hide";
   if (!$("vuePlan").classList.contains("hide")) { chargerPlanning(); return; }
   if (!$("vueInfo").classList.contains("hide")) { chargerInfos(); return; }
   if (!$("vueRea").classList.contains("hide")) { chargerReassort(); return; }
@@ -1558,7 +1571,12 @@ function chargerMessages(premier){
     }
   });
 }
-function majBadgeChat(n){ var b = $("nbChat"); b.textContent = n > 9 ? "9+" : String(n); b.style.display = n ? "" : "none"; }
+function majBadgeChat(n){ var b = $("nbChat"); b.textContent = n > 9 ? "9+" : String(n); b.style.display = n ? "" : "none"; $("ptChat").className = n ? "pt" : "pt hide"; }
+// en-tête du magasin repliable (petite flèche), replié par défaut
+$("chatPli").onclick = function(){
+  var ouvert = $("chatPli").getAttribute("aria-expanded") !== "true";
+  $("chatPli").setAttribute("aria-expanded", ouvert ? "true" : "false"); $("chatDetail").className = ouvert ? "" : "hide";
+};
 function envoyer(){
   var t = $("chatIn").value.trim();
   if (!t || CHAT.envoi) return;
