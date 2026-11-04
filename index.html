@@ -1622,9 +1622,20 @@ function aLaUne(posts){
 }
 function majUne(){
   if (!CHAT.code) { $("uneCard").className = "card une hide"; return; }
+  // affichage immédiat de la dernière « À la une » connue, puis mise à jour depuis le serveur
+  try { var memo = JSON.parse(localStorage.getItem("uneMemo") || "null"); if (memo && !$("uneCard").children.length) dessinerUne(memo); } catch(e){}
   prof("/chat/posts", { code: CHAT.code }).then(function(j){
-    var x = j && j.ok ? aLaUne(j.posts) : null, c = $("uneCard");
-    if (!x) { c.className = "card une hide"; return; }
+    if (!j || !j.ok) return;   // serveur injoignable : on garde ce qui est affiché
+    var x = aLaUne(j.posts);
+    try { localStorage.setItem("uneMemo", JSON.stringify(x)); } catch(e){}
+    dessinerUne(x);
+  });
+}
+function dessinerUne(x){
+    var c = $("uneCard");
+    if (!x) { c.className = "card une hide"; c.innerHTML = ""; return; }
+    if (c.getAttribute("data-une") === JSON.stringify([x.id, x.titre, x.texte, x.d, x.f, x.e])) { c.className = "card une"; return; }
+    c.setAttribute("data-une", JSON.stringify([x.id, x.titre, x.texte, x.d, x.f, x.e]));
     c.innerHTML = ""; c.className = "card une";
     var tete = el("div", "ptete"), cat = CATS[x.c] || CATS.info;
     tete.appendChild(el("span", "unelab", "À la une")); tete.appendChild(el("span", "pcat c-" + x.c, cat[0] + " " + cat[1]));
@@ -1639,7 +1650,6 @@ function majUne(){
     var plus = el("button", "uneplus", "Toutes les infos de l’équipe ›"); plus.type = "button";
     plus.onclick = function(){ stop(); tab(6); ouvrirChat(); vue("info"); };
     c.appendChild(plus);
-  });
 }
 function dateLongue(iso){ var d = new Date(iso + "T12:00:00"); return JOURS_LONG[(d.getDay() + 6) % 7].toLowerCase() + " " + (d.getDate() === 1 ? "1er" : d.getDate()) + " " + MOIS[d.getMonth()] + (d.getFullYear() !== new Date().getFullYear() ? " " + d.getFullYear() : ""); }
 function formInfo(ouvert){
@@ -1703,8 +1713,8 @@ function chargerInfos(){
       var pied = el("div", "ppied");
       pied.appendChild(el("span", "", (moi(x.n) ? "Toi" : x.a) + " · " + ago(x.t)));
       var acts = el("span", "pacts");
-      if (PROFIL.admin) { var e = el("button", "", x.e ? "Désépingler" : "Épingler"); e.type = "button"; e.onclick = function(){ prof("/chat/post-epingler", { code: CHAT.code, id: x.id }).then(chargerInfos); }; acts.appendChild(e); }
-      if (moi(x.n) || PROFIL.admin) { var sp = el("button", "", "Supprimer"); sp.type = "button"; sp.onclick = function(){ if (window.confirm("Supprimer cette publication ?")) prof("/chat/post-supprimer", { code: CHAT.code, id: x.id }).then(chargerInfos); }; acts.appendChild(sp); }
+      if (PROFIL.admin) { var e = el("button", "", x.e ? "Désépingler" : "Épingler"); e.type = "button"; e.onclick = function(){ prof("/chat/post-epingler", { code: CHAT.code, id: x.id }).then(function(){ chargerInfos(); majUne(); }); }; acts.appendChild(e); }
+      if (moi(x.n) || PROFIL.admin) { var sp = el("button", "", "Supprimer"); sp.type = "button"; sp.onclick = function(){ if (window.confirm("Supprimer cette publication ?")) prof("/chat/post-supprimer", { code: CHAT.code, id: x.id }).then(function(){ chargerInfos(); majUne(); }); }; acts.appendChild(sp); }
       pied.appendChild(acts); c.appendChild(pied);
       box.appendChild(c);
     });
@@ -2026,7 +2036,7 @@ function boucleChat(){
 document.addEventListener("visibilitychange", function(){ if (!document.hidden && CHAT.code) { chargerMessages(chatOuvert() && !CHAT.dernier); boucleChat(); } });
 $("t6").addEventListener("click", boucleChat);
 [1, 4, 5].forEach(function(ti){ $("t" + ti).addEventListener("click", boucleChat); });
-if (CHAT.code) { setTimeout(function(){ chargerMessages(false); majUne(); }, 1500); }
+if (CHAT.code) { majUne(); setTimeout(function(){ chargerMessages(false); }, 1500); }
 boucleChat();
 </script>
 </body>
