@@ -64,6 +64,7 @@ export default {
         const g = (k) => (url.searchParams.get(k) || "").trim().slice(0, 120);
         return await sendCache(await comparer(g("a"), g("b"), env, g("na"), g("nb")));
       }
+      if (url.pathname === "/test" && url.searchParams.get("actu")) return send(await actualite(env));
       if (url.pathname === "/test" && url.searchParams.get("titre")) return send({ livre: await chercherLivre(url.searchParams.get("titre"), url.searchParams.get("auteur") || "", url.searchParams.get("editeur") || "") });
       if (url.pathname === "/test") return send(await diagnostic(code));
       return send({ ok: true, message: "Serveur Scan produit en ligne. Essaie /test?ean=9782070612758" });
@@ -333,23 +334,93 @@ async function similaires(isbn, env) {
   return { trouve: true, pour: f.titre, livres: surs.length ? surs : verifies.map((x) => ({ ...x, aVerifier: true })) };
 }
 
+// ---------- actualité pour les idées cadeaux : sorties récentes tirées de Wikidata (gardées 1 jour) ----------
+async function sparql(q, timeout) {
+  const r = await get("https://query.wikidata.org/sparql?format=json&query=" + encodeURIComponent(q),
+    { timeout: timeout || 15000, headers: { "Accept": "application/sparql-results+json", "User-Agent": "BipBip/1.0 (https://matth0312leb.github.io/Fnac-scan/)" } });
+  if (r.status !== 200) return [];
+  try { return JSON.parse(r.text).results.bindings || []; } catch (e) { return []; }
+}
+const isoJour = (d) => new Date(d).toISOString().slice(0, 10);
+async function actualite(env) {
+  const jour = isoJour(Date.now()), cleKV = "actu:v1:" + jour;
+  if (env.FICHES) { try { const deja = await env.FICHES.get(cleKV, "json"); if (deja) return deja; } catch (e) {} }
+  const depuis = isoJour(Date.now() - 15 * 30 * 864e5), jusqua = isoJour(Date.now() + 45 * 864e5), v = (x, k) => x[k] && x[k].value || "";
+  const [jeux, mangas, livres] = await Promise.all([
+    // jeux vidéo sortis ces 15 derniers mois sur les consoles actuelles, triés par notoriété (nombre d'articles Wikipédia)
+    sparql(`SELECT ?itemLabel (MIN(?date) AS ?sortie) (MAX(?sl) AS ?notoriete) (GROUP_CONCAT(DISTINCT ?platL; separator=", ") AS ?plats) (MAX(?pegiN) AS ?pegi) WHERE {
+      ?item wdt:P31 wd:Q7889; wdt:P577 ?date; wikibase:sitelinks ?sl; wdt:P400 ?plat.
+      FILTER(?date >= "${depuis}T00:00:00Z"^^xsd:dateTime && ?date <= "${jusqua}T00:00:00Z"^^xsd:dateTime) FILTER(?sl >= 6)
+      ?plat rdfs:label ?platL. FILTER(LANG(?platL) = "en" && REGEX(?platL, "PlayStation 5|Nintendo Switch|Xbox Series|Windows"))
+      OPTIONAL { ?item wdt:P908 ?pg. ?pg rdfs:label ?pgL. FILTER(LANG(?pgL) = "en") BIND(xsd:integer(REPLACE(?pgL, "[^0-9]", "")) AS ?pegiN) }
+      SERVICE wikibase:label { bd:serviceParam wikibase:language "fr,en". ?item rdfs:label ?itemLabel. }
+    } GROUP BY ?itemLabel ORDER BY DESC(?notoriete) LIMIT 45`),
+    // séries manga en cours (pas de date de fin), les plus connues
+    sparql(`SELECT ?itemLabel ?sl WHERE {
+      ?item wdt:P31 wd:Q21198342; wikibase:sitelinks ?sl; wdt:P580 ?debut.
+      FILTER NOT EXISTS { ?item wdt:P582 ?fin } FILTER(?debut >= "2010-01-01T00:00:00Z"^^xsd:dateTime) FILTER(?sl >= 12)
+      SERVICE wikibase:label { bd:serviceParam wikibase:language "fr,en". }
+    } ORDER BY DESC(?sl) LIMIT 35`),
+    // livres et BD parus ces 15 derniers mois, les plus connus
+    sparql(`SELECT ?itemLabel (MIN(?date) AS ?sortie) (MAX(?sl) AS ?notoriete) (SAMPLE(?auteurL) AS ?auteur) WHERE {
+      VALUES ?type { wd:Q7725634 wd:Q47461344 wd:Q1004 wd:Q8261 wd:Q838795 }
+      ?item wdt:P31 ?type; wdt:P577 ?date; wikibase:sitelinks ?sl.
+      FILTER(?date >= "${depuis}T00:00:00Z"^^xsd:dateTime && ?date <= "${jusqua}T00:00:00Z"^^xsd:dateTime) FILTER(?sl >= 4)
+      OPTIONAL { ?item wdt:P50 ?a. ?a rdfs:label ?auteurL. FILTER(LANG(?auteurL) = "fr" || LANG(?auteurL) = "en") }
+      SERVICE wikibase:label { bd:serviceParam wikibase:language "fr,en". ?item rdfs:label ?itemLabel. }
+    } GROUP BY ?itemLabel ORDER BY DESC(?notoriete) LIMIT 35`),
+  ].map((pr) => pr.catch(() => [])));
+  const propre = (t) => t && !/^Q\d+$/.test(t);
+  const res = {
+    jour,
+    jeux: jeux.filter((x) => propre(v(x, "itemLabel"))).map((x) => ({ titre: v(x, "itemLabel"), sortie: v(x, "sortie").slice(0, 10), plateformes: v(x, "plats").replace(/Microsoft /g, ""), pegi: +v(x, "pegi") || 0 })),
+    mangas: mangas.filter((x) => propre(v(x, "itemLabel"))).map((x) => v(x, "itemLabel")),
+    livres: livres.filter((x) => propre(v(x, "itemLabel"))).map((x) => ({ titre: v(x, "itemLabel"), auteur: v(x, "auteur"), sortie: v(x, "sortie").slice(0, 10) })),
+  };
+  if (env.FICHES && (res.jeux.length || res.mangas.length)) { try { await env.FICHES.put(cleKV, JSON.stringify(res), { expirationTtl: 60 * 60 * 26 }); } catch (e) {} }
+  return res;
+}
+function pegiMax(age) {
+  const m = String(age).match(/(\d+)\s*-\s*(\d+)/);
+  if (!m) return /adulte/i.test(age) ? 18 : 18;
+  const haut = +m[2];
+  return haut <= 3 ? 3 : haut <= 7 ? 3 : haut <= 11 ? 7 : haut <= 15 ? 12 : 16;
+}
+
 // ---------- idées cadeaux (âge, budget, envies) ----------
 async function cadeaux(b, env) {
   const t = (x, n) => String(x || "").replace(/\s+/g, " ").trim().slice(0, n);
   const age = t(b.age, 40), budget = t(b.budget, 40), gouts = t(b.gouts, 300), occasion = t(b.occasion, 40) || "Noël";
   const types = (Array.isArray(b.types) ? b.types : []).map((x) => t(x, 30)).filter(Boolean).slice(0, 6);
   if (!age && !gouts) return { ok: false, erreur: "indique au moins l'âge ou ce que la personne aime" };
-  const consigne = "Tu es vendeur conseil à la Fnac (Suisse) et tu aides un collègue à trouver un cadeau. Propose 6 idées de cadeaux RÉELS qu'on trouve à la Fnac (livres, BD, mangas, jeux vidéo, jeux de société, high-tech, accessoires…), adaptées à l'âge, au budget en francs suisses et aux goûts. " +
-    "Varie les idées (pas 6 fois le même type, sauf si un seul type est demandé). Pour un livre ou une BD, donne un titre précis qui existe en français et son auteur ; pour une série, le tome 1. Pour un produit, le nom exact du modèle. " +
-    'Réponds UNIQUEMENT en JSON : {"idees":[{"titre":"nom exact","auteur":"auteur si livre/BD/manga, sinon vide","type":"Livre|BD|Manga|Jeu vidéo|Jeu de société|High-tech|Autre","pourquoi":"une phrase : pourquoi ça plaira"}]}. ' +
+  // ce qui sort en ce moment (Wikidata), pour ne pas proposer que des classiques d'il y a des années
+  const actu = await actualite(env).catch(() => ({ jeux: [], mangas: [], livres: [] }));
+  const veut = (re) => !types.length || types.some((t) => re.test(t));
+  const pmax = pegiMax(age);
+  const jeuxOk = (actu.jeux || []).filter((j) => !j.pegi || j.pegi <= pmax).slice(0, 30);
+  const aujourdhui = new Date().toLocaleDateString("fr-CH", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Zurich" });
+  const listes = [
+    veut(/jeu vid/i) && jeuxOk.length && "JEUX VIDÉO SORTIS RÉCEMMENT (titre · date · consoles · PEGI) :\n" + jeuxOk.map((j) => "- " + j.titre + " · " + j.sortie + " · " + j.plateformes + (j.pegi ? " · PEGI " + j.pegi : "")).join("\n"),
+    veut(/manga|bd/i) && (actu.mangas || []).length && "SÉRIES MANGA EN COURS ET POPULAIRES :\n" + actu.mangas.slice(0, 30).map((m) => "- " + m).join("\n"),
+    veut(/livre|bd|manga/i) && (actu.livres || []).length && "LIVRES ET BD PARUS RÉCEMMENT :\n" + actu.livres.slice(0, 25).map((l) => "- " + l.titre + (l.auteur ? " (" + l.auteur + ")" : "") + " · " + l.sortie).join("\n"),
+  ].filter(Boolean).join("\n\n");
+  const consigne = "Tu es vendeur conseil à la Fnac (Suisse) et tu aides un collègue à trouver un cadeau. Nous sommes le " + aujourdhui + ". Propose 6 idées de cadeaux RÉELS, ACTUELS et vendus à la Fnac (livres, BD, mangas, jeux vidéo, jeux de société, high-tech, accessoires…), adaptées à l'âge, au budget en francs suisses et aux goûts. " +
+    "PRIORITÉ À L'ACTUALITÉ : choisis d'abord dans les listes de sorties récentes fournies (elles viennent de bases à jour) ; pour le reste, propose des articles récents ou des incontournables encore très demandés cette année. " +
+    "INTERDIT : les jeux gratuits (Roblox, Fortnite…), les éditions périmées (pas « Just Dance 2022 » mais la dernière édition), les vieux modèles high-tech remplacés depuis (propose la génération actuelle). " +
+    "Varie les idées (pas 6 fois le même type, sauf si un seul type est demandé). Pour un livre ou une BD, donne un titre précis qui existe en français et son auteur ; pour une série, le tome 1. Pour un produit, le nom exact du modèle. Respecte l'âge (PEGI). " +
+    'Réponds UNIQUEMENT en JSON : {"idees":[{"titre":"nom exact","auteur":"auteur si livre/BD/manga, sinon vide","type":"Livre|BD|Manga|Jeu vidéo|Jeu de société|High-tech|Autre","sortie":"date de sortie AAAA-MM-JJ si elle figure dans les listes, sinon vide","pourquoi":"une phrase : pourquoi ça plaira"}]}. ' +
     "Ne propose que des articles dont tu es certain qu'ils existent. N'indique aucun prix.";
-  const demande = ["Occasion : " + occasion, age && "Pour : " + age, budget && "Budget : " + budget, types.length && "Types souhaités : " + types.join(", "), gouts && "Ce que la personne aime : " + gouts].filter(Boolean).join("\n");
+  const demande = ["Occasion : " + occasion, age && "Pour : " + age + " (PEGI " + pmax + " maximum pour les jeux)", budget && "Budget : " + budget, types.length && "Types souhaités : " + types.join(", "), gouts && "Ce que la personne aime : " + gouts, listes].filter(Boolean).join("\n");
   const r = await demanderIA(env, consigne, demande, 700);
   const liste = (r && Array.isArray(r.idees) ? r.idees : []).filter((x) => x && x.titre).slice(0, 6);
   if (!liste.length) return { ok: false, erreur: "pas d'idée pour le moment, réessaie" };
   // livres, BD et mangas : on vérifie qu'ils existent (Open Library) pour écarter les titres inventés
   const idees = await Promise.all(liste.map(async (x) => {
-    const o = { titre: t(x.titre, 120), auteur: t(x.auteur, 80), type: t(x.type, 30) || "Autre", pourquoi: t(x.pourquoi, 220) };
+    const o = { titre: t(x.titre, 120), auteur: t(x.auteur, 80), type: t(x.type, 30) || "Autre", pourquoi: t(x.pourquoi, 220), sortie: /^\d{4}-\d{2}-\d{2}$/.test(String(x.sortie || "")) ? x.sortie : "" };
+    // date de sortie vérifiée dans nos listes (l'IA peut se tromper)
+    const ref = (actu.jeux || []).concat(actu.livres || []).find((j) => j.titre.toLowerCase() === o.titre.toLowerCase());
+    o.sortie = ref ? ref.sortie : "";
+    o.recent = !!ref || (actu.mangas || []).some((m) => o.titre.toLowerCase().startsWith(m.toLowerCase()));
     if (/livre|bd|manga|roman|album/i.test(o.type)) {
       const q = "https://openlibrary.org/search.json?limit=1&fields=title,isbn&title=" + encodeURIComponent(o.titre) + (o.auteur ? "&author=" + encodeURIComponent(o.auteur) : "");
       const res = await get(q, { timeout: 5000 });
@@ -361,7 +432,7 @@ async function cadeaux(b, env) {
   }));
   // un livre introuvable dans Open Library est retiré (sauf si ça viderait la liste)
   const gardes = idees.filter((x) => x.verifie !== false);
-  return { ok: true, idees: gardes.length >= 3 ? gardes : idees };
+  return { ok: true, idees: gardes.length >= 3 ? gardes : idees, actu: { jeux: (actu.jeux || []).length, mangas: (actu.mangas || []).length, livres: (actu.livres || []).length } };
 }
 
 async function demanderIA(env, consigne, infos, maxTokens) {

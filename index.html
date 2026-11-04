@@ -134,6 +134,7 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 .idee b{font-size:16px;line-height:1.3}
 .idee .ty{flex:none;font-size:11px;font-weight:700;padding:3px 8px;border-radius:10px;background:var(--bg);border:1px solid var(--line);color:var(--muted)}
 .idee .au{font-size:13px;color:var(--muted);margin:2px 0 0}
+.idee .nouv{font-size:13px;font-weight:700;color:#2e9e4f;margin:4px 0 0}
 .idee .pq{font-size:15px;line-height:1.4;margin:6px 0 8px}
 .idee .liens{display:flex;gap:8px;flex-wrap:wrap}
 .idee .liens a,.idee .liens button{border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:8px;padding:7px 11px;font-size:13px;font-weight:600;text-decoration:none}
@@ -1906,6 +1907,10 @@ $("cdGo").onclick = function(){
         it.appendChild(el("b", "", x.titre)); it.appendChild(el("span", "ty", x.type || ""));
         d.appendChild(it);
         if (x.auteur) d.appendChild(el("p", "au", x.auteur));
+        if (x.sortie || x.recent) {
+          var sd = x.sortie ? new Date(x.sortie + "T12:00:00") : null, futur = sd && sd > new Date();
+          d.appendChild(el("p", "nouv", "🆕 " + (sd ? (futur ? "Sort le " + dateCourte(x.sortie) + " " + sd.getFullYear() : "Sorti en " + MOIS[sd.getMonth()] + " " + sd.getFullYear()) : "Série en cours")));
+        }
         if (x.pourquoi) d.appendChild(el("p", "pq", x.pourquoi));
         var li = el("div", "liens");
         if (x.isbn) { var f = el("button", "", "Voir la fiche"); f.type = "button"; f.onclick = function(){ show(x.isbn); $("res").scrollIntoView({ behavior: "smooth", block: "start" }); }; li.appendChild(f); }
