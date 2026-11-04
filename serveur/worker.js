@@ -624,7 +624,11 @@ async function profils(req, url, env) {
     };
     const code = await borne("code", conf("code_stats"), null);
     if (code === null) return { ok: false, erreur: "base injoignable", etapes };
-    if (p("cle") !== code) return { ok: false, erreur: "code incorrect" };
+    if (p("cle") !== code) {
+      // un manager qui a le droit « stats » y accède avec son prénom et son code personnel
+      const rcA = await rolesConf(env), pr = nom ? await env.DB.prepare("SELECT pin FROM profils WHERE nom = ?").bind(nom).first().catch(() => null) : null;
+      if (!(rcA.roles[nom] === "manager" && rcA.droits.includes("stats") && pr && await pinOk(p("cle"), pr.pin))) return { ok: false, erreur: "code incorrect" };
+    }
     const semaine = now - 7 * 24 * 3600 * 1000;
     const jour = new Date().toISOString().slice(0, 10);
     const [act, noms, q, hist] = await Promise.all([
@@ -634,8 +638,8 @@ async function profils(req, url, env) {
       borne("quota 7 j", env.DB.prepare("SELECT jour, appels, neurones FROM ia_usage ORDER BY jour DESC LIMIT 7").all(), { results: [] }),
     ]);
     const parNom = {};
-    const valideurs = String(await conf("valideurs") || "").split(",").map((x) => x.trim());
-    (noms.results || []).forEach((x) => { parNom[x.nom] = { id: x.nom, code: !!x.code, valideur: valideurs.includes(x.nom), nom: x.affichage || x.nom, depuis: x.cree, dernier: x.vu || 0, total: 0, semaine: 0, fonctions: {} }; });
+    const rcS = await rolesConf(env), adminNomS = await conf("admin_nom");
+    (noms.results || []).forEach((x) => { parNom[x.nom] = { id: x.nom, code: !!x.code, role: x.nom === adminNomS ? "admin" : rcS.roles[x.nom] === "manager" ? "manager" : "equipe", nom: x.affichage || x.nom, depuis: x.cree, dernier: x.vu || 0, total: 0, semaine: 0, fonctions: {} }; });
     (act.results || []).forEach((r) => {
       const s = parNom[r.nom] || (parNom[r.nom] = { id: r.nom, nom: r.nom, dernier: 0, total: 0, semaine: 0, fonctions: {} });
       s.fonctions[r.type || "scan"] = r.n; s.total += r.n; s.semaine += r.n7 || 0; s.dernier = Math.max(s.dernier, r.dernier || 0);
@@ -685,14 +689,16 @@ async function profils(req, url, env) {
     return { ok: true };
   }
 
-  if (route.startsWith("/profil/admin-")) return await gestionProfils(route, p, admin, env, now);
+  const rc = await rolesConf(env), mesDroits = droitsDe(nom, admin, rc), monRole = roleDe(nom, admin, rc);
+  if (route.startsWith("/profil/admin-")) return await gestionProfils(route, p, admin, mesDroits, env, now);
 
-  if (route.startsWith("/chat/")) return await chat(route, p, nom, affichage, nom === await conf("admin_nom"), env, now);
+  if (route.startsWith("/chat/")) return await chat(route, p, nom, affichage, admin, mesDroits, env, now);
+  if (route === "/profil/moi") return reponse({ ok: true, nom: affichage, admin, role: monRole, droits: mesDroits, catalogue: DROITS });
 
   if (route === "/profil/connexion") {
     await env.DB.prepare("INSERT INTO profils (nom, affichage, cree, vu) VALUES (?, ?, ?, ?) ON CONFLICT(nom) DO UPDATE SET vu = excluded.vu").bind(nom, affichage, now, now).run();
     if (poserPin) await env.DB.prepare("UPDATE profils SET pin = ?, essais = 0, bloque = 0 WHERE nom = ?").bind(poserPin, nom).run();
-    return reponse({ ok: true, nom: affichage, admin: nom === await conf("admin_nom") });
+    return reponse({ ok: true, nom: affichage, admin, role: monRole, droits: mesDroits, catalogue: DROITS });
   }
   if (route === "/profil/historique") {
     const rows = (await env.DB.prepare("SELECT code AS c, note AS n, t, titre AS ti FROM historique WHERE nom = ? ORDER BY t DESC LIMIT 50").bind(nom).all()).results || [];
@@ -746,21 +752,53 @@ async function pinOk(pin, stocke) {
   return (await pinHache(pin, stocke.split(":")[0])) === stocke;
 }
 
+// ---------- rôles : administrateur (tous les droits), manager (droits choisis par l'administrateur), équipe ----------
+const DROITS = {
+  infos: "Modifier, supprimer et épingler toutes les infos",
+  planning: "Importer et modifier le planning",
+  reassort: "Valider les demandes de réassort",
+  chat: "Supprimer n'importe quel message du chat",
+  stats: "Voir les statistiques de l'équipe",
+  profils: "Gérer les profils (renommer, fusionner, supprimer, réinitialiser un code)",
+};
+async function rolesConf(env) {
+  const lire = async (k, def) => { try { const r = await env.DB.prepare("SELECT valeur FROM config WHERE cle = ?").bind(k).first(); return r ? JSON.parse(r.valeur) : def; } catch (e) { return def; } };
+  const roles = await lire("roles", {}), droits = await lire("droits_manager", []);
+  return { roles: roles && typeof roles === "object" ? roles : {}, droits: Array.isArray(droits) ? droits.filter((d) => DROITS[d]) : [] };
+}
+function droitsDe(nom, admin, rc) { return admin ? Object.keys(DROITS) : rc.roles[nom] === "manager" ? rc.droits : []; }
+function roleDe(nom, admin, rc) { return admin ? "admin" : rc.roles[nom] === "manager" ? "manager" : "equipe"; }
+
 // ---------- gestion des profils par l'administrateur (renommer, fusionner, supprimer) ----------
-async function gestionProfils(route, p, admin, env, now) {
-  if (!admin) return { ok: false, erreur: "réservé à l'administrateur" };
+async function gestionProfils(route, p, admin, droits, env, now) {
+  const rc = await rolesConf(env);
+  const ecrire = (k, v) => env.DB.prepare("INSERT INTO config (cle, valeur) VALUES (?, ?) ON CONFLICT(cle) DO UPDATE SET valeur = excluded.valeur").bind(k, JSON.stringify(v)).run();
+  // rôles et droits : réservé à l'administrateur
+  if (route === "/profil/admin-roles") {
+    if (!admin) return { ok: false, erreur: "réservé à l'administrateur" };
+    return { ok: true, roles: rc.roles, droits: rc.droits, catalogue: DROITS };
+  }
+  if (route === "/profil/admin-droits") {
+    if (!admin) return { ok: false, erreur: "réservé à l'administrateur" };
+    const liste = String(p("droits")).split(",").map((x) => x.trim()).filter((d) => DROITS[d]);
+    await ecrire("droits_manager", [...new Set(liste)]);
+    return { ok: true, droits: [...new Set(liste)] };
+  }
+  if (route === "/profil/admin-role" && !admin) return { ok: false, erreur: "réservé à l'administrateur" };
+  if (!admin && !droits.includes("profils")) return { ok: false, erreur: "réservé à l'administrateur" };
   await env.DB.prepare("CREATE TABLE IF NOT EXISTS renommages (ancien TEXT PRIMARY KEY, nouveau TEXT, affichage TEXT, t INTEGER)").run();
   const cle = (x) => String(x || "").replace(/\s+/g, " ").trim().slice(0, 30).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   const ancien = cle(p("cible"));
   const adminNom = (await env.DB.prepare("SELECT valeur FROM config WHERE cle = 'admin_nom'").first() || {}).valeur;
   if (!ancien || ancien === adminNom) return { ok: false, erreur: "profil invalide" };
-  if (route === "/profil/admin-valideur") {
-    const r = await env.DB.prepare("SELECT valeur FROM config WHERE cle = 'valideurs'").first();
-    const liste = new Set(String(r && r.valeur || "").split(",").map((x) => x.trim()).filter(Boolean));
-    if (p("oui") === "1") liste.add(ancien); else liste.delete(ancien);
-    await env.DB.prepare("INSERT INTO config (cle, valeur) VALUES ('valideurs', ?) ON CONFLICT(cle) DO UPDATE SET valeur = excluded.valeur").bind([...liste].join(",")).run();
-    return { ok: true, valideur: liste.has(ancien) };
+  if (route === "/profil/admin-role") {
+    const roles = { ...rc.roles };
+    if (p("role") === "manager") roles[ancien] = "manager"; else delete roles[ancien];
+    await ecrire("roles", roles);
+    return { ok: true, role: roles[ancien] || "equipe" };
   }
+  // un manager avec le droit « profils » ne peut pas toucher à un autre manager
+  if (!admin && rc.roles[ancien] === "manager") return { ok: false, erreur: "seul l'administrateur peut modifier un manager" };
   if (route === "/profil/admin-code") {   // code oublié : le collègue en choisira un nouveau à sa prochaine ouverture
     await env.DB.prepare("UPDATE profils SET pin = NULL, essais = 0, bloque = 0 WHERE nom = ?").bind(ancien).run();
     return { ok: true };
@@ -799,6 +837,7 @@ async function gestionProfils(route, p, admin, env, now) {
     ];
     await env.DB.batch(ops);
     try { await env.DB.prepare("UPDATE messages SET nom = ?, affichage = ? WHERE nom = ?").bind(nouveau, affichage, ancien).run(); } catch (e) {}
+    if (rc.roles[ancien]) { const roles = { ...rc.roles, [nouveau]: rc.roles[ancien] }; delete roles[ancien]; await ecrire("roles", roles); }
     return { ok: true, fusion: !!existe };
   }
   return { ok: false, erreur: "route inconnue" };
@@ -834,7 +873,8 @@ async function lirePlanning(image, env) {
 // ---------- chat d'équipe par magasin ----------
 // Un « salon » par magasin, rejoint avec un code à 6 caractères que l'administrateur crée et partage à ses collègues.
 let tablesChatOk = false;
-async function chat(route, p, nom, affichage, admin, env, now) {
+async function chat(route, p, nom, affichage, admin, droits, env, now) {
+  const peut = (d) => admin || (droits || []).includes(d);
   if (!tablesChatOk) {
     await env.DB.batch([
       env.DB.prepare("CREATE TABLE IF NOT EXISTS salons (code TEXT PRIMARY KEY, nom TEXT, cree_par TEXT, cree INTEGER)"),
@@ -865,24 +905,22 @@ async function chat(route, p, nom, affichage, admin, env, now) {
   const salon = code ? await env.DB.prepare("SELECT code, nom FROM salons WHERE code = ?").bind(code).first() : null;
   if (!salon) return { ok: false, erreur: "code inconnu", inconnu: true };
   if (route === "/chat/rejoindre") return { ok: true, code: salon.code, salon: salon.nom };
-  const valConf = await env.DB.prepare("SELECT valeur FROM config WHERE cle = 'valideurs'").first().catch(() => null);
-  const responsable = admin || String(valConf && valConf.valeur || "").split(",").map((x) => x.trim()).includes(nom);
   // planning de la semaine du magasin (visible des membres du chat, avec leur code personnel)
   if (route === "/chat/planning") {
     const depuis = new Date(now - 8 * 24 * 3600 * 1000).toISOString().slice(0, 10);
     const r = await env.DB.prepare("SELECT debut, donnees, maj FROM planning WHERE salon = ? AND debut >= ? ORDER BY debut LIMIT 4").bind(code, depuis).all();
-    return { ok: true, peutImporter: responsable, semaines: (r.results || []).map((x) => { let d = {}; try { d = JSON.parse(x.donnees); } catch (e) {} return { ...d, debut: x.debut, maj: x.maj }; }) };
+    return { ok: true, peutImporter: peut("planning"), semaines: (r.results || []).map((x) => { let d = {}; try { d = JSON.parse(x.donnees); } catch (e) {} return { ...d, debut: x.debut, maj: x.maj }; }) };
   }
   // lecture d'une capture du planning par l'IA (le responsable relit et corrige avant de publier)
   if (route === "/chat/planning-lire") {
-    if (!responsable) return { ok: false, erreur: "réservé au responsable" };
+    if (!peut("planning")) return { ok: false, erreur: "réservé au responsable" };
     const image = p("image");
     if (!/^data:image\/(jpeg|png|webp);base64,/.test(image) || image.length > 3000000) return { ok: false, erreur: "image illisible ou trop lourde" };
     return await lirePlanning(image, env);
   }
   // ---------- Réassort : demandes de produits, validées par le responsable quand la commande est faite ----------
   if (route.startsWith("/chat/reassort")) {
-    const peutValider = responsable;
+    const peutValider = peut("reassort");
     const id = parseInt(p("id"), 10) || 0;
     if (route === "/chat/reassort") {
       const r = await env.DB.prepare("SELECT id, nom AS n, affichage AS a, sku, titre, quantite AS q, note, statut, valide_par AS v, t, t_valide AS tv FROM reassort WHERE salon = ? AND (statut = 'demande' OR t_valide > ?) ORDER BY CASE statut WHEN 'demande' THEN 0 ELSE 1 END, t DESC LIMIT 150")
@@ -916,7 +954,7 @@ async function chat(route, p, nom, affichage, admin, env, now) {
   // ---------- Infos : publications du magasin (nouveautés, sorties, infos) ----------
   if (route === "/chat/posts") {
     const r = await env.DB.prepare("SELECT id, nom AS n, affichage AS a, categorie AS c, titre, texte, date_evt AS d, date_fin AS f, epingle AS e, t, img FROM posts WHERE salon = ? ORDER BY epingle DESC, t DESC LIMIT 60").bind(code).all();
-    return { ok: true, peutTout: responsable, posts: r.results || [] };
+    return { ok: true, peutTout: peut("infos"), posts: r.results || [] };
   }
   if (route === "/chat/poster") {
     const CATS = ["nouveaute", "sortie", "info", "operation"];
@@ -940,7 +978,7 @@ async function chat(route, p, nom, affichage, admin, env, now) {
   }
   if (route === "/chat/post-supprimer") {
     const id = parseInt(p("id"), 10) || 0;
-    const r = await env.DB.prepare("DELETE FROM posts WHERE id = ? AND salon = ? AND (nom = ? OR ?) RETURNING id").bind(id, code, nom, responsable ? 1 : 0).first();
+    const r = await env.DB.prepare("DELETE FROM posts WHERE id = ? AND salon = ? AND (nom = ? OR ?) RETURNING id").bind(id, code, nom, peut("infos") ? 1 : 0).first();
     if (r) await env.DB.prepare("DELETE FROM post_images WHERE post_id = ?").bind(id).run();
     return { ok: true };
   }
@@ -953,7 +991,7 @@ async function chat(route, p, nom, affichage, admin, env, now) {
     const id = parseInt(p("id"), 10) || 0;
     const post = await env.DB.prepare("SELECT nom FROM posts WHERE id = ? AND salon = ?").bind(id, code).first();
     if (!post) return { ok: false, erreur: "publication introuvable" };
-    if (post.nom !== nom && !responsable) return { ok: false, erreur: "seul l'auteur ou le responsable peut la modifier" };
+    if (post.nom !== nom && !peut("infos")) return { ok: false, erreur: "seul l'auteur ou le responsable peut la modifier" };
     const CATS = ["nouveaute", "sortie", "info", "operation"];
     const titre = p("titre").replace(/\s+/g, " ").slice(0, 120), texte = p("texte").replace(/\r/g, "").replace(/\n{3,}/g, "\n\n").slice(0, 1500);
     if (titre.length < 2) return { ok: false, erreur: "titre manquant" };
@@ -974,12 +1012,12 @@ async function chat(route, p, nom, affichage, admin, env, now) {
     return { ok: true };
   }
   if (route === "/chat/post-epingler") {
-    if (!responsable) return { ok: false, erreur: "réservé au responsable" };
+    if (!peut("infos")) return { ok: false, erreur: "réservé au responsable" };
     await env.DB.prepare("UPDATE posts SET epingle = CASE WHEN epingle = 1 THEN 0 ELSE 1 END WHERE id = ? AND salon = ?").bind(parseInt(p("id"), 10) || 0, code).run();
     return { ok: true };
   }
   if (route === "/chat/planning-maj") {
-    if (!responsable) return { ok: false, erreur: "réservé au responsable" };
+    if (!peut("planning")) return { ok: false, erreur: "réservé au responsable" };
     let donnees; try { donnees = JSON.parse(p("donnees")); } catch (e) { return { ok: false, erreur: "planning illisible" }; }
     if (!donnees || !Array.isArray(donnees.personnes) || !donnees.personnes.length) return { ok: false, erreur: "planning vide" };
     const debut = p("debut");
@@ -1004,7 +1042,7 @@ async function chat(route, p, nom, affichage, admin, env, now) {
     return { ok: true };
   }
   if (route === "/chat/supprimer") {
-    await env.DB.prepare("DELETE FROM messages WHERE id = ? AND salon = ? AND (nom = ? OR ?)").bind(parseInt(p("id"), 10) || 0, code, nom, admin ? 1 : 0).run();
+    await env.DB.prepare("DELETE FROM messages WHERE id = ? AND salon = ? AND (nom = ? OR ?)").bind(parseInt(p("id"), 10) || 0, code, nom, peut("chat") ? 1 : 0).run();
     return { ok: true };
   }
   return { ok: false, erreur: "route inconnue" };

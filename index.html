@@ -93,6 +93,10 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 .bar span{display:block;height:100%;background:#2e9e4f}
 .bar span.mid{background:#e8a000}.bar span.haut{background:#d64545}
 .champ{position:relative}
+.role{margin:10px 0 0;font-size:15px;font-weight:700}
+.role span{display:inline-block;padding:3px 10px;border-radius:12px;background:var(--bg);border:1px solid var(--line);margin-left:6px;font-size:13px}
+#rolesDroits label{display:flex;align-items:flex-start;gap:10px;margin:10px 2px 0;font-size:15px;line-height:1.35}
+#rolesDroits input{width:22px;height:22px;margin:0;flex:none;accent-color:var(--accent)}
 .infodates{display:flex;gap:10px;margin:0 0 12px}
 .infodates label{flex:1;font-size:13px;color:var(--muted)}
 .infodates input{font-size:16px;padding:10px;margin:4px 0 0}
@@ -514,7 +518,17 @@ li{padding:10px 0;border-top:1px solid var(--line)}
   <div class="card rg">
     <p class="lbl">Profil</p>
     <div class="reg"><span>Connecté : <b id="regNom">—</b></span><button id="regChange" type="button"><svg class="ic" style="width:16px;height:16px" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>Changer</button></div>
+    <p class="role" id="regRole"></p>
+    <p class="aide" id="regDroits"></p>
     <p class="aide">Ton historique et tes notes suivent ton prénom, sur n'importe quel téléphone.</p>
+  </div>
+
+  <div class="card rg hide" id="rolesCard">
+    <p class="lbl">Rôles et droits</p>
+    <p class="aide" style="margin-top:0">👑 Administrateur (toi) : tous les droits, toujours. Coche ce que les managers ont le droit de faire. Pour nommer quelqu'un manager : Statistiques de l'équipe → Gérer.</p>
+    <p class="clab" id="rolesManagers"></p>
+    <div id="rolesDroits"></div>
+    <p class="aide" id="rolesMsg"></p>
   </div>
 
   <div class="card rg">
@@ -571,7 +585,12 @@ $("t6").onclick = function(){ tab(6); ouvrirChat(); };
 $("t5").onclick = function(){ tab(5); };
 
 // ---------- profil (prénom) ----------
+var CATALOGUE = {};
+try { CATALOGUE = JSON.parse(localStorage.getItem("catalogueDroits") || "{}"); } catch(e){}
 var PROFIL = { nom: "", cle: "", admin: false };
+function peut(d){ return PROFIL.admin || (PROFIL.droits || []).indexOf(d) > -1; }
+var ROLES = { admin: "👑 Administrateur", manager: "⭐ Manager", equipe: "Équipe" };
+try { PROFIL.droits = JSON.parse(localStorage.getItem("profilDroits") || "[]"); PROFIL.role = localStorage.getItem("profilRole") || ""; } catch(e){ PROFIL.droits = []; }
 try { PROFIL.nom = localStorage.getItem("profilNom") || ""; PROFIL.cle = localStorage.getItem("profilCle") || ""; PROFIL.admin = localStorage.getItem("profilAdmin") === "1"; } catch(e){}
 function prof(route, data){
   if (!PROFIL.nom) return Promise.resolve(null);
@@ -610,8 +629,38 @@ function setTitre(c, ti){
 }
 function majProfilUI(){
   $("who").textContent = PROFIL.nom ? "Salut " + PROFIL.nom + " 👋" : "";
-  $("statBtn").className = PROFIL.admin ? "big alt" : "big alt hide";
+  $("statBtn").className = peut("stats") ? "big alt" : "big alt hide";
+  var role = PROFIL.admin ? "admin" : PROFIL.role || "equipe";
+  $("regRole").innerHTML = ""; if (PROFIL.nom) { $("regRole").appendChild(document.createTextNode("Rôle :")); $("regRole").appendChild(el("span", "", ROLES[role] || "Équipe")); }
+  $("regDroits").textContent = role === "admin" ? "Tous les droits." : role === "manager" ? ((PROFIL.droits || []).length ? "Tes droits : " + PROFIL.droits.map(function(d){ return (CATALOGUE[d] || d).toLowerCase(); }).join(" ; ") + "." : "Aucun droit particulier pour l’instant.") : "";
+  $("rolesCard").className = PROFIL.admin ? "card rg" : "card rg hide";
   $("regNom").textContent = PROFIL.nom || "—";
+}
+// rôle et droits à jour (au démarrage, après connexion)
+function appliquerDroits(j){
+  if (!j || !j.ok) return;
+  PROFIL.admin = !!j.admin; PROFIL.role = j.role || "equipe"; PROFIL.droits = j.droits || [];
+  if (j.catalogue) CATALOGUE = j.catalogue;
+  try { localStorage.setItem("profilAdmin", PROFIL.admin ? "1" : "0"); localStorage.setItem("profilRole", PROFIL.role); localStorage.setItem("profilDroits", JSON.stringify(PROFIL.droits)); localStorage.setItem("catalogueDroits", JSON.stringify(CATALOGUE)); } catch(e){}
+  majProfilUI();
+  if (PROFIL.admin) chargerRoles();
+}
+function chargerRoles(){
+  prof("/profil/admin-roles", {}).then(function(j){
+    if (!j || !j.ok) return;
+    var managers = Object.keys(j.roles || {}).filter(function(n){ return j.roles[n] === "manager"; });
+    $("rolesManagers").textContent = "⭐ Managers : " + (managers.length ? managers.map(function(n){ return n.charAt(0).toUpperCase() + n.slice(1); }).join(", ") : "personne pour l’instant");
+    var box = $("rolesDroits"); box.innerHTML = "";
+    Object.keys(j.catalogue || {}).forEach(function(d){
+      var lb = el("label"), cb = el("input"); cb.type = "checkbox"; cb.value = d; cb.checked = (j.droits || []).indexOf(d) > -1;
+      cb.onchange = function(){
+        var liste = Array.prototype.filter.call(box.querySelectorAll("input"), function(x){ return x.checked; }).map(function(x){ return x.value; });
+        $("rolesMsg").textContent = "Enregistrement…";
+        prof("/profil/admin-droits", { droits: liste.join(",") }).then(function(r){ $("rolesMsg").textContent = r && r.ok ? "Enregistré ✓ (appliqué aux managers dès leur prochaine action)" : "Pas enregistré, réessaie."; });
+      };
+      lb.appendChild(cb); lb.appendChild(document.createTextNode(j.catalogue[d])); box.appendChild(lb);
+    });
+  });
 }
 function ouvrirProfil(){
   $("profil").className = ""; $("pNom").value = ""; $("pCle").value = ""; $("pMsg").textContent = "";
@@ -643,9 +692,9 @@ function connexion(){
       if (!j || !j.ok) { $("pMsg").textContent = "Connexion impossible, réessaie."; return; }
       var premier = !PROFIL.nom || PROFIL.nom.toLowerCase() !== nom.toLowerCase();
       if (premier && PROFIL.nom) storeHist([]);   // changement de profil : on ne mélange pas les historiques
-      PROFIL = { nom: j.nom, cle: cle, admin: !!j.admin };
+      PROFIL = { nom: j.nom, cle: cle, admin: !!j.admin, role: j.role || "equipe", droits: j.droits || [] };
       try { localStorage.setItem("profilNom", PROFIL.nom); localStorage.setItem("profilCle", cle); localStorage.setItem("profilAdmin", PROFIL.admin ? "1" : "0"); } catch(e){}
-      $("profil").className = "hide"; majProfilUI(); $("statCard").className = "card hide";
+      $("profil").className = "hide"; appliquerDroits(j); $("statCard").className = "card hide";
       chargerHistoriqueServeur(true);
     }, function(){ $("pMsg").textContent = "Serveur injoignable, réessaie."; });
 }
@@ -680,9 +729,13 @@ function gererProfil(tr, p){
     msg.textContent = "…";
     prof("/profil/admin-supprimer", { cible: p.id }).then(function(j){ fin(j, "Profil supprimé."); });
   };
-  var bV = el("button", "act", p.valideur ? "Retirer : valider le réassort" : "Autoriser à valider le réassort"); bV.type = "button";
-  bV.onclick = function(){ msg.textContent = "…"; prof("/profil/admin-valideur", { cible: p.id, oui: p.valideur ? "0" : "1" }).then(function(j){ fin(j, j && j.valideur ? "Peut maintenant valider les réassorts." : "Ne peut plus valider les réassorts."); }); };
-  row.appendChild(bR); row.appendChild(bV); row.appendChild(bC); row.appendChild(bS);
+  row.appendChild(bR);
+  if (PROFIL.admin) {   // seul l'administrateur nomme ou retire un manager
+    var bV = el("button", "act", p.role === "manager" ? "Retirer le rôle de manager" : "Nommer manager ⭐"); bV.type = "button";
+    bV.onclick = function(){ msg.textContent = "…"; prof("/profil/admin-role", { cible: p.id, role: p.role === "manager" ? "equipe" : "manager" }).then(function(j){ fin(j, j && j.role === "manager" ? "C’est maintenant un manager : règle ses droits dans Réglages → Rôles et droits." : "Rôle de manager retiré."); chargerRoles(); }); };
+    row.appendChild(bV);
+  }
+  row.appendChild(bC); row.appendChild(bS);
   td.appendChild(inp); td.appendChild(row); td.appendChild(msg); ligne.appendChild(td);
   tr.parentNode.insertBefore(ligne, suiv);
 }
@@ -697,7 +750,7 @@ function afficherStats(){
     var re = el("button", "big alt", "Réessayer"); re.type = "button"; re.onclick = function(){ box.className = "card hide"; afficherStats(); };
     box.appendChild(re);
   };
-  fetch(SERVEUR + "/stats?cle=" + encodeURIComponent(PROFIL.cle) + "&t=" + Date.now(), { cache: "no-store", signal: ctl ? ctl.signal : undefined })
+  fetch(SERVEUR + "/stats?cle=" + encodeURIComponent(PROFIL.cle) + "&nom=" + encodeURIComponent(PROFIL.nom) + "&t=" + Date.now(), { cache: "no-store", signal: ctl ? ctl.signal : undefined })
     .then(function(r){ clearTimeout(tm); return r.text().then(function(t){ try { return JSON.parse(t); } catch(e){ throw new Error("réponse " + r.status + " : " + t.slice(0, 80)); } }); })
     .then(function(j){
     box.innerHTML = "";
@@ -723,10 +776,10 @@ function afficherStats(){
     t.appendChild(hd);
     j.equipe.forEach(function(p){
       var tr = el("tr"), c1 = el("td");
-      c1.appendChild(el("b", "", p.nom + (p.code ? " 🔒" : "") + (p.valideur ? " ✅" : "")));
+      c1.appendChild(el("b", "", p.nom + (p.role === "admin" ? " 👑" : p.role === "manager" ? " ⭐" : "") + (p.code ? " 🔒" : "")));
       var det = Object.keys(p.fonctions).sort(function(a, b){ return p.fonctions[b] - p.fonctions[a]; }).map(function(k){ return p.fonctions[k] + " " + (NOMS[k] || k); }).join(" · ");
       if (det) { c1.appendChild(el("br")); c1.appendChild(el("span", "det", det)); }
-      if (p.id && p.id !== PROFIL.nom.toLowerCase()) {
+      if (p.id && p.id !== PROFIL.nom.toLowerCase() && p.role !== "admin" && (PROFIL.admin || (peut("profils") && p.role !== "manager"))) {
         var g = el("button", "gerer", "Gérer"); g.type = "button";
         g.onclick = function(){ gererProfil(tr, p); };
         c1.appendChild(el("br")); c1.appendChild(g);
@@ -1542,7 +1595,7 @@ function ajouterMessages(liste, premier){
     if (!moi(m.n)) d.appendChild(el("span", "qui", m.a));
     d.appendChild(document.createTextNode(m.x));
     d.appendChild(el("span", "h", heure(m.t)));
-    if (moi(m.n) || PROFIL.admin) {
+    if (moi(m.n) || peut("chat")) {
       var sp = el("button", "suppr", "Supprimer"); sp.type = "button";
       sp.onclick = function(e){ e.stopPropagation(); prof("/chat/supprimer", { code: CHAT.code, id: m.id }).then(function(){ d.remove(); }); };
       d.appendChild(sp);
@@ -2070,6 +2123,7 @@ function boucleChat(){
 document.addEventListener("visibilitychange", function(){ if (!document.hidden && CHAT.code) { chargerMessages(chatOuvert() && !CHAT.dernier); boucleChat(); } });
 $("t6").addEventListener("click", boucleChat);
 [1, 4, 5].forEach(function(ti){ $("t" + ti).addEventListener("click", boucleChat); });
+if (PROFIL.nom) prof("/profil/moi", {}).then(appliquerDroits);
 if (CHAT.code) { majUne(); setTimeout(function(){ chargerMessages(false); }, 1500); }
 boucleChat();
 </script>
