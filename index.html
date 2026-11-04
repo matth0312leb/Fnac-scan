@@ -93,6 +93,17 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 .bar span{display:block;height:100%;background:#2e9e4f}
 .bar span.mid{background:#e8a000}.bar span.haut{background:#d64545}
 .champ{position:relative}
+.infodates{display:flex;gap:10px;margin:0 0 12px}
+.infodates label{flex:1;font-size:13px;color:var(--muted)}
+.infodates input{font-size:16px;padding:10px;margin:4px 0 0}
+.une{border:2px solid var(--accent);padding:16px}
+.unelab{font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
+.une h3{font-size:19px;line-height:1.25;margin:8px 0 4px}
+.unecorps{display:flex;gap:12px;align-items:flex-start}
+.unecorps>div{flex:1;min-width:0}
+.unephoto{flex:none;width:84px;height:84px;object-fit:cover;border-radius:12px;margin-top:8px;background:var(--bg)}
+.unetexte{font-size:15px;line-height:1.4;margin:4px 0 0;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;white-space:pre-wrap}
+.uneplus{margin-top:10px;border:0;background:none;color:var(--text);font-size:14px;font-weight:700;padding:4px 0;text-decoration:underline}
 /* import / saisie du planning */
 .imp .big{margin-bottom:8px}
 .edtete{display:flex;gap:10px;margin:8px 0 6px}
@@ -384,6 +395,7 @@ li{padding:10px 0;border-top:1px solid var(--line)}
     <input id="f2" type="file" accept="image/*" class="hide">
     <div id="filereader" class="hide"></div>
   </div>
+  <div id="uneCard" class="card une hide"></div>
 </div>
 
 
@@ -466,7 +478,8 @@ li{padding:10px 0;border-top:1px solid var(--line)}
         <div id="infoPhotoBox" class="hide"><img id="infoPhotoVue" alt="Photo jointe"><button id="infoPhotoSuppr" type="button" aria-label="Retirer la photo">×</button></div>
         <button class="big alt" id="infoPhoto" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/></svg><span class="lb">Ajouter une photo ou une capture</span></button>
         <input id="infoFichier" type="file" accept="image/*" class="hide">
-        <label class="infodate">Date de sortie / de l'opération (facultatif)<input id="infoDate" type="date"></label>
+        <p class="clab" style="margin-top:0">Dates <span class="muted">(facultatif : sortie, ou durée d'une offre)</span></p>
+        <div class="infodates"><label>Du<input id="infoDate" type="date"></label><label>Au<input id="infoFin" type="date"></label></div>
         <div class="infoacts"><button class="big" id="infoGo" type="button"><span class="lb">Publier</span></button><button class="big alt" id="infoAnnul" type="button"><span class="lb">Annuler</span></button></div>
         <p class="aide" id="infoMsg"></p>
       </div>
@@ -538,7 +551,7 @@ function tab(n){
   if (typeof majCmp === "function") majCmp();
   window.scrollTo(0, 0);
 }
-$("t1").onclick = function(){ tab(1); };
+$("t1").onclick = function(){ tab(1); if (typeof majUne === "function") majUne(); };
 $("t4").addEventListener("click", stop);
 $("t4").onclick = function(){ tab(4); };
 $("t5").addEventListener("click", stop);
@@ -1581,10 +1594,57 @@ $("vInfo").onclick = function(){ vue("info"); };
 var CATS = { nouveaute: ["✨", "Nouveauté"], sortie: ["📅", "Sortie"], operation: ["🏷️", "Opération"], info: ["📌", "Info"] };
 var INFO = { cat: "nouveaute", vu: 0 };
 try { INFO.vu = +(localStorage.getItem("infoVu") || 0); } catch(e){}
+// « Du 4 au 30 novembre », « Jusqu’au 30 novembre », « Vendredi 6 novembre · dans 2 jours »…
+function dateCourte(iso){ var d = new Date(iso + "T12:00:00"); return (d.getDate() === 1 ? "1er" : d.getDate()) + " " + MOIS[d.getMonth()]; }
+function periode(x){
+  var auj = new Date(); auj.setHours(0, 0, 0, 0);
+  var jr = function(iso){ return Math.round((new Date(iso + "T00:00:00") - auj) / 864e5); };
+  if (x.d && x.f && x.f !== x.d) {
+    var fini = jr(x.f) < 0, enCours = jr(x.d) <= 0 && !fini;
+    return { fini: fini, enCours: enCours, txt: "📅 Du " + (x.d.slice(0, 7) === x.f.slice(0, 7) ? dateCourte(x.d).split(" ")[0] : dateCourte(x.d)) + " au " + dateCourte(x.f) + (fini ? " · terminé" : enCours ? (jr(x.f) === 0 ? " · dernier jour !" : " · encore " + jr(x.f) + " j") : jr(x.d) === 1 ? " · dès demain" : "") };
+  }
+  if (x.f && !x.d) { var r = jr(x.f); return { fini: r < 0, enCours: r >= 0, txt: "📅 Jusqu’au " + dateCourte(x.f) + (r < 0 ? " · terminé" : r === 0 ? " · dernier jour !" : " · encore " + r + " j") }; }
+  if (x.d) { var k = jr(x.d); return { fini: k < 0, enCours: k === 0, txt: "📅 " + (k === 0 ? "Aujourd’hui" : k === 1 ? "Demain" : dateLongue(x.d).replace(/^./, function(m){ return m.toUpperCase(); })) + (k > 1 && k <= 30 ? " · dans " + k + " jours" : "") }; }
+  return null;
+}
+// ---------- « À la une » sur l'accueil : l'info du moment pour toute l'équipe ----------
+function aLaUne(posts){
+  var auj = new Date().toISOString().slice(0, 10), semaine = Date.now() - 7 * 864e5;
+  var actifs = (posts || []).filter(function(x){
+    if (x.f && x.f < auj) return false;              // offre terminée
+    if (x.d && x.f && x.d > auj) return false;       // offre pas encore commencée
+    if (x.e || x.f) return true;                     // épinglée ou offre en cours
+    if (x.d) return x.d >= auj || x.d >= new Date(Date.now() - 2 * 864e5).toISOString().slice(0, 10);   // sortie à venir ou toute récente
+    return x.t > semaine;                            // sinon : publiée cette semaine
+  });
+  actifs.sort(function(a, b){ return (b.e - a.e) || (b.t - a.t); });
+  return actifs[0] || null;
+}
+function majUne(){
+  if (!CHAT.code) { $("uneCard").className = "card une hide"; return; }
+  prof("/chat/posts", { code: CHAT.code }).then(function(j){
+    var x = j && j.ok ? aLaUne(j.posts) : null, c = $("uneCard");
+    if (!x) { c.className = "card une hide"; return; }
+    c.innerHTML = ""; c.className = "card une";
+    var tete = el("div", "ptete"), cat = CATS[x.c] || CATS.info;
+    tete.appendChild(el("span", "unelab", "À la une")); tete.appendChild(el("span", "pcat c-" + x.c, cat[0] + " " + cat[1]));
+    c.appendChild(tete);
+    var corps = el("div", "unecorps"), txt = el("div");
+    txt.appendChild(el("h3", "", x.titre));
+    var per = periode(x); if (per) txt.appendChild(el("p", "pdate", per.txt));
+    if (x.texte) txt.appendChild(el("p", "unetexte", x.texte));
+    corps.appendChild(txt);
+    if (x.img) { var im = el("img", "unephoto"); im.alt = ""; corps.appendChild(im); chargerPhoto(x.id, im); }
+    c.appendChild(corps);
+    var plus = el("button", "uneplus", "Toutes les infos de l’équipe ›"); plus.type = "button";
+    plus.onclick = function(){ stop(); tab(6); ouvrirChat(); vue("info"); };
+    c.appendChild(plus);
+  });
+}
 function dateLongue(iso){ var d = new Date(iso + "T12:00:00"); return JOURS_LONG[(d.getDay() + 6) % 7].toLowerCase() + " " + (d.getDate() === 1 ? "1er" : d.getDate()) + " " + MOIS[d.getMonth()] + (d.getFullYear() !== new Date().getFullYear() ? " " + d.getFullYear() : ""); }
 function formInfo(ouvert){
   $("infoForm").className = ouvert ? "card" : "card hide"; $("infoNouv").className = ouvert ? "big hide" : "big";
-  if (ouvert) { $("infoTitre").value = ""; $("infoTexte").value = ""; $("infoDate").value = ""; $("infoMsg").textContent = ""; photoInfo(""); setTimeout(function(){ $("infoTitre").focus(); }, 50); }
+  if (ouvert) { $("infoTitre").value = ""; $("infoTexte").value = ""; $("infoDate").value = ""; $("infoFin").value = ""; $("infoMsg").textContent = ""; photoInfo(""); setTimeout(function(){ $("infoTitre").focus(); }, 50); }
 }
 // photo jointe : prise sur le moment ou choisie dans la galerie (capture d'écran…), réduite avant l'envoi
 function photoInfo(img){
@@ -1611,9 +1671,9 @@ $("infoGo").onclick = function(){
   var titre = $("infoTitre").value.trim();
   if (titre.length < 2) { $("infoMsg").textContent = "Donne un titre à ta publication."; $("infoTitre").focus(); return; }
   $("infoMsg").textContent = INFO.image ? "Envoi de la photo…" : "Publication…";
-  prof("/chat/poster", { code: CHAT.code, categorie: INFO.cat, titre: titre, texte: $("infoTexte").value.trim(), date: $("infoDate").value, image: INFO.image || "" }).then(function(j){
+  prof("/chat/poster", { code: CHAT.code, categorie: INFO.cat, titre: titre, texte: $("infoTexte").value.trim(), date: $("infoDate").value, fin: $("infoFin").value, image: INFO.image || "" }).then(function(j){
     if (!j || !j.ok) { $("infoMsg").textContent = (j && j.erreur) || "Pas publié, réessaie."; return; }
-    formInfo(false); chargerInfos();
+    formInfo(false); chargerInfos(); majUne();
   });
 };
 function chargerInfos(){
@@ -1632,10 +1692,8 @@ function chargerInfos(){
       if (x.e) tete.appendChild(el("span", "ppin", "Épinglé"));
       c.appendChild(tete);
       c.appendChild(el("h3", "", x.titre));
-      if (x.d) {
-        var dd = new Date(x.d + "T00:00:00"), diff = Math.round((dd - auj) / 864e5);
-        c.appendChild(el("p", "pdate" + (diff < 0 ? " passe" : ""), "📅 " + (diff === 0 ? "Aujourd’hui" : diff === 1 ? "Demain" : dateLongue(x.d).replace(/^./, function(m){ return m.toUpperCase(); })) + (diff > 1 && diff <= 30 ? " · dans " + diff + " jours" : "")));
-      }
+      var per = periode(x);
+      if (per) c.appendChild(el("p", "pdate" + (per.fini ? " passe" : ""), per.txt));
       if (x.img) {
         var ph = el("div", "pphoto"), im = el("img"); im.alt = x.titre; ph.appendChild(im); c.appendChild(ph);
         chargerPhoto(x.id, im);
@@ -1967,7 +2025,7 @@ function boucleChat(){
 document.addEventListener("visibilitychange", function(){ if (!document.hidden && CHAT.code) { chargerMessages(chatOuvert() && !CHAT.dernier); boucleChat(); } });
 $("t6").addEventListener("click", boucleChat);
 [1, 4, 5].forEach(function(ti){ $("t" + ti).addEventListener("click", boucleChat); });
-if (CHAT.code) { setTimeout(function(){ chargerMessages(false); }, 1500); }
+if (CHAT.code) { setTimeout(function(){ chargerMessages(false); majUne(); }, 1500); }
 boucleChat();
 </script>
 </body>

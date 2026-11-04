@@ -841,7 +841,7 @@ async function chat(route, p, nom, affichage, admin, env, now) {
       env.DB.prepare("CREATE TABLE IF NOT EXISTS messages (id INTEGER PRIMARY KEY AUTOINCREMENT, salon TEXT, nom TEXT, affichage TEXT, texte TEXT, t INTEGER)"),
       env.DB.prepare("CREATE INDEX IF NOT EXISTS messages_salon ON messages (salon, id)"),
       env.DB.prepare("CREATE TABLE IF NOT EXISTS planning (salon TEXT, debut TEXT, donnees TEXT, maj INTEGER, PRIMARY KEY (salon, debut))"),
-      env.DB.prepare("CREATE TABLE IF NOT EXISTS posts (id INTEGER PRIMARY KEY AUTOINCREMENT, salon TEXT, nom TEXT, affichage TEXT, categorie TEXT, titre TEXT, texte TEXT, date_evt TEXT, epingle INTEGER DEFAULT 0, t INTEGER, img INTEGER DEFAULT 0)"),
+      env.DB.prepare("CREATE TABLE IF NOT EXISTS posts (id INTEGER PRIMARY KEY AUTOINCREMENT, salon TEXT, nom TEXT, affichage TEXT, categorie TEXT, titre TEXT, texte TEXT, date_evt TEXT, epingle INTEGER DEFAULT 0, t INTEGER, img INTEGER DEFAULT 0, date_fin TEXT DEFAULT '')"),
       env.DB.prepare("CREATE TABLE IF NOT EXISTS post_images (post_id INTEGER PRIMARY KEY, image TEXT)"),
       env.DB.prepare("CREATE TABLE IF NOT EXISTS reassort (id INTEGER PRIMARY KEY AUTOINCREMENT, salon TEXT, nom TEXT, affichage TEXT, sku TEXT, titre TEXT, quantite INTEGER DEFAULT 1, note TEXT, statut TEXT DEFAULT 'demande', valide_par TEXT, t INTEGER, t_valide INTEGER)"),
     ]);
@@ -915,24 +915,26 @@ async function chat(route, p, nom, affichage, admin, env, now) {
 
   // ---------- Infos : publications du magasin (nouveautés, sorties, infos) ----------
   if (route === "/chat/posts") {
-    const r = await env.DB.prepare("SELECT id, nom AS n, affichage AS a, categorie AS c, titre, texte, date_evt AS d, epingle AS e, t, img FROM posts WHERE salon = ? ORDER BY epingle DESC, t DESC LIMIT 60").bind(code).all();
+    const r = await env.DB.prepare("SELECT id, nom AS n, affichage AS a, categorie AS c, titre, texte, date_evt AS d, date_fin AS f, epingle AS e, t, img FROM posts WHERE salon = ? ORDER BY epingle DESC, t DESC LIMIT 60").bind(code).all();
     return { ok: true, posts: r.results || [] };
   }
   if (route === "/chat/poster") {
     const CATS = ["nouveaute", "sortie", "info", "operation"];
     const titre = p("titre").replace(/\s+/g, " ").slice(0, 120), texte = p("texte").replace(/\r/g, "").replace(/\n{3,}/g, "\n\n").slice(0, 1500);
     const d = /^\d{4}-\d{2}-\d{2}$/.test(p("date")) ? p("date") : "";
+    let fin = /^\d{4}-\d{2}-\d{2}$/.test(p("fin")) ? p("fin") : "";
+    if (fin && d && fin < d) fin = d;
     // photo facultative, déjà réduite par l'appli (JPEG ~1000 px)
     const image = p("image");
     if (image && (!/^data:image\/(jpeg|png|webp);base64,/.test(image) || image.length > 1500000)) return { ok: false, erreur: "photo trop lourde ou illisible" };
     if (titre.length < 2 && !image) return { ok: false, erreur: "titre manquant" };
-    const r = await env.DB.prepare("INSERT INTO posts (salon, nom, affichage, categorie, titre, texte, date_evt, epingle, t, img) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?) RETURNING id")
-      .bind(code, nom, affichage, CATS.includes(p("categorie")) ? p("categorie") : "info", titre, texte, d, now, image ? 1 : 0).first();
+    const r = await env.DB.prepare("INSERT INTO posts (salon, nom, affichage, categorie, titre, texte, date_evt, date_fin, epingle, t, img) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?) RETURNING id")
+      .bind(code, nom, affichage, CATS.includes(p("categorie")) ? p("categorie") : "info", titre, texte, d, fin, now, image ? 1 : 0).first();
     if (image && r) await env.DB.prepare("INSERT INTO post_images (post_id, image) VALUES (?, ?)").bind(r.id, image).run();
     // nettoyage : publications non épinglées de plus de 90 jours (et leurs photos)
     await env.DB.batch([
-      env.DB.prepare("DELETE FROM post_images WHERE post_id IN (SELECT id FROM posts WHERE salon = ? AND epingle = 0 AND t < ?)").bind(code, now - 90 * 24 * 3600 * 1000),
-      env.DB.prepare("DELETE FROM posts WHERE salon = ? AND epingle = 0 AND t < ?").bind(code, now - 90 * 24 * 3600 * 1000),
+      env.DB.prepare("DELETE FROM post_images WHERE post_id IN (SELECT id FROM posts WHERE salon = ? AND epingle = 0 AND t < ? AND (date_fin = '' OR date_fin < ?))").bind(code, now - 90 * 24 * 3600 * 1000, new Date(now).toISOString().slice(0, 10)),
+      env.DB.prepare("DELETE FROM posts WHERE salon = ? AND epingle = 0 AND t < ? AND (date_fin = '' OR date_fin < ?)").bind(code, now - 90 * 24 * 3600 * 1000, new Date(now).toISOString().slice(0, 10)),
     ]);
     return { ok: true };
   }
