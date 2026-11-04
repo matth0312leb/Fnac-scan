@@ -1756,7 +1756,8 @@ function ligneDemande(x){
   if (x.statut !== "demande") d.appendChild(el("p", "etat" + (x.statut === "refuse" ? " refuse" : ""), (x.statut === "refuse" ? "✕ Pas commandé" : "✓ Commandé") + (x.v ? " par " + x.v : "") + (x.tv ? " · " + ago(x.tv) : "")));
   var acts = el("div", "acts"), act = function(txt, cls, f){ var b = el("button", cls, txt); b.type = "button"; b.onclick = f; acts.appendChild(b); };
   var maj = function(route, data){ return function(){ prof(route, Object.assign({ code: CHAT.code, id: x.id }, data)).then(chargerReassort); }; };
-  if (navigator.clipboard) act("Copier le SKU", "", function(){ navigator.clipboard.writeText(x.sku).then(function(){ this.textContent = "Copié ✓"; }.bind(this)); });
+  // « Copier le SKU » : seulement sur ordinateur (souris + grand écran), inutile sur téléphone
+  if (navigator.clipboard && window.matchMedia && window.matchMedia("(pointer: fine) and (min-width: 900px)").matches) act("Copier le SKU", "", function(){ navigator.clipboard.writeText(x.sku).then(function(){ this.textContent = "Copié ✓"; }.bind(this)); });
   if (REA.peutValider && x.statut === "demande") { act("✓ Commandé", "ok", maj("/chat/reassort-valider", { statut: "commande" })); act("Pas commandé", "", maj("/chat/reassort-valider", { statut: "refuse" })); }
   if (REA.peutValider && x.statut !== "demande") act("Remettre en attente", "", maj("/chat/reassort-valider", { statut: "demande" }));
   if ((moi(x.n) && x.statut === "demande") || REA.peutValider) act(moi(x.n) && x.statut === "demande" ? "Annuler ma demande" : "Supprimer", "", function(){ if (window.confirm("Supprimer cette demande ?")) maj("/chat/reassort-supprimer", {})(); });
