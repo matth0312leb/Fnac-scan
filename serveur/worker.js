@@ -29,7 +29,7 @@ export default {
     };
     if (req.method === "OPTIONS") return new Response(null, { headers: cors });
     // statistiques, profils, questions et photos : jamais gardés en mémoire par le navigateur
-    if (/^\/(stats|profil\/|chat\/|question|photo|test)/.test(url.pathname)) cors["Cache-Control"] = "no-store";
+    if (/^\/(stats|profil\/|chat\/|question|cadeaux|photo|test)/.test(url.pathname)) cors["Cache-Control"] = "no-store";
     const code = (url.searchParams.get("ean") || url.searchParams.get("isbn") || "").replace(/\D/g, "");
     const send = (o, s = 200) => new Response(JSON.stringify(o, null, 2), { status: s, headers: cors });
     // mémoire des fiches (stockage KV Cloudflare, 30 jours) : un article déjà vu s'affiche tout de suite
@@ -49,6 +49,10 @@ export default {
         return send(await photo(String(body.image || ""), env));
       }
       if (url.pathname.startsWith("/profil/") || url.pathname.startsWith("/chat/") || url.pathname === "/stats") return send(await profils(req, url, env));
+      if (url.pathname === "/cadeaux" && req.method === "POST") {
+        let body; try { body = await req.json(); } catch (e) { return send({ ok: false, erreur: "demande attendue" }, 400); }
+        return send(await cadeaux(body || {}, env));
+      }
       if (url.pathname === "/question" && req.method === "POST") {
         let body; try { body = await req.json(); } catch (e) { return send({ ok: false, erreur: "question attendue" }, 400); }
         return send(await question(String(body.question || ""), String(body.contexte || ""), env));
@@ -329,6 +333,37 @@ async function similaires(isbn, env) {
   return { trouve: true, pour: f.titre, livres: surs.length ? surs : verifies.map((x) => ({ ...x, aVerifier: true })) };
 }
 
+// ---------- idées cadeaux (âge, budget, envies) ----------
+async function cadeaux(b, env) {
+  const t = (x, n) => String(x || "").replace(/\s+/g, " ").trim().slice(0, n);
+  const age = t(b.age, 40), budget = t(b.budget, 40), gouts = t(b.gouts, 300), occasion = t(b.occasion, 40) || "Noël";
+  const types = (Array.isArray(b.types) ? b.types : []).map((x) => t(x, 30)).filter(Boolean).slice(0, 6);
+  if (!age && !gouts) return { ok: false, erreur: "indique au moins l'âge ou ce que la personne aime" };
+  const consigne = "Tu es vendeur conseil à la Fnac (Suisse) et tu aides un collègue à trouver un cadeau. Propose 6 idées de cadeaux RÉELS qu'on trouve à la Fnac (livres, BD, mangas, jeux vidéo, jeux de société, high-tech, accessoires…), adaptées à l'âge, au budget en francs suisses et aux goûts. " +
+    "Varie les idées (pas 6 fois le même type, sauf si un seul type est demandé). Pour un livre ou une BD, donne un titre précis qui existe en français et son auteur ; pour une série, le tome 1. Pour un produit, le nom exact du modèle. " +
+    'Réponds UNIQUEMENT en JSON : {"idees":[{"titre":"nom exact","auteur":"auteur si livre/BD/manga, sinon vide","type":"Livre|BD|Manga|Jeu vidéo|Jeu de société|High-tech|Autre","pourquoi":"une phrase : pourquoi ça plaira"}]}. ' +
+    "Ne propose que des articles dont tu es certain qu'ils existent. N'indique aucun prix.";
+  const demande = ["Occasion : " + occasion, age && "Pour : " + age, budget && "Budget : " + budget, types.length && "Types souhaités : " + types.join(", "), gouts && "Ce que la personne aime : " + gouts].filter(Boolean).join("\n");
+  const r = await demanderIA(env, consigne, demande, 700);
+  const liste = (r && Array.isArray(r.idees) ? r.idees : []).filter((x) => x && x.titre).slice(0, 6);
+  if (!liste.length) return { ok: false, erreur: "pas d'idée pour le moment, réessaie" };
+  // livres, BD et mangas : on vérifie qu'ils existent (Open Library) pour écarter les titres inventés
+  const idees = await Promise.all(liste.map(async (x) => {
+    const o = { titre: t(x.titre, 120), auteur: t(x.auteur, 80), type: t(x.type, 30) || "Autre", pourquoi: t(x.pourquoi, 220) };
+    if (/livre|bd|manga|roman|album/i.test(o.type)) {
+      const q = "https://openlibrary.org/search.json?limit=1&fields=title,isbn&title=" + encodeURIComponent(o.titre) + (o.auteur ? "&author=" + encodeURIComponent(o.auteur) : "");
+      const res = await get(q, { timeout: 5000 });
+      let doc = null; try { doc = JSON.parse(res.text).docs[0]; } catch (e) {}
+      o.verifie = !!doc;
+      o.isbn = doc && ((doc.isbn || []).find((i) => /^97[89]2\d{9}$/.test(i)) || (doc.isbn || []).find((i) => /^97[89]\d{10}$/.test(i))) || "";
+    }
+    return o;
+  }));
+  // un livre introuvable dans Open Library est retiré (sauf si ça viderait la liste)
+  const gardes = idees.filter((x) => x.verifie !== false);
+  return { ok: true, idees: gardes.length >= 3 ? gardes : idees };
+}
+
 async function demanderIA(env, consigne, infos, maxTokens) {
   if (!env || !env.AI) return null;
   for (const model of ["@cf/meta/llama-3.3-70b-instruct-fp8-fast", "@cf/meta/llama-3.1-8b-instruct"]) {
@@ -564,7 +599,7 @@ async function jeu(p, env) {
 // ---------- profils (prénom), historique synchronisé et statistiques d'usage ----------
 // Base D1 « DB » : historique(nom, code, note, t), activite(nom, t, type), profils(nom, affichage, cree, vu), config(cle, valeur)
 // Le profil administrateur (config.admin_nom) est protégé par config.code_stats ; les stats ne montrent que des chiffres par fonction.
-const TYPES = ["livre", "jeu", "produit", "sku", "photo", "question", "comparer", "motscles", "similaires"];
+const TYPES = ["livre", "jeu", "produit", "sku", "photo", "question", "comparer", "motscles", "similaires", "cadeaux"];
 async function profils(req, url, env) {
   if (!env.DB) return { ok: false, erreur: "base indisponible" };
   const corps = req.method === "POST" ? await req.json().catch(() => ({})) : {};
@@ -599,7 +634,8 @@ async function profils(req, url, env) {
       borne("quota 7 j", env.DB.prepare("SELECT jour, appels, neurones FROM ia_usage ORDER BY jour DESC LIMIT 7").all(), { results: [] }),
     ]);
     const parNom = {};
-    (noms.results || []).forEach((x) => { parNom[x.nom] = { id: x.nom, code: !!x.code, nom: x.affichage || x.nom, depuis: x.cree, dernier: x.vu || 0, total: 0, semaine: 0, fonctions: {} }; });
+    const valideurs = String(await conf("valideurs") || "").split(",").map((x) => x.trim());
+    (noms.results || []).forEach((x) => { parNom[x.nom] = { id: x.nom, code: !!x.code, valideur: valideurs.includes(x.nom), nom: x.affichage || x.nom, depuis: x.cree, dernier: x.vu || 0, total: 0, semaine: 0, fonctions: {} }; });
     (act.results || []).forEach((r) => {
       const s = parNom[r.nom] || (parNom[r.nom] = { id: r.nom, nom: r.nom, dernier: 0, total: 0, semaine: 0, fonctions: {} });
       s.fonctions[r.type || "scan"] = r.n; s.total += r.n; s.semaine += r.n7 || 0; s.dernier = Math.max(s.dernier, r.dernier || 0);
@@ -718,6 +754,13 @@ async function gestionProfils(route, p, admin, env, now) {
   const ancien = cle(p("cible"));
   const adminNom = (await env.DB.prepare("SELECT valeur FROM config WHERE cle = 'admin_nom'").first() || {}).valeur;
   if (!ancien || ancien === adminNom) return { ok: false, erreur: "profil invalide" };
+  if (route === "/profil/admin-valideur") {
+    const r = await env.DB.prepare("SELECT valeur FROM config WHERE cle = 'valideurs'").first();
+    const liste = new Set(String(r && r.valeur || "").split(",").map((x) => x.trim()).filter(Boolean));
+    if (p("oui") === "1") liste.add(ancien); else liste.delete(ancien);
+    await env.DB.prepare("INSERT INTO config (cle, valeur) VALUES ('valideurs', ?) ON CONFLICT(cle) DO UPDATE SET valeur = excluded.valeur").bind([...liste].join(",")).run();
+    return { ok: true, valideur: liste.has(ancien) };
+  }
   if (route === "/profil/admin-code") {   // code oublié : le collègue en choisira un nouveau à sa prochaine ouverture
     await env.DB.prepare("UPDATE profils SET pin = NULL, essais = 0, bloque = 0 WHERE nom = ?").bind(ancien).run();
     return { ok: true };
@@ -761,6 +804,33 @@ async function gestionProfils(route, p, admin, env, now) {
   return { ok: false, erreur: "route inconnue" };
 }
 
+// ---------- lecture d'un planning (capture d'écran) par l'IA ----------
+async function lirePlanning(image, env) {
+  const consigne = "Cette image est le planning hebdomadaire d'une équipe de vendeurs. Chaque ligne est une personne (NOM Prénom), chaque colonne un jour du lundi au dimanche. " +
+    "Une case contient soit « REPOSP » (repos), soit des horaires comme « 7.45-12.00 » et « 13.00-17.00 » (ignore les lignes entre parenthèses qui répètent les mêmes horaires, et ignore « FNAC2S »). " +
+    'Réponds UNIQUEMENT en JSON : {"semaine":"numéro de la semaine, ex. 45","lundi":"date du lundi si lisible, format AAAA-MM-JJ, sinon vide","personnes":[{"prenom":"Prénom seulement","jours":["7.45-12.00 13.00-17.00","repos","…7 cases du lundi au dimanche"]}]}. ' +
+    "Mets « repos » pour un repos, « ? » si une case est illisible. Recopie les heures exactement, sans en inventer.";
+  const essais = [];
+  const lire = (r) => { const t = typeof r === "string" ? r : String(r && (r.response ?? (r.choices && r.choices[0] && r.choices[0].message && r.choices[0].message.content)) || ""); const m = t.match(/\{[\s\S]*\}/); try { return m ? JSON.parse(m[0]) : null; } catch (e) { return null; } };
+  const modeles = [
+    ["gemma", () => env.AI.run("@cf/google/gemma-3-12b-it", { messages: [{ role: "user", content: [{ type: "text", text: consigne }, { type: "image_url", image_url: { url: image } }] }], max_tokens: 1800 })],
+    ["llama", () => env.AI.run("@cf/meta/llama-3.2-11b-vision-instruct", { messages: [{ role: "user", content: consigne }], image, max_tokens: 1800 })],
+  ];
+  for (const [nomM, fn] of modeles) {
+    try {
+      const r = await fn();
+      const j = (r && typeof r.response === "object" && r.response) ? r.response : lire(r);
+      if (j && Array.isArray(j.personnes) && j.personnes.length) {
+        const personnes = j.personnes.slice(0, 30).map((x) => ({ prenom: String(x.prenom || "").trim().split(/\s+/).pop().slice(0, 30),
+          jours: Array.from({ length: 7 }, (_, i) => String((x.jours || [])[i] || "?").slice(0, 60)) })).filter((x) => x.prenom);
+        if (personnes.length) return { ok: true, modele: nomM, semaine: String(j.semaine || "").replace(/\D/g, "").slice(0, 2), lundi: /^\d{4}-\d{2}-\d{2}$/.test(j.lundi || "") ? j.lundi : "", personnes };
+      }
+      essais.push(nomM + " : réponse inexploitable");
+    } catch (e) { essais.push(nomM + " : " + String(e && e.message || e).slice(0, 80)); }
+  }
+  return { ok: false, erreur: "l'IA n'a pas réussi à lire ce planning", details: essais };
+}
+
 // ---------- chat d'équipe par magasin ----------
 // Un « salon » par magasin, rejoint avec un code à 6 caractères que l'administrateur crée et partage à ses collègues.
 let tablesChatOk = false;
@@ -771,6 +841,9 @@ async function chat(route, p, nom, affichage, admin, env, now) {
       env.DB.prepare("CREATE TABLE IF NOT EXISTS messages (id INTEGER PRIMARY KEY AUTOINCREMENT, salon TEXT, nom TEXT, affichage TEXT, texte TEXT, t INTEGER)"),
       env.DB.prepare("CREATE INDEX IF NOT EXISTS messages_salon ON messages (salon, id)"),
       env.DB.prepare("CREATE TABLE IF NOT EXISTS planning (salon TEXT, debut TEXT, donnees TEXT, maj INTEGER, PRIMARY KEY (salon, debut))"),
+      env.DB.prepare("CREATE TABLE IF NOT EXISTS posts (id INTEGER PRIMARY KEY AUTOINCREMENT, salon TEXT, nom TEXT, affichage TEXT, categorie TEXT, titre TEXT, texte TEXT, date_evt TEXT, epingle INTEGER DEFAULT 0, t INTEGER, img INTEGER DEFAULT 0)"),
+      env.DB.prepare("CREATE TABLE IF NOT EXISTS post_images (post_id INTEGER PRIMARY KEY, image TEXT)"),
+      env.DB.prepare("CREATE TABLE IF NOT EXISTS reassort (id INTEGER PRIMARY KEY AUTOINCREMENT, salon TEXT, nom TEXT, affichage TEXT, sku TEXT, titre TEXT, quantite INTEGER DEFAULT 1, note TEXT, statut TEXT DEFAULT 'demande', valide_par TEXT, t INTEGER, t_valide INTEGER)"),
     ]);
     tablesChatOk = true;
   }
@@ -792,17 +865,99 @@ async function chat(route, p, nom, affichage, admin, env, now) {
   const salon = code ? await env.DB.prepare("SELECT code, nom FROM salons WHERE code = ?").bind(code).first() : null;
   if (!salon) return { ok: false, erreur: "code inconnu", inconnu: true };
   if (route === "/chat/rejoindre") return { ok: true, code: salon.code, salon: salon.nom };
+  const valConf = await env.DB.prepare("SELECT valeur FROM config WHERE cle = 'valideurs'").first().catch(() => null);
+  const responsable = admin || String(valConf && valConf.valeur || "").split(",").map((x) => x.trim()).includes(nom);
   // planning de la semaine du magasin (visible des membres du chat, avec leur code personnel)
   if (route === "/chat/planning") {
     const depuis = new Date(now - 8 * 24 * 3600 * 1000).toISOString().slice(0, 10);
     const r = await env.DB.prepare("SELECT debut, donnees, maj FROM planning WHERE salon = ? AND debut >= ? ORDER BY debut LIMIT 4").bind(code, depuis).all();
-    return { ok: true, semaines: (r.results || []).map((x) => { let d = {}; try { d = JSON.parse(x.donnees); } catch (e) {} return { ...d, debut: x.debut, maj: x.maj }; }) };
+    return { ok: true, peutImporter: responsable, semaines: (r.results || []).map((x) => { let d = {}; try { d = JSON.parse(x.donnees); } catch (e) {} return { ...d, debut: x.debut, maj: x.maj }; }) };
+  }
+  // lecture d'une capture du planning par l'IA (le responsable relit et corrige avant de publier)
+  if (route === "/chat/planning-lire") {
+    if (!responsable) return { ok: false, erreur: "réservé au responsable" };
+    const image = p("image");
+    if (!/^data:image\/(jpeg|png|webp);base64,/.test(image) || image.length > 3000000) return { ok: false, erreur: "image illisible ou trop lourde" };
+    return await lirePlanning(image, env);
+  }
+  // ---------- Réassort : demandes de produits, validées par le responsable quand la commande est faite ----------
+  if (route.startsWith("/chat/reassort")) {
+    const peutValider = responsable;
+    const id = parseInt(p("id"), 10) || 0;
+    if (route === "/chat/reassort") {
+      const r = await env.DB.prepare("SELECT id, nom AS n, affichage AS a, sku, titre, quantite AS q, note, statut, valide_par AS v, t, t_valide AS tv FROM reassort WHERE salon = ? AND (statut = 'demande' OR t_valide > ?) ORDER BY CASE statut WHEN 'demande' THEN 0 ELSE 1 END, t DESC LIMIT 150")
+        .bind(code, now - 30 * 24 * 3600 * 1000).all();
+      return { ok: true, peutValider, demandes: r.results || [] };
+    }
+    if (route === "/chat/reassort-ajouter") {
+      const sku = p("sku").replace(/\s+/g, "");
+      if (!/^\d{6,13}$/.test(sku)) return { ok: false, erreur: "SKU (8 chiffres) ou EAN (13 chiffres) attendu" };
+      const deja = await env.DB.prepare("SELECT id FROM reassort WHERE salon = ? AND sku = ? AND statut = 'demande'").bind(code, sku).first();
+      if (deja) return { ok: false, erreur: "déjà demandé : en attente de commande", deja: true };
+      const q = Math.min(99, Math.max(1, parseInt(p("quantite"), 10) || 1));
+      await env.DB.batch([
+        env.DB.prepare("INSERT INTO reassort (salon, nom, affichage, sku, titre, quantite, note, statut, t) VALUES (?, ?, ?, ?, ?, ?, ?, 'demande', ?)").bind(code, nom, affichage, sku, p("titre").replace(/\s+/g, " ").slice(0, 120), q, p("note").replace(/\s+/g, " ").slice(0, 200), now),
+        env.DB.prepare("DELETE FROM reassort WHERE salon = ? AND statut <> 'demande' AND t_valide < ?").bind(code, now - 60 * 24 * 3600 * 1000),
+      ]);
+      return { ok: true };
+    }
+    if (route === "/chat/reassort-valider") {
+      if (!peutValider) return { ok: false, erreur: "réservé au responsable" };
+      const statut = ["commande", "refuse", "demande"].includes(p("statut")) ? p("statut") : "commande";
+      await env.DB.prepare("UPDATE reassort SET statut = ?, valide_par = ?, t_valide = ? WHERE id = ? AND salon = ?").bind(statut, statut === "demande" ? null : affichage, statut === "demande" ? null : now, id, code).run();
+      return { ok: true };
+    }
+    if (route === "/chat/reassort-supprimer") {
+      await env.DB.prepare("DELETE FROM reassort WHERE id = ? AND salon = ? AND ((nom = ? AND statut = 'demande') OR ?)").bind(id, code, nom, peutValider ? 1 : 0).run();
+      return { ok: true };
+    }
+  }
+
+  // ---------- Infos : publications du magasin (nouveautés, sorties, infos) ----------
+  if (route === "/chat/posts") {
+    const r = await env.DB.prepare("SELECT id, nom AS n, affichage AS a, categorie AS c, titre, texte, date_evt AS d, epingle AS e, t, img FROM posts WHERE salon = ? ORDER BY epingle DESC, t DESC LIMIT 60").bind(code).all();
+    return { ok: true, posts: r.results || [] };
+  }
+  if (route === "/chat/poster") {
+    const CATS = ["nouveaute", "sortie", "info", "operation"];
+    const titre = p("titre").replace(/\s+/g, " ").slice(0, 120), texte = p("texte").replace(/\r/g, "").replace(/\n{3,}/g, "\n\n").slice(0, 1500);
+    const d = /^\d{4}-\d{2}-\d{2}$/.test(p("date")) ? p("date") : "";
+    // photo facultative, déjà réduite par l'appli (JPEG ~1000 px)
+    const image = p("image");
+    if (image && (!/^data:image\/(jpeg|png|webp);base64,/.test(image) || image.length > 1500000)) return { ok: false, erreur: "photo trop lourde ou illisible" };
+    if (titre.length < 2 && !image) return { ok: false, erreur: "titre manquant" };
+    const r = await env.DB.prepare("INSERT INTO posts (salon, nom, affichage, categorie, titre, texte, date_evt, epingle, t, img) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?) RETURNING id")
+      .bind(code, nom, affichage, CATS.includes(p("categorie")) ? p("categorie") : "info", titre, texte, d, now, image ? 1 : 0).first();
+    if (image && r) await env.DB.prepare("INSERT INTO post_images (post_id, image) VALUES (?, ?)").bind(r.id, image).run();
+    // nettoyage : publications non épinglées de plus de 90 jours (et leurs photos)
+    await env.DB.batch([
+      env.DB.prepare("DELETE FROM post_images WHERE post_id IN (SELECT id FROM posts WHERE salon = ? AND epingle = 0 AND t < ?)").bind(code, now - 90 * 24 * 3600 * 1000),
+      env.DB.prepare("DELETE FROM posts WHERE salon = ? AND epingle = 0 AND t < ?").bind(code, now - 90 * 24 * 3600 * 1000),
+    ]);
+    return { ok: true };
+  }
+  if (route === "/chat/post-supprimer") {
+    const id = parseInt(p("id"), 10) || 0;
+    const r = await env.DB.prepare("DELETE FROM posts WHERE id = ? AND salon = ? AND (nom = ? OR ?) RETURNING id").bind(id, code, nom, admin ? 1 : 0).first();
+    if (r) await env.DB.prepare("DELETE FROM post_images WHERE post_id = ?").bind(id).run();
+    return { ok: true };
+  }
+  if (route === "/chat/post-image") {
+    const r = await env.DB.prepare("SELECT i.image FROM post_images i JOIN posts p ON p.id = i.post_id WHERE i.post_id = ? AND p.salon = ?").bind(parseInt(p("id"), 10) || 0, code).first();
+    return r ? { ok: true, image: r.image } : { ok: false, erreur: "photo introuvable" };
+  }
+  if (route === "/chat/post-epingler") {
+    if (!admin) return { ok: false, erreur: "réservé à l'administrateur" };
+    await env.DB.prepare("UPDATE posts SET epingle = CASE WHEN epingle = 1 THEN 0 ELSE 1 END WHERE id = ? AND salon = ?").bind(parseInt(p("id"), 10) || 0, code).run();
+    return { ok: true };
   }
   if (route === "/chat/planning-maj") {
-    if (!admin) return { ok: false, erreur: "réservé à l'administrateur" };
+    if (!responsable) return { ok: false, erreur: "réservé au responsable" };
+    let donnees; try { donnees = JSON.parse(p("donnees")); } catch (e) { return { ok: false, erreur: "planning illisible" }; }
+    if (!donnees || !Array.isArray(donnees.personnes) || !donnees.personnes.length) return { ok: false, erreur: "planning vide" };
     const debut = p("debut");
     if (!/^\d{4}-\d{2}-\d{2}$/.test(debut)) return { ok: false, erreur: "date de début attendue (AAAA-MM-JJ)" };
-    await env.DB.prepare("INSERT INTO planning (salon, debut, donnees, maj) VALUES (?, ?, ?, ?) ON CONFLICT(salon, debut) DO UPDATE SET donnees = excluded.donnees, maj = excluded.maj").bind(code, debut, p("donnees").slice(0, 20000), now).run();
+    await env.DB.prepare("INSERT INTO planning (salon, debut, donnees, maj) VALUES (?, ?, ?, ?) ON CONFLICT(salon, debut) DO UPDATE SET donnees = excluded.donnees, maj = excluded.maj").bind(code, debut, JSON.stringify(donnees).slice(0, 20000), now).run();
     await env.DB.prepare("DELETE FROM planning WHERE salon = ? AND debut < ?").bind(code, new Date(now - 60 * 24 * 3600 * 1000).toISOString().slice(0, 10)).run();
     return { ok: true };
   }

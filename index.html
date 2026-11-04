@@ -93,6 +93,94 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 .bar span{display:block;height:100%;background:#2e9e4f}
 .bar span.mid{background:#e8a000}.bar span.haut{background:#d64545}
 .champ{position:relative}
+/* import / saisie du planning */
+.imp .big{margin-bottom:8px}
+.edtete{display:flex;gap:10px;margin:8px 0 6px}
+.edtete label{font-size:13px;color:var(--muted);flex:1}
+.edtete label:first-child{flex:0 0 80px}
+.edtete input{font-size:16px;padding:10px;margin:4px 0 0}
+.edp-pers{border-top:1px solid var(--line);padding:12px 0 4px}
+.edp-h{display:flex;gap:8px;align-items:center}
+.edp-h input{font-size:17px;font-weight:700;padding:9px 12px;margin:0 0 8px}
+.edp-h button{flex:none;width:38px;height:38px;border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:50%;font-size:20px;margin-bottom:8px}
+.edp-jours label{display:flex;align-items:center;gap:8px;margin:0 0 6px}
+.edp-jours span{flex:0 0 26px;font-size:13px;font-weight:700;color:var(--muted)}
+.edp-jours input{margin:0;font-size:15px;padding:8px 10px}
+.edp-jours input.doute{border-color:#d64545;background:rgba(214,69,69,.08)}
+.edp .big.alt{margin:8px 0}
+/* idées cadeaux */
+#cadeauCard .reshead{margin-bottom:6px}
+.clab{font-size:14px;font-weight:700;margin:12px 0 6px}
+.clab .muted{font-weight:400;font-size:12px}
+#cdGo{margin-top:4px}
+#cdRes{margin-top:14px}
+.idee{padding:12px 0;border-top:1px solid var(--line)}
+.idee .it{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.idee b{font-size:16px;line-height:1.3}
+.idee .ty{flex:none;font-size:11px;font-weight:700;padding:3px 8px;border-radius:10px;background:var(--bg);border:1px solid var(--line);color:var(--muted)}
+.idee .au{font-size:13px;color:var(--muted);margin:2px 0 0}
+.idee .pq{font-size:15px;line-height:1.4;margin:6px 0 8px}
+.idee .liens{display:flex;gap:8px;flex-wrap:wrap}
+.idee .liens a,.idee .liens button{border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:8px;padding:7px 11px;font-size:13px;font-weight:600;text-decoration:none}
+/* réassort */
+.rform .ligne{display:flex;gap:8px}
+.rform .ligne input{margin:0 0 10px}
+#raSku{flex:1;font-size:18px;letter-spacing:1px}
+#raQ{width:76px;flex:none;text-align:center;font-size:18px}
+#raTitre,#raNote{font-size:16px;padding:12px}
+.rsec{display:flex;justify-content:space-between;align-items:baseline;margin:6px 2px 8px}
+.rsec b{font-size:16px}.rsec span{font-size:13px;color:var(--muted)}
+.dem{padding:12px 0;border-top:1px solid var(--line)}
+.dem:first-child{border-top:0}
+.dem .l1{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.dem .sku{font-size:19px;font-weight:800;letter-spacing:1px;font-variant-numeric:tabular-nums}
+.dem .q{font-size:15px;font-weight:700;color:var(--muted)}
+.dem .ti{font-size:15px;margin:2px 0 0}
+.dem .no{font-size:14px;color:var(--muted);margin:2px 0 0;font-style:italic}
+.dem .qui{font-size:12px;color:var(--muted);margin:4px 0 0}
+.dem .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.dem .acts button{border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:8px;padding:8px 12px;font-size:14px;font-weight:600}
+.dem .acts .ok{background:#2e9e4f;color:#fff;border-color:transparent}
+.dem.fait .sku{color:var(--muted)}
+.dem .etat{font-size:12px;font-weight:700;color:#2e9e4f}
+.dem .etat.refuse{color:#d64545}
+.seg button{font-size:14px;padding:9px 2px}
+#infoPhotoBox{position:relative;margin:0 0 10px}
+#infoPhotoBox img{display:block;width:100%;max-height:260px;object-fit:cover;border-radius:12px}
+#infoPhotoSuppr{position:absolute;top:8px;right:8px;width:34px;height:34px;border:0;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;font-size:20px;line-height:34px;padding:0}
+#infoPhoto{margin:0 0 12px}
+.pphoto{margin:4px 0 10px;border-radius:12px;overflow:hidden;background:var(--bg);min-height:120px}
+.pphoto img{display:block;width:100%;max-height:420px;object-fit:cover;cursor:zoom-in}
+#zoom{position:fixed;inset:0;z-index:90;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center;padding:12px}
+#zoom.hide{display:none}
+#zoom img{max-width:100%;max-height:100%;object-fit:contain}
+/* Infos (publications) */
+.seg button{position:relative}
+.seg .pt{position:absolute;top:7px;right:12px;width:8px;height:8px;border-radius:50%;background:#d64545}
+.cats{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
+.cats button{border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:20px;padding:7px 12px;font-size:14px;font-weight:600}
+.cats button.on{background:var(--accent);color:var(--accent-text);border-color:transparent}
+#infoTitre{font-size:17px;padding:12px}
+#infoTexte{width:100%;font-size:16px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--text);font-family:inherit;line-height:1.4;resize:vertical;margin:0 0 10px}
+.infodate{display:block;font-size:13px;color:var(--muted);margin:0 0 12px}
+.infodate input{font-size:16px;padding:10px;margin:6px 0 0}
+.infoacts{display:flex;gap:8px}.infoacts .big{flex:1}
+#infoNouv{margin-bottom:14px}
+.post h3{font-size:19px;line-height:1.25;margin:8px 0 6px}
+.post.neuf{border-color:var(--accent)}
+.post.epingle{border-left:4px solid var(--accent)}
+.ptete{display:flex;gap:8px;align-items:center}
+.pcat{font-size:12px;font-weight:700;padding:4px 9px;border-radius:12px;background:var(--bg);border:1px solid var(--line)}
+.pcat.c-nouveaute{background:rgba(225,169,37,.18);border-color:transparent}
+.pcat.c-sortie{background:rgba(46,158,79,.16);border-color:transparent}
+.pcat.c-operation{background:rgba(214,69,69,.14);border-color:transparent}
+.ppin{font-size:12px;color:var(--muted);font-weight:600}
+.pdate{font-size:15px;font-weight:600;margin:0 0 8px}
+.pdate.passe{color:var(--muted);font-weight:400}
+.ptexte{font-size:16px;line-height:1.45;margin:0 0 10px;white-space:pre-wrap;word-wrap:break-word}
+.ppied{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:8px}
+.pacts button{border:0;background:none;color:var(--muted);font-size:13px;text-decoration:underline;padding:4px 0 4px 10px}
+.vide-info p:first-child{font-weight:700;margin:0 0 6px}
 #hint:empty{display:none}
 .ou{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:13px;margin:16px 0 12px}
 .ou::before,.ou::after{content:"";flex:1;height:1px;background:var(--line)}
@@ -102,9 +190,10 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 #go{flex:none;width:52px;height:52px;border:0;border-radius:12px;background:var(--accent);color:var(--accent-text);display:flex;align-items:center;justify-content:center}
 #go svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round}
 #skuAide{margin:6px 2px 0;min-height:18px}
-.tuiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:18px}
-.tuiles button{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:6px;border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:14px;padding:12px 4px 10px;font-size:13px;font-weight:600;line-height:1.25;text-align:center;min-height:84px}
-.tuiles button .ic{width:26px;height:26px;margin:0}
+.tuiles{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:18px}
+.tuiles button{display:flex;align-items:center;gap:10px;border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:14px;padding:12px;font-size:14px;font-weight:600;line-height:1.25;text-align:left;min-height:60px}
+.tuiles button .ic{width:24px;height:24px;margin:0;flex:none}
+.tuiles #cadeauBtn{border-color:var(--accent)}
 .tuiles button:active{transform:scale(.97)}
 /* sous-onglets Chat / Planning et planning de l'équipe */
 .seg{display:flex;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px;margin:0 0 14px}
@@ -252,6 +341,7 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 <body>
 <div id="fili" aria-hidden="true"><svg class="fm" viewBox="0 0 512 512"><rect x="14" y="14" width="484" height="484" rx="108" fill="none" stroke="currentColor" stroke-width="28"/><g fill="currentColor"><rect x="104" y="150" width="26" height="212" rx="5"/><rect x="146" y="150" width="12" height="212" rx="4"/><rect x="174" y="150" width="34" height="212" rx="5"/><rect x="224" y="150" width="12" height="212" rx="4"/><rect x="252" y="150" width="24" height="212" rx="5"/></g><g fill="none" stroke="currentColor" stroke-width="26" stroke-linecap="round"><path d="M318 206a72 72 0 0 1 0 100"/><path d="M362 166a130 130 0 0 1 0 180"/></g></svg><div class="fn">BipBip</div></div>
 <header class="top"><img class="mark" src="logo.svg" alt="BipBip"><div><div class="tline"><div class="ttl">Bip<span>Bip</span></div><div class="slogan">l'assistant de rayon qui fait bip</div></div></div></header>
+<div id="zoom" class="hide"><img id="zoomImg" alt=""></div>
 <div id="profil" class="hide"><div class="card">
   <h2>Bienvenue sur BipBip 👋</h2>
   <p class="intro">Entre ton prénom et ton code à 4 chiffres : ils te permettent de retrouver ton historique sur n'importe quel téléphone. Nouveau ? Choisis un code et retiens-le.</p>
@@ -288,6 +378,7 @@ li{padding:10px 0;border-top:1px solid var(--line)}
       <button id="snap" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/></svg><span class="lb">Photo d’un article</span></button>
       <button id="pick" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="m21 16-5-5-9 9"/></svg><span class="lb">Code-barres en galerie</span></button>
       <button id="cmpMode" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4v16M16 4v16M4 8h8M12 16h8"/></svg><span class="lb">Comparer 2&nbsp;articles</span></button>
+      <button id="cadeauBtn" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="9" width="18" height="12" rx="1.5"/><path d="M3 13h18M12 9v12M12 9c-1.5-3-5-4.5-6-2.5S8 9 12 9zm0 0c1.5-3 5-4.5 6-2.5S16 9 12 9z"/></svg><span class="lb">Idées cadeaux</span></button>
     </div>
     <input id="f3" type="file" accept="image/*" capture="environment" class="hide">
     <input id="f2" type="file" accept="image/*" class="hide">
@@ -296,6 +387,20 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 </div>
 
 
+
+<div id="cadeauCard" class="card hide">
+  <div class="reshead"><span class="lbl" style="margin:0">🎁 Idées cadeaux</span><button id="cadeauFerme" type="button">Fermer</button></div>
+  <p class="clab">Pour qui ?</p>
+  <div class="cats" id="cdAge"><button type="button">0-3 ans</button><button type="button">4-7 ans</button><button type="button">8-11 ans</button><button type="button">12-15 ans</button><button type="button">16-18 ans</button><button type="button">Adulte</button></div>
+  <p class="clab">Budget</p>
+  <div class="cats" id="cdBudget"><button type="button">Moins de 20 CHF</button><button type="button">20 à 40 CHF</button><button type="button">40 à 80 CHF</button><button type="button">Plus de 80 CHF</button></div>
+  <p class="clab">Quel genre de cadeau ? <span class="muted">(plusieurs choix possibles)</span></p>
+  <div class="cats" id="cdTypes"><button type="button">Livre</button><button type="button">BD / Manga</button><button type="button">Jeu vidéo</button><button type="button">Jeu de société</button><button type="button">High-tech</button></div>
+  <p class="clab">Ce que la personne aime</p>
+  <input id="cdGouts" maxlength="300" autocomplete="off" placeholder="Ex. dinosaures, Harry Potter, foot, cuisine…" style="font-size:16px;padding:12px">
+  <button class="big" id="cdGo" type="button"><span class="lb">Trouver des idées</span></button>
+  <div id="cdRes"></div>
+</div>
 
 <div id="mainRes">
 <div id="cmpLive" class="card hide"></div>
@@ -343,12 +448,41 @@ li{padding:10px 0;border-top:1px solid var(--line)}
   </div>
   <div id="chatRoom" class="hide">
     <div id="chatHead" class="card"><div><b id="chatSalon"></b><span class="sub">Code à partager : <b id="chatCodeAff"></b> · messages effacés après 30 jours</span></div><button id="chatQuit" type="button">Changer</button></div>
-    <div class="seg"><button id="vChat" class="on" type="button">Chat</button><button id="vPlan" type="button">Planning</button></div>
+    <div class="seg"><button id="vChat" class="on" type="button">Chat</button><button id="vPlan" type="button">Planning</button><button id="vInfo" type="button">Infos<i class="pt hide" id="ptInfo"></i></button><button id="vRea" type="button">Réassort<i class="pt hide" id="ptRea"></i></button></div>
     <div id="vueChat">
     <div id="chatList"></div>
     <div id="chatBar"><textarea id="chatIn" rows="1" maxlength="500" placeholder="Écris un message…" enterkeyhint="send"></textarea><button id="chatGo" type="button" aria-label="Envoyer"><svg viewBox="0 0 24 24"><path d="M4 12 20 4l-6 16-3-7z"/></svg></button></div>
     </div>
     <div id="vuePlan" class="hide"></div>
+    <div id="vueInfo" class="hide">
+      <button class="big" id="infoNouv" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span class="lb">Publier une info</span></button>
+      <div id="infoForm" class="card hide">
+        <p class="lbl">Nouvelle publication</p>
+        <div class="cats" id="infoCats">
+          <button type="button" data-c="nouveaute" class="on">✨ Nouveauté</button><button type="button" data-c="sortie">📅 Sortie</button><button type="button" data-c="operation">🏷️ Opération</button><button type="button" data-c="info">📌 Info</button>
+        </div>
+        <input id="infoTitre" maxlength="120" autocomplete="off" placeholder="Titre (ex. One Piece tome 110)">
+        <textarea id="infoTexte" maxlength="1500" rows="4" placeholder="Ton commentaire : de quoi il s'agit, où c'est rangé, à qui le conseiller…"></textarea>
+        <div id="infoPhotoBox" class="hide"><img id="infoPhotoVue" alt="Photo jointe"><button id="infoPhotoSuppr" type="button" aria-label="Retirer la photo">×</button></div>
+        <button class="big alt" id="infoPhoto" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/></svg><span class="lb">Ajouter une photo ou une capture</span></button>
+        <input id="infoFichier" type="file" accept="image/*" class="hide">
+        <label class="infodate">Date de sortie / de l'opération (facultatif)<input id="infoDate" type="date"></label>
+        <div class="infoacts"><button class="big" id="infoGo" type="button"><span class="lb">Publier</span></button><button class="big alt" id="infoAnnul" type="button"><span class="lb">Annuler</span></button></div>
+        <p class="aide" id="infoMsg"></p>
+      </div>
+      <div id="infoListe"></div>
+    </div>
+    <div id="vueRea" class="hide">
+      <div class="card rform">
+        <p class="lbl">Demander un produit</p>
+        <div class="ligne"><input id="raSku" inputmode="numeric" maxlength="13" autocomplete="off" placeholder="SKU ou EAN"><input id="raQ" type="number" inputmode="numeric" min="1" max="99" value="1" aria-label="Quantité"></div>
+        <input id="raTitre" maxlength="120" autocomplete="off" placeholder="Nom du produit (facultatif)">
+        <input id="raNote" maxlength="200" autocomplete="off" placeholder="Commentaire (facultatif) : rupture, client en attente…">
+        <button class="big" id="raGo" type="button"><span class="lb">Demander le réassort</span></button>
+        <p class="aide" id="raMsg"></p>
+      </div>
+      <div id="raListe"></div>
+    </div>
   </div>
 </div>
 
@@ -522,7 +656,9 @@ function gererProfil(tr, p){
     msg.textContent = "…";
     prof("/profil/admin-supprimer", { cible: p.id }).then(function(j){ fin(j, "Profil supprimé."); });
   };
-  row.appendChild(bR); row.appendChild(bC); row.appendChild(bS);
+  var bV = el("button", "act", p.valideur ? "Retirer : valider le réassort" : "Autoriser à valider le réassort"); bV.type = "button";
+  bV.onclick = function(){ msg.textContent = "…"; prof("/profil/admin-valideur", { cible: p.id, oui: p.valideur ? "0" : "1" }).then(function(j){ fin(j, j && j.valideur ? "Peut maintenant valider les réassorts." : "Ne peut plus valider les réassorts."); }); };
+  row.appendChild(bR); row.appendChild(bV); row.appendChild(bC); row.appendChild(bS);
   td.appendChild(inp); td.appendChild(row); td.appendChild(msg); ligne.appendChild(td);
   tr.parentNode.insertBefore(ligne, suiv);
 }
@@ -563,7 +699,7 @@ function afficherStats(){
     t.appendChild(hd);
     j.equipe.forEach(function(p){
       var tr = el("tr"), c1 = el("td");
-      c1.appendChild(el("b", "", p.nom + (p.code ? " 🔒" : "")));
+      c1.appendChild(el("b", "", p.nom + (p.code ? " 🔒" : "") + (p.valideur ? " ✅" : "")));
       var det = Object.keys(p.fonctions).sort(function(a, b){ return p.fonctions[b] - p.fonctions[a]; }).map(function(k){ return p.fonctions[k] + " " + (NOMS[k] || k); }).join(" · ");
       if (det) { c1.appendChild(el("br")); c1.appendChild(el("span", "det", det)); }
       if (p.id && p.id !== PROFIL.nom.toLowerCase()) {
@@ -1012,11 +1148,11 @@ function renderFiche(j){
 }
 
 // ---------- identification par photo ----------
-function reduireImage(file){
+function reduireImage(file, taille){
   return new Promise(function(ok, ko){
     var url = URL.createObjectURL(file), img = new Image();
     img.onload = function(){
-      var max = 1024, w = img.naturalWidth, h = img.naturalHeight, k = Math.min(1, max / Math.max(w, h));
+      var max = taille || 1024, w = img.naturalWidth, h = img.naturalHeight, k = Math.min(1, max / Math.max(w, h));
       var c = document.createElement("canvas"); c.width = Math.round(w * k); c.height = Math.round(h * k);
       c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
       URL.revokeObjectURL(url); ok(c.toDataURL("image/jpeg", 0.8));
@@ -1323,6 +1459,9 @@ function ouvrirChat(){
   $("chatJoin").className = "card hide"; $("chatRoom").className = "";
   $("chatSalon").textContent = CHAT.salon || "Chat du magasin"; $("chatCodeAff").textContent = CHAT.code;
   if (!$("vuePlan").classList.contains("hide")) { chargerPlanning(); return; }
+  if (!$("vueInfo").classList.contains("hide")) { chargerInfos(); return; }
+  if (!$("vueRea").classList.contains("hide")) { chargerReassort(); return; }
+  verifierInfos(); verifierReassort();
   if (!CHAT.dernier) $("chatList").innerHTML = '<p class="vide">Chargement…</p>';
   chargerMessages(true);
 }
@@ -1425,13 +1564,211 @@ $("chatIn").addEventListener("keydown", function(e){ if (e.key === "Enter" && !e
 // ---------- planning de la semaine ----------
 var PLAN = { semaines: [], i: 0, jour: -1 };
 var JOURS = ["Lu", "Ma", "Me", "Je", "Ve", "Sa", "Di"], JOURS_LONG = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
-function vue(plan){
-  $("vChat").className = plan ? "" : "on"; $("vPlan").className = plan ? "on" : "";
-  $("vueChat").className = plan ? "hide" : ""; $("vuePlan").className = plan ? "" : "hide";
-  if (plan) chargerPlanning(); else { CHAT.dernier = 0; chargerMessages(true); }
+// sous-onglets de l'onglet Équipe : "chat", "plan" ou "info"
+function vue(v){
+  v = v === true ? "plan" : v === false ? "chat" : v;
+  [["chat", "vChat", "vueChat"], ["plan", "vPlan", "vuePlan"], ["info", "vInfo", "vueInfo"], ["rea", "vRea", "vueRea"]].forEach(function(x){
+    $(x[1]).className = v === x[0] ? "on" : ""; $(x[2]).className = v === x[0] ? "" : "hide";
+  });
+  if (v === "plan") chargerPlanning(); else if (v === "info") chargerInfos(); else if (v === "rea") chargerReassort(); else { CHAT.dernier = 0; chargerMessages(true); }
 }
-$("vChat").onclick = function(){ vue(false); };
-$("vPlan").onclick = function(){ vue(true); };
+$("vRea").onclick = function(){ vue("rea"); };
+$("vChat").onclick = function(){ vue("chat"); };
+$("vPlan").onclick = function(){ vue("plan"); };
+$("vInfo").onclick = function(){ vue("info"); };
+
+// ---------- Infos : publications du magasin ----------
+var CATS = { nouveaute: ["✨", "Nouveauté"], sortie: ["📅", "Sortie"], operation: ["🏷️", "Opération"], info: ["📌", "Info"] };
+var INFO = { cat: "nouveaute", vu: 0 };
+try { INFO.vu = +(localStorage.getItem("infoVu") || 0); } catch(e){}
+function dateLongue(iso){ var d = new Date(iso + "T12:00:00"); return JOURS_LONG[(d.getDay() + 6) % 7].toLowerCase() + " " + (d.getDate() === 1 ? "1er" : d.getDate()) + " " + MOIS[d.getMonth()] + (d.getFullYear() !== new Date().getFullYear() ? " " + d.getFullYear() : ""); }
+function formInfo(ouvert){
+  $("infoForm").className = ouvert ? "card" : "card hide"; $("infoNouv").className = ouvert ? "big hide" : "big";
+  if (ouvert) { $("infoTitre").value = ""; $("infoTexte").value = ""; $("infoDate").value = ""; $("infoMsg").textContent = ""; photoInfo(""); setTimeout(function(){ $("infoTitre").focus(); }, 50); }
+}
+// photo jointe : prise sur le moment ou choisie dans la galerie (capture d'écran…), réduite avant l'envoi
+function photoInfo(img){
+  INFO.image = img;
+  $("infoPhotoBox").className = img ? "" : "hide"; if (img) $("infoPhotoVue").src = img;
+  lab("infoPhoto", img ? "Changer la photo" : "Ajouter une photo ou une capture");
+}
+$("infoPhoto").onclick = function(){ $("infoFichier").click(); };
+$("infoPhotoSuppr").onclick = function(){ photoInfo(""); };
+$("infoFichier").onchange = function(){
+  var f = this.files[0]; this.value = "";
+  if (!f) return;
+  $("infoMsg").textContent = "Préparation de la photo…";
+  reduireImage(f).then(function(img){ photoInfo(img); $("infoMsg").textContent = ""; }, function(){ $("infoMsg").textContent = "Impossible de lire cette image."; });
+};
+function zoom(src){ $("zoomImg").src = src; $("zoom").className = ""; }
+$("zoom").onclick = function(){ $("zoom").className = "hide"; $("zoomImg").src = ""; };
+$("infoNouv").onclick = function(){ formInfo(true); };
+$("infoAnnul").onclick = function(){ formInfo(false); };
+Array.prototype.forEach.call($("infoCats").querySelectorAll("button"), function(b){
+  b.onclick = function(){ INFO.cat = b.getAttribute("data-c"); Array.prototype.forEach.call($("infoCats").querySelectorAll("button"), function(x){ x.className = x === b ? "on" : ""; }); };
+});
+$("infoGo").onclick = function(){
+  var titre = $("infoTitre").value.trim();
+  if (titre.length < 2) { $("infoMsg").textContent = "Donne un titre à ta publication."; $("infoTitre").focus(); return; }
+  $("infoMsg").textContent = INFO.image ? "Envoi de la photo…" : "Publication…";
+  prof("/chat/poster", { code: CHAT.code, categorie: INFO.cat, titre: titre, texte: $("infoTexte").value.trim(), date: $("infoDate").value, image: INFO.image || "" }).then(function(j){
+    if (!j || !j.ok) { $("infoMsg").textContent = (j && j.erreur) || "Pas publié, réessaie."; return; }
+    formInfo(false); chargerInfos();
+  });
+};
+function chargerInfos(){
+  var box = $("infoListe");
+  if (!box.children.length) box.innerHTML = '<p class="muted" style="text-align:center;margin:24px 0">Chargement…</p>';
+  return prof("/chat/posts", { code: CHAT.code }).then(function(j){
+    if (!j || !j.ok) { box.innerHTML = '<p class="muted" style="text-align:center;margin:24px 0">Infos indisponibles pour le moment.</p>'; return; }
+    var posts = j.posts || [];
+    box.innerHTML = "";
+    if (!posts.length) box.innerHTML = '<div class="card vide-info"><p>Rien de publié pour l’instant.</p><p class="aide">Une nouveauté, une sortie de jeu ou de livre, une opération en magasin ? Publie-la ici pour toute l’équipe.</p></div>';
+    var auj = new Date(); auj.setHours(0, 0, 0, 0);
+    posts.forEach(function(x){
+      var c = el("article", "card post" + (x.e ? " epingle" : "") + (x.id > INFO.vu && !moi(x.n) ? " neuf" : "")), cat = CATS[x.c] || CATS.info;
+      var tete = el("div", "ptete");
+      tete.appendChild(el("span", "pcat c-" + x.c, cat[0] + " " + cat[1]));
+      if (x.e) tete.appendChild(el("span", "ppin", "Épinglé"));
+      c.appendChild(tete);
+      c.appendChild(el("h3", "", x.titre));
+      if (x.d) {
+        var dd = new Date(x.d + "T00:00:00"), diff = Math.round((dd - auj) / 864e5);
+        c.appendChild(el("p", "pdate" + (diff < 0 ? " passe" : ""), "📅 " + (diff === 0 ? "Aujourd’hui" : diff === 1 ? "Demain" : dateLongue(x.d).replace(/^./, function(m){ return m.toUpperCase(); })) + (diff > 1 && diff <= 30 ? " · dans " + diff + " jours" : "")));
+      }
+      if (x.img) {
+        var ph = el("div", "pphoto"), im = el("img"); im.alt = x.titre; ph.appendChild(im); c.appendChild(ph);
+        chargerPhoto(x.id, im);
+        im.onclick = function(){ if (im.src) zoom(im.src); };
+      }
+      if (x.texte) c.appendChild(el("p", "ptexte", x.texte));
+      var pied = el("div", "ppied");
+      pied.appendChild(el("span", "", (moi(x.n) ? "Toi" : x.a) + " · " + ago(x.t)));
+      var acts = el("span", "pacts");
+      if (PROFIL.admin) { var e = el("button", "", x.e ? "Désépingler" : "Épingler"); e.type = "button"; e.onclick = function(){ prof("/chat/post-epingler", { code: CHAT.code, id: x.id }).then(chargerInfos); }; acts.appendChild(e); }
+      if (moi(x.n) || PROFIL.admin) { var sp = el("button", "", "Supprimer"); sp.type = "button"; sp.onclick = function(){ if (window.confirm("Supprimer cette publication ?")) prof("/chat/post-supprimer", { code: CHAT.code, id: x.id }).then(chargerInfos); }; acts.appendChild(sp); }
+      pied.appendChild(acts); c.appendChild(pied);
+      box.appendChild(c);
+    });
+    var max = posts.reduce(function(m, x){ return Math.max(m, x.id); }, 0);
+    if (max > INFO.vu) { INFO.vu = max; try { localStorage.setItem("infoVu", String(max)); } catch(e){} }
+    $("ptInfo").className = "pt hide";
+  });
+}
+var PHOTOS = {};   // photos déjà chargées (pas de rechargement à chaque affichage)
+function chargerPhoto(id, im){
+  if (PHOTOS[id]) { im.src = PHOTOS[id]; return; }
+  prof("/chat/post-image", { code: CHAT.code, id: id }).then(function(j){ if (j && j.image) { PHOTOS[id] = j.image; im.src = j.image; } else im.parentNode.remove(); });
+}
+// ---------- Réassort ----------
+var REA = { peutValider: false };
+function chargerReassort(){
+  var box = $("raListe");
+  if (!box.children.length) box.innerHTML = '<p class="muted" style="text-align:center;margin:20px 0">Chargement…</p>';
+  return prof("/chat/reassort", { code: CHAT.code }).then(function(j){
+    if (!j || !j.ok) { box.innerHTML = '<p class="muted" style="text-align:center;margin:20px 0">Liste indisponible pour le moment.</p>'; return; }
+    REA.peutValider = !!j.peutValider;
+    var att = (j.demandes || []).filter(function(x){ return x.statut === "demande"; }), faits = (j.demandes || []).filter(function(x){ return x.statut !== "demande"; });
+    box.innerHTML = "";
+    var c1 = el("div", "card"), h1 = el("div", "rsec");
+    h1.appendChild(el("b", "", "En attente (" + att.length + ")"));
+    h1.appendChild(el("span", "", REA.peutValider ? "Coche quand la commande est passée" : "Validé par le responsable"));
+    c1.appendChild(h1);
+    if (!att.length) c1.appendChild(el("p", "muted", "Aucune demande en attente."));
+    att.forEach(function(x){ c1.appendChild(ligneDemande(x)); });
+    box.appendChild(c1);
+    if (faits.length) {
+      var c2 = el("div", "card"), h2 = el("div", "rsec");
+      h2.appendChild(el("b", "", "Traitées")); h2.appendChild(el("span", "", "30 derniers jours"));
+      c2.appendChild(h2);
+      faits.forEach(function(x){ c2.appendChild(ligneDemande(x)); });
+      box.appendChild(c2);
+    }
+    $("ptRea").className = "pt hide";
+  });
+}
+function ligneDemande(x){
+  var d = el("div", "dem" + (x.statut !== "demande" ? " fait" : "")), l1 = el("div", "l1");
+  l1.appendChild(el("span", "sku", x.sku));
+  l1.appendChild(el("span", "q", "× " + (x.q || 1)));
+  d.appendChild(l1);
+  if (x.titre) d.appendChild(el("p", "ti", x.titre));
+  if (x.note) d.appendChild(el("p", "no", x.note));
+  d.appendChild(el("p", "qui", "Demandé par " + (moi(x.n) ? "toi" : x.a) + " · " + ago(x.t)));
+  if (x.statut !== "demande") d.appendChild(el("p", "etat" + (x.statut === "refuse" ? " refuse" : ""), (x.statut === "refuse" ? "✕ Pas commandé" : "✓ Commandé") + (x.v ? " par " + x.v : "") + (x.tv ? " · " + ago(x.tv) : "")));
+  var acts = el("div", "acts"), act = function(txt, cls, f){ var b = el("button", cls, txt); b.type = "button"; b.onclick = f; acts.appendChild(b); };
+  var maj = function(route, data){ return function(){ prof(route, Object.assign({ code: CHAT.code, id: x.id }, data)).then(chargerReassort); }; };
+  if (navigator.clipboard) act("Copier le SKU", "", function(){ navigator.clipboard.writeText(x.sku).then(function(){ this.textContent = "Copié ✓"; }.bind(this)); });
+  if (REA.peutValider && x.statut === "demande") { act("✓ Commandé", "ok", maj("/chat/reassort-valider", { statut: "commande" })); act("Pas commandé", "", maj("/chat/reassort-valider", { statut: "refuse" })); }
+  if (REA.peutValider && x.statut !== "demande") act("Remettre en attente", "", maj("/chat/reassort-valider", { statut: "demande" }));
+  if ((moi(x.n) && x.statut === "demande") || REA.peutValider) act(moi(x.n) && x.statut === "demande" ? "Annuler ma demande" : "Supprimer", "", function(){ if (window.confirm("Supprimer cette demande ?")) maj("/chat/reassort-supprimer", {})(); });
+  d.appendChild(acts);
+  return d;
+}
+$("raGo").onclick = function(){
+  var sku = $("raSku").value.replace(/\s+/g, "");
+  if (!/^\d{6,13}$/.test(sku)) { $("raMsg").textContent = "Entre le SKU (8 chiffres) ou l’EAN (13 chiffres)."; $("raSku").focus(); return; }
+  $("raMsg").textContent = "Envoi…";
+  prof("/chat/reassort-ajouter", { code: CHAT.code, sku: sku, quantite: $("raQ").value, titre: $("raTitre").value.trim(), note: $("raNote").value.trim() }).then(function(j){
+    if (!j || !j.ok) { $("raMsg").textContent = (j && j.erreur) ? j.erreur.charAt(0).toUpperCase() + j.erreur.slice(1) + "." : "Pas envoyé, réessaie."; return; }
+    $("raSku").value = ""; $("raQ").value = "1"; $("raTitre").value = ""; $("raNote").value = "";
+    $("raMsg").textContent = "Demande envoyée ✓"; setTimeout(function(){ $("raMsg").textContent = ""; }, 2500);
+    chargerReassort();
+  });
+};
+// point rouge sur « Réassort » pour le responsable quand des demandes attendent
+function verifierReassort(){
+  if (!CHAT.code) return;
+  prof("/chat/reassort", { code: CHAT.code }).then(function(j){
+    var n = j && j.ok && j.peutValider ? (j.demandes || []).filter(function(x){ return x.statut === "demande"; }).length : 0;
+    $("ptRea").className = n ? "pt" : "pt hide";
+  });
+}
+
+// ---------- Idées cadeaux ----------
+function chipsUnique(id){ var box = $(id); Array.prototype.forEach.call(box.children, function(b){ b.onclick = function(){ var on = b.className !== "on"; Array.prototype.forEach.call(box.children, function(x){ x.className = ""; }); if (on) b.className = "on"; }; }); }
+function chipsMulti(id){ Array.prototype.forEach.call($(id).children, function(b){ b.onclick = function(){ b.className = b.className === "on" ? "" : "on"; }; }); }
+chipsUnique("cdAge"); chipsUnique("cdBudget"); chipsMulti("cdTypes");
+function choix(id){ return Array.prototype.filter.call($(id).children, function(b){ return b.className === "on"; }).map(function(b){ return b.textContent; }); }
+$("cadeauBtn").onclick = function(){ stop(); $("cadeauCard").className = "card"; $("cadeauCard").scrollIntoView({ behavior: "smooth", block: "start" }); };
+$("cadeauFerme").onclick = function(){ $("cadeauCard").className = "card hide"; window.scrollTo({ top: 0, behavior: "smooth" }); };
+$("cdGo").onclick = function(){
+  var age = choix("cdAge")[0] || "", budget = choix("cdBudget")[0] || "", types = choix("cdTypes"), gouts = $("cdGouts").value.trim();
+  var box = $("cdRes");
+  if (!age && !gouts) { box.innerHTML = '<p class="warn">Choisis au moins l’âge, ou écris ce que la personne aime.</p>'; return; }
+  stat("cadeaux");
+  box.innerHTML = '<p class="muted">Recherche d’idées… (10 à 20 secondes)</p>';
+  lab("cdGo", "Recherche…");
+  var ctl = ("AbortController" in window) ? new AbortController() : null, tm = setTimeout(function(){ if (ctl) ctl.abort(); }, 40000);
+  fetch(SERVEUR + "/cadeaux", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ age: age, budget: budget, types: types, gouts: gouts, occasion: "Noël" }), signal: ctl ? ctl.signal : undefined })
+    .then(function(r){ clearTimeout(tm); return r.json(); }).then(function(j){
+      lab("cdGo", "Autres idées");
+      box.innerHTML = "";
+      if (!j || !j.ok || !(j.idees || []).length) { box.appendChild(el("p", "muted", (j && j.erreur) || "Pas d’idée pour le moment, réessaie.")); return; }
+      (j.idees || []).forEach(function(x){
+        var d = el("div", "idee"), it = el("div", "it");
+        it.appendChild(el("b", "", x.titre)); it.appendChild(el("span", "ty", x.type || ""));
+        d.appendChild(it);
+        if (x.auteur) d.appendChild(el("p", "au", x.auteur));
+        if (x.pourquoi) d.appendChild(el("p", "pq", x.pourquoi));
+        var li = el("div", "liens");
+        if (x.isbn) { var f = el("button", "", "Voir la fiche"); f.type = "button"; f.onclick = function(){ show(x.isbn); $("res").scrollIntoView({ behavior: "smooth", block: "start" }); }; li.appendChild(f); }
+        var a = el("a", "", "Chercher sur fnac.ch"); a.href = BASE + encodeURIComponent(x.titre + (x.auteur ? " " + x.auteur : "")); a.target = "_blank"; a.rel = "noopener"; li.appendChild(a);
+        d.appendChild(li);
+        box.appendChild(d);
+      });
+      box.appendChild(el("p", "warn", "Idées proposées par une IA : vérifie la disponibilité et le prix en rayon ou sur fnac.ch."));
+    }, function(){ clearTimeout(tm); lab("cdGo", "Trouver des idées"); box.innerHTML = '<p class="muted">Serveur injoignable, réessaie.</p>'; });
+};
+
+// point sur « Infos » quand un collègue a publié quelque chose de nouveau
+function verifierInfos(){
+  if (!CHAT.code) return;
+  prof("/chat/posts", { code: CHAT.code }).then(function(j){
+    var neuf = j && j.ok && (j.posts || []).some(function(x){ return x.id > INFO.vu && !moi(x.n); });
+    $("ptInfo").className = neuf ? "pt" : "pt hide";
+  });
+}
 function minutes(h){ var p = String(h).split(":"); return +p[0] * 60 + +p[1]; }
 function duree(m){ var h = Math.floor(m / 60), r = m % 60; return h + " h" + (r ? " " + ("0" + r).slice(-2) : ""); }
 function hFr(h){ return h.replace(/^0/, "").replace(":", "h").replace(/h00$/, "h"); }
@@ -1449,8 +1786,8 @@ function chargerPlanning(){
   if (!PLAN.semaines.length) box.innerHTML = '<div class="card"><p class="muted">Chargement du planning…</p></div>';
   prof("/chat/planning", { code: CHAT.code }).then(function(j){
     if (!j || !j.ok) { box.innerHTML = '<div class="card"><p class="muted">Planning indisponible pour le moment.</p></div>'; return; }
-    PLAN.semaines = j.semaines || [];
-    if (!PLAN.semaines.length) { box.innerHTML = '<div class="card"><p class="muted">Pas encore de planning pour cette semaine.</p></div>'; return; }
+    PLAN.semaines = j.semaines || []; PLAN.peutImporter = !!j.peutImporter;
+    if (!PLAN.semaines.length) { box.innerHTML = '<div class="card"><p class="muted">Pas encore de planning pour cette semaine.</p></div>'; boutonsImport(box, true); return; }
     // semaine en cours par défaut, et le jour d'aujourd'hui
     var auj = new Date(); auj.setHours(12, 0, 0, 0);
     PLAN.i = 0;
@@ -1528,7 +1865,98 @@ function dessinerPlanning(){
     box.appendChild(c2);
   }
   box.appendChild(el("p", "aide", "Recopié du planning du responsable : l’original fait foi."));
+  boutonsImport(box, false);
 }
+
+// ---------- import du planning (responsable et administrateur) ----------
+function boutonsImport(box, vide){
+  if (!PLAN.peutImporter) return;
+  var c = el("div", "card imp");
+  c.appendChild(el("p", "lbl", "Responsable"));
+  var b1 = el("button", "big", "📷 Importer le planning (capture)"), b2 = el("button", "big alt", vide ? "Saisir à la main" : "Modifier cette semaine"), f = el("input");
+  b1.type = b2.type = "button"; f.type = "file"; f.accept = "image/*"; f.className = "hide";
+  var msg = el("p", "aide", "Envoie la capture du planning : l’IA le recopie, tu relis et tu corriges avant de publier.");
+  b1.onclick = function(){ f.click(); };
+  f.onchange = function(){
+    var fi = f.files[0]; f.value = ""; if (!fi) return;
+    msg.textContent = "Lecture du planning par l’IA… (20 à 40 secondes)"; b1.disabled = true;
+    reduireImage(fi, 1600).then(function(img){ return prof("/chat/planning-lire", { code: CHAT.code, image: img }); }).then(function(j){
+      b1.disabled = false;
+      if (!j || !j.ok) { msg.textContent = "L’IA n’a pas réussi à lire la capture. Tu peux réessayer avec une image plus nette, ou saisir à la main."; return; }
+      editeurPlanning({ semaine: j.semaine, lundi: j.lundi, personnes: j.personnes }, true);
+    }, function(){ b1.disabled = false; msg.textContent = "Impossible de lire cette image."; });
+  };
+  b2.onclick = function(){
+    var w = PLAN.semaines[PLAN.i];
+    if (!vide && w) editeurPlanning({ semaine: (w.titre || "").replace(/\D/g, ""), lundi: w.debut, personnes: (w.personnes || []).map(function(p){ return { prenom: p.prenom, jours: (p.jours || []).map(texteJour) }; }) }, false);
+    else editeurPlanning({ semaine: "", lundi: "", personnes: (w ? w.personnes : [{ prenom: "" }]).map(function(p){ return { prenom: p.prenom, jours: ["", "", "", "", "", "", ""] }; }) }, false);
+  };
+  c.appendChild(b1); c.appendChild(b2); c.appendChild(f); c.appendChild(msg);
+  box.appendChild(c);
+}
+function texteJour(j){ return j.plages && j.plages.length ? j.plages.map(function(pl){ return hFr(pl[0]) + "-" + hFr(pl[1]); }).join(" ") : j.note || "repos"; }
+function hhmm(h, m){ return ("0" + (+h)).slice(-2) + ":" + (m ? ("0" + (+m)).slice(-2) : "00"); }
+function lireJour(t){
+  t = String(t || "").trim();
+  if (!t || /^(repos|reposp|r|-)$/i.test(t)) return { repos: true };
+  var re = /(\d{1,2})(?:[h:.](\d{2}))?\s*(?:-|–|à|a)\s*(\d{1,2})(?:[h:.](\d{2}))?/gi, m, pl = [];
+  while ((m = re.exec(t))) pl.push([hhmm(m[1], m[2]), hhmm(m[3], m[4])]);
+  if (pl.length) return { plages: pl };
+  return { note: t === "?" ? "À confirmer" : t.slice(0, 60) };
+}
+function lundiSemaine(n){
+  // lundi de la semaine ISO n de l'année en cours (ou de la suivante si la semaine est déjà loin derrière)
+  var an = new Date().getFullYear(), essai = function(a){ var d = new Date(a, 0, 4, 12); d.setDate(d.getDate() - ((d.getDay() + 6) % 7) + (n - 1) * 7); return d; };
+  var d = essai(an); if (d < new Date(Date.now() - 120 * 864e5)) d = essai(an + 1);
+  return d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2);
+}
+function editeurPlanning(data, lu){
+  var box = $("vuePlan"); box.innerHTML = "";
+  var c = el("div", "card edp");
+  c.appendChild(el("p", "lbl", lu ? "Planning lu par l’IA : relis et corrige" : "Saisie du planning"));
+  c.appendChild(el("p", "aide", "Format : « 7h45-12h 13h-17h », ou « repos ». Vérifie bien chaque case avec l’original avant de publier."));
+  var l0 = el("div", "edtete"), sem = el("input"), lun = el("input");
+  sem.inputMode = "numeric"; sem.maxLength = 2; sem.placeholder = "N°"; sem.value = data.semaine || "";
+  lun.type = "date"; lun.value = data.lundi || (data.semaine ? lundiSemaine(+data.semaine) : "");
+  sem.oninput = function(){ if (+sem.value >= 1 && +sem.value <= 53) lun.value = lundiSemaine(+sem.value); };
+  var g1 = el("label", "", "Semaine"), g2 = el("label", "", "Lundi"); g1.appendChild(sem); g2.appendChild(lun);
+  l0.appendChild(g1); l0.appendChild(g2); c.appendChild(l0);
+  var liste = el("div"); c.appendChild(liste);
+  var ajouterPersonne = function(p){
+    var d = el("div", "edp-pers"), h = el("div", "edp-h"), pn = el("input"), x = el("button", "", "×");
+    pn.value = p.prenom || ""; pn.placeholder = "Prénom"; pn.className = "edp-nom"; x.type = "button"; x.setAttribute("aria-label", "Retirer");
+    x.onclick = function(){ d.remove(); };
+    h.appendChild(pn); h.appendChild(x); d.appendChild(h);
+    var gr = el("div", "edp-jours");
+    JOURS.forEach(function(n, i){ var lb = el("label"), inp = el("input"); lb.appendChild(el("span", "", n)); inp.value = (p.jours || [])[i] || ""; if (inp.value === "?") inp.className = "doute"; inp.oninput = function(){ inp.className = ""; }; lb.appendChild(inp); gr.appendChild(lb); });
+    d.appendChild(gr); liste.appendChild(d);
+  };
+  (data.personnes || []).forEach(ajouterPersonne);
+  var add = el("button", "big alt", "＋ Ajouter une personne"); add.type = "button"; add.onclick = function(){ ajouterPersonne({ prenom: "", jours: [] }); };
+  c.appendChild(add);
+  var msg = el("p", "aide", ""), acts = el("div", "infoacts"), pub = el("button", "big", "Publier"), ann = el("button", "big alt", "Annuler");
+  pub.type = ann.type = "button";
+  ann.onclick = function(){ chargerPlanning(); };
+  pub.onclick = function(){
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(lun.value)) { msg.textContent = "Indique la date du lundi."; lun.focus(); return; }
+    var personnes = Array.prototype.map.call(liste.querySelectorAll(".edp-pers"), function(d){
+      return { prenom: d.querySelector(".edp-nom").value.trim(), jours: Array.prototype.map.call(d.querySelectorAll(".edp-jours input"), function(i){ return lireJour(i.value); }) };
+    }).filter(function(p){ return p.prenom; });
+    if (!personnes.length) { msg.textContent = "Ajoute au moins une personne."; return; }
+    var doutes = liste.querySelectorAll("input.doute").length;
+    if (doutes && !window.confirm(doutes + " case(s) marquée(s) « ? » n’ont pas été lues. Publier quand même (elles s’afficheront « À confirmer ») ?")) return;
+    msg.textContent = "Publication…";
+    var titre = "Semaine " + (sem.value || lundiNumero(lun.value));
+    prof("/chat/planning-maj", { code: CHAT.code, debut: lun.value, donnees: JSON.stringify({ titre: titre, personnes: personnes }) }).then(function(j){
+      if (!j || !j.ok) { msg.textContent = (j && j.erreur) || "Pas publié, réessaie."; return; }
+      PLAN.semaines = []; chargerPlanning();
+    });
+  };
+  acts.appendChild(pub); acts.appendChild(ann); c.appendChild(acts); c.appendChild(msg);
+  box.appendChild(c);
+  window.scrollTo(0, 0);
+}
+function lundiNumero(iso){ var d = new Date(iso + "T12:00:00"); d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7)); var j1 = new Date(d.getFullYear(), 0, 4, 12); return 1 + Math.round(((d - j1) / 864e5 - 3 + ((j1.getDay() + 6) % 7)) / 7); }
 
 // nouveaux messages : toutes les 4 s quand le chat est ouvert, toutes les 45 s sinon (pour la pastille)
 function boucleChat(){
