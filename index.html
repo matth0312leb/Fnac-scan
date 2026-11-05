@@ -356,6 +356,35 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 #bipTest{display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:var(--text);font-weight:600;border:1px solid var(--line);border-radius:10px;padding:9px 14px;background:var(--bg)}
 #bipTest .ic{width:16px;height:16px;fill:currentColor;stroke:none}
 .reg button{display:inline-flex;align-items:center;gap:6px}
+
+/* ===== Tablette ===== */
+@media (min-width:700px){
+body{max-width:760px;padding:20px 24px;padding-bottom:calc(92px + env(safe-area-inset-bottom,0px))}
+.top{margin:0 0 22px;border-radius:18px;padding:22px 24px}
+#bnav .in{max-width:760px}
+#bnav button{font-size:12px}
+.tuiles{grid-template-columns:repeat(4,1fr)}
+.tuiles button{flex-direction:column;text-align:center;padding:14px 8px}
+.card{padding:22px 22px}
+}
+/* ===== Ordinateur ===== */
+@media (min-width:1100px){
+body{max-width:1000px;margin-left:calc(232px + max(32px,(100vw - 1264px)/2));margin-right:auto;padding:28px 0 48px}
+.top{margin:0 0 22px;border-radius:18px;padding:22px 26px}
+#bnav{top:0;bottom:0;right:auto;width:232px;flex-direction:column;justify-content:flex-start;border-top:0;border-right:1px solid var(--line);padding:24px 14px;box-shadow:4px 0 16px rgba(0,0,0,.06)}
+#bnav .in{flex-direction:column;gap:4px;max-width:none}
+#bnav button{flex:none;flex-direction:row;justify-content:flex-start;gap:12px;font-size:15px;padding:12px 14px}
+#bnav button:hover{background:var(--bg)}
+#bnav button.on{background:var(--bg)}
+#bnav button.on::before{top:10px;bottom:10px;left:0;width:3px;height:auto}
+#bnav .badge{position:static;margin-left:auto}
+#fili{left:232px;bottom:0}
+#infoListe,#raListe{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+#infoListe>*,#raListe>*{margin:0}
+#p5{columns:2;column-gap:16px}
+#p5>*{break-inside:avoid}
+#cadeauCard,#mainRes{max-width:1000px}
+}
 </style>
 </head>
 <body>
