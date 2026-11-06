@@ -2069,12 +2069,12 @@ function boutonsImport(box, vide){
   b1.onclick = function(){ f.click(); };
   f.onchange = function(){
     var fi = f.files[0]; f.value = ""; if (!fi) return;
-    msg.textContent = "Lecture du planning par l’IA… (20 à 40 secondes)"; b1.disabled = true;
+    msg.textContent = "Lecture du planning par l’IA… (jusqu’à 1 minute)"; b1.disabled = true;
     reduireImage(fi, 1600).then(function(img){ return prof("/chat/planning-lire", { code: CHAT.code, image: img }); }).then(function(j){
       b1.disabled = false;
-      if (!j || !j.ok) { msg.textContent = "L’IA n’a pas réussi à lire la capture. Tu peux réessayer avec une image plus nette, ou saisir à la main."; return; }
+      if (!j || !j.ok) { msg.textContent = "L’IA n’a pas réussi à lire la capture. Réessaie (avec la capture entière, sans zoom), ou saisis à la main." + (j && j.erreur && !j.details ? " (" + j.erreur + ")" : "") + (j && j.details ? "\nDétail : " + j.details.join(" · ") : ""); msg.style.whiteSpace = "pre-wrap"; return; }
       editeurPlanning({ semaine: j.semaine, lundi: j.lundi, personnes: j.personnes }, true);
-    }, function(){ b1.disabled = false; msg.textContent = "Impossible de lire cette image."; });
+    }, function(){ b1.disabled = false; msg.textContent = "Impossible d’envoyer cette image (connexion ?). Réessaie."; });
   };
   b2.onclick = function(){
     var w = PLAN.semaines[PLAN.i];
@@ -2090,7 +2090,7 @@ function lireJour(t){
   t = String(t || "").trim();
   if (!t || /^(repos|reposp|r|-)$/i.test(t)) return { repos: true };
   var re = /(\d{1,2})(?:[h:.](\d{2}))?\s*(?:-|–|à|a)\s*(\d{1,2})(?:[h:.](\d{2}))?/gi, m, pl = [];
-  while ((m = re.exec(t))) pl.push([hhmm(m[1], m[2]), hhmm(m[3], m[4])]);
+  while ((m = re.exec(t))) { var pa = [hhmm(m[1], m[2]), hhmm(m[3], m[4])]; if (!pl.some(function(x){ return x[0] === pa[0] && x[1] === pa[1]; })) pl.push(pa); }
   if (pl.length) return { plages: pl };
   return { note: t === "?" ? "À confirmer" : t.slice(0, 60) };
 }

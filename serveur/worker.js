@@ -915,28 +915,62 @@ async function gestionProfils(route, p, admin, droits, env, now) {
 }
 
 // ---------- lecture d'un planning (capture d'écran) par l'IA ----------
+// Plusieurs modèles de vision essayés du plus fort au plus léger ; le premier qui rend un tableau exploitable gagne.
 async function lirePlanning(image, env) {
-  const consigne = "Cette image est le planning hebdomadaire d'une équipe de vendeurs. Chaque ligne est une personne (NOM Prénom), chaque colonne un jour du lundi au dimanche. " +
-    "Une case contient soit « REPOSP » (repos), soit des horaires comme « 7.45-12.00 » et « 13.00-17.00 » (ignore les lignes entre parenthèses qui répètent les mêmes horaires, et ignore « FNAC2S »). " +
-    'Réponds UNIQUEMENT en JSON : {"semaine":"numéro de la semaine, ex. 45","lundi":"date du lundi si lisible, format AAAA-MM-JJ, sinon vide","personnes":[{"prenom":"Prénom seulement","jours":["7.45-12.00 13.00-17.00","repos","…7 cases du lundi au dimanche"]}]}. ' +
-    "Mets « repos » pour un repos, « ? » si une case est illisible. Recopie les heures exactement, sans en inventer.";
+  const consigne = "Tu lis la capture d'écran d'un planning hebdomadaire de vendeurs (logiciel de planning Fnac).\n" +
+    "- En haut : un titre du genre « Novembre S46 » (S46 = semaine 46) puis les jours « Lu 09, Ma 10, Me 11, Je 12, Ve 13, Sa 14, Di 15 ».\n" +
+    "- Chaque ligne = une personne, écrite NOM PRÉNOM en majuscules (ex. « DESORMIERE CHARLINE » → prénom Charline). Ignore les colonnes Eq, (*) et Théo.\n" +
+    "- Chaque case jour contient soit « REPOSP » (= repos), soit « FNAC2S » suivi de 2 lignes d'horaires comme « 9.30-13.30 » et « 14.30-19.15 ». " +
+    "Les 2 lignes entre parenthèses en dessous répètent les mêmes horaires : ne les compte pas une deuxième fois. Ignore « FNAC2S ».\n" +
+    'Réponds UNIQUEMENT avec ce JSON, sans texte autour : {"semaine":"46","jour_lundi":"09","mois":"novembre","personnes":[{"prenom":"Charline","jours":["9.30-13.30 14.30-19.15","repos","7.45-12.00 13.00-17.00","repos","…","…","repos"]}]}\n' +
+    "Toujours exactement 7 cases par personne, du lundi au dimanche. « repos » pour un repos, « ? » si illisible. Recopie les heures telles qu'écrites, n'en invente aucune. Mets toutes les personnes du planning.";
   const essais = [];
-  const lire = (r) => { const t = typeof r === "string" ? r : String(r && (r.response ?? (r.choices && r.choices[0] && r.choices[0].message && r.choices[0].message.content)) || ""); const m = t.match(/\{[\s\S]*\}/); try { return m ? JSON.parse(m[0]) : null; } catch (e) { return null; } };
+  const texte = (r) => typeof r === "string" ? r : String(r && (typeof r.response === "string" ? r.response : (r.choices && r.choices[0] && r.choices[0].message && r.choices[0].message.content)) || "");
+  const lire = (r) => {
+    if (r && r.response && typeof r.response === "object") return r.response;
+    const t = texte(r).replace(/```(?:json)?/g, ""); const m = t.match(/\{[\s\S]*\}/);
+    if (!m) return null;
+    try { return JSON.parse(m[0]); } catch (e) {}
+    try { return JSON.parse(m[0].replace(/,\s*([}\]])/g, "$1")); } catch (e) { return null; }
+  };
+  const msgImg = [{ role: "user", content: [{ type: "text", text: consigne }, { type: "image_url", image_url: { url: image } }] }];
   const modeles = [
-    ["gemma", () => env.AI.run("@cf/google/gemma-3-12b-it", { messages: [{ role: "user", content: [{ type: "text", text: consigne }, { type: "image_url", image_url: { url: image } }] }], max_tokens: 1800 })],
-    ["llama", () => env.AI.run("@cf/meta/llama-3.2-11b-vision-instruct", { messages: [{ role: "user", content: consigne }], image, max_tokens: 1800 })],
+    ["llama4", () => env.AI.run("@cf/meta/llama-4-scout-17b-16e-instruct", { messages: msgImg, max_tokens: 3000, temperature: 0 })],
+    ["mistral", () => env.AI.run("@cf/mistralai/mistral-small-3.1-24b-instruct", { messages: msgImg, max_tokens: 3000, temperature: 0 })],
+    ["gemma", () => env.AI.run("@cf/google/gemma-3-12b-it", { messages: msgImg, max_tokens: 3000, temperature: 0 })],
+    ["llama32", async () => {
+      // ce modèle demande d'accepter sa licence une fois par compte
+      try { await env.AI.run("@cf/meta/llama-3.2-11b-vision-instruct", { prompt: "agree" }); } catch (e) {}
+      return env.AI.run("@cf/meta/llama-3.2-11b-vision-instruct", { messages: [{ role: "user", content: consigne }], image, max_tokens: 3000 });
+    }],
   ];
+  const MOISN = { janvier: 1, fevrier: 2, mars: 3, avril: 4, mai: 5, juin: 6, juillet: 7, aout: 8, septembre: 9, octobre: 10, novembre: 11, decembre: 12 };
   for (const [nomM, fn] of modeles) {
     try {
-      const r = await fn();
-      const j = (r && typeof r.response === "object" && r.response) ? r.response : lire(r);
-      if (j && Array.isArray(j.personnes) && j.personnes.length) {
-        const personnes = j.personnes.slice(0, 30).map((x) => ({ prenom: String(x.prenom || "").trim().split(/\s+/).pop().slice(0, 30),
-          jours: Array.from({ length: 7 }, (_, i) => String((x.jours || [])[i] || "?").slice(0, 60)) })).filter((x) => x.prenom);
-        if (personnes.length) return { ok: true, modele: nomM, semaine: String(j.semaine || "").replace(/\D/g, "").slice(0, 2), lundi: /^\d{4}-\d{2}-\d{2}$/.test(j.lundi || "") ? j.lundi : "", personnes };
-      }
-      essais.push(nomM + " : réponse inexploitable");
-    } catch (e) { essais.push(nomM + " : " + String(e && e.message || e).slice(0, 80)); }
+      const brut = await fn(); const j = lire(brut);
+      const liste = j && (Array.isArray(j.personnes) ? j.personnes : Array.isArray(j) ? j : null);
+      if (liste && liste.length) {
+        const personnes = liste.slice(0, 30).map((x) => {
+          let pr = String(x.prenom || x.nom || "").trim().split(/\s+/).pop().slice(0, 30);
+          pr = pr.charAt(0).toUpperCase() + pr.slice(1).toLowerCase();
+          const js = Array.isArray(x.jours) ? x.jours : [];
+          return { prenom: pr, jours: Array.from({ length: 7 }, (_, i) => { let v = js[i]; if (Array.isArray(v)) v = v.join(" "); v = String(v == null ? "?" : v).trim(); return (/repos/i.test(v) ? "repos" : v || "?").slice(0, 60); }) };
+        }).filter((x) => x.prenom);
+        const lisibles = personnes.reduce((n, x) => n + x.jours.filter((v) => v !== "?").length, 0);
+        if (personnes.length && lisibles >= personnes.length * 3) {
+          // date du lundi : déduite du numéro du jour + mois (année courante, ou suivante en fin d'année)
+          let lundi = "";
+          const jl = parseInt(j.jour_lundi, 10), mo = MOISN[String(j.mois || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")];
+          if (jl >= 1 && jl <= 31 && mo) {
+            const now = new Date(); let an = now.getUTCFullYear();
+            if (mo === 1 && now.getUTCMonth() === 11) an++; else if (mo === 12 && now.getUTCMonth() === 0) an--;
+            lundi = an + "-" + String(mo).padStart(2, "0") + "-" + String(jl).padStart(2, "0");
+          } else if (/^\d{4}-\d{2}-\d{2}$/.test(j.lundi || "")) lundi = j.lundi;
+          return { ok: true, modele: nomM, semaine: String(j.semaine || "").replace(/\D/g, "").slice(0, 2), lundi, personnes, essais };
+        }
+        essais.push(nomM + " : tableau incomplet");
+      } else essais.push(nomM + " : réponse inexploitable « " + texte(brut).slice(0, 80) + " »");
+    } catch (e) { essais.push(nomM + " : " + String(e && e.message || e).slice(0, 120)); }
   }
   return { ok: false, erreur: "l'IA n'a pas réussi à lire ce planning", details: essais };
 }
