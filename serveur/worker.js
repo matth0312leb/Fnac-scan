@@ -18,6 +18,7 @@ const HDRS = { "User-Agent": UA, "Accept": "application/json,application/xml,tex
 export default {
   async fetch(req, env, ctx) {
     env = compteurIA(env, ctx);
+    try { env.__ctx = ctx; } catch (e) {}
     const url = new URL(req.url);
     const origin = req.headers.get("Origin") || "";
     const cors = {
@@ -919,10 +920,10 @@ async function gestionProfils(route, p, admin, droits, env, now) {
 async function lirePlanning(image, env) {
   const consigne = "Tu lis la capture d'écran d'un planning hebdomadaire de vendeurs (logiciel de planning Fnac).\n" +
     "- En haut : un titre du genre « Novembre S46 » (S46 = semaine 46) puis les jours « Lu 09, Ma 10, Me 11, Je 12, Ve 13, Sa 14, Di 15 ».\n" +
-    "- Chaque ligne = une personne, écrite NOM PRÉNOM en majuscules (ex. « DESORMIERE CHARLINE » → prénom Charline). Ignore les colonnes Eq, (*) et Théo.\n" +
+    "- Chaque ligne = une personne, écrite NOM PRÉNOM en majuscules (ex. « DESORMIERE CHARLINE » → prénom Charline). La colonne « Théo » donne ses heures théoriques de la semaine (ex. 33.00 → 33). Ignore les colonnes Eq et (*).\n" +
     "- Chaque case jour contient soit « REPOSP » (= repos), soit « FNAC2S » suivi de 2 lignes d'horaires comme « 9.30-13.30 » et « 14.30-19.15 ». " +
     "Les 2 lignes entre parenthèses en dessous répètent les mêmes horaires : ne les compte pas une deuxième fois. Ignore « FNAC2S ».\n" +
-    'Réponds UNIQUEMENT avec ce JSON, sans texte autour : {"semaine":"46","jour_lundi":"09","mois":"novembre","personnes":[{"prenom":"Charline","jours":["9.30-13.30 14.30-19.15","repos","7.45-12.00 13.00-17.00","repos","…","…","repos"]}]}\n' +
+    'Réponds UNIQUEMENT avec ce JSON, sans texte autour : {"semaine":"46","jour_lundi":"09","mois":"novembre","personnes":[{"prenom":"Charline","theo":33,"jours":["9.30-13.30 14.30-19.15","repos","7.45-12.00 13.00-17.00","repos","…","…","repos"]}]}\n' +
     "Toujours exactement 7 cases par personne, du lundi au dimanche. « repos » pour un repos, « ? » si illisible. Recopie les heures telles qu'écrites, n'en invente aucune. Mets toutes les personnes du planning.";
   const essais = [];
   const texte = (r) => typeof r === "string" ? r : String(r && (typeof r.response === "string" ? r.response : (r.choices && r.choices[0] && r.choices[0].message && r.choices[0].message.content)) || "");
@@ -954,7 +955,8 @@ async function lirePlanning(image, env) {
           let pr = String(x.prenom || x.nom || "").trim().split(/\s+/).pop().slice(0, 30);
           pr = pr.charAt(0).toUpperCase() + pr.slice(1).toLowerCase();
           const js = Array.isArray(x.jours) ? x.jours : [];
-          return { prenom: pr, jours: Array.from({ length: 7 }, (_, i) => { let v = js[i]; if (Array.isArray(v)) v = v.join(" "); v = String(v == null ? "?" : v).trim(); return (/repos/i.test(v) ? "repos" : v || "?").slice(0, 60); }) };
+          const th = parseFloat(String(x.theo == null ? "" : x.theo).replace(",", "."));
+          return { prenom: pr, theo: th > 0 && th < 80 ? Math.round(th * 4) / 4 : null, jours: Array.from({ length: 7 }, (_, i) => { let v = js[i]; if (Array.isArray(v)) v = v.join(" "); v = String(v == null ? "?" : v).trim(); return (/repos/i.test(v) ? "repos" : v || "?").slice(0, 60); }) };
         }).filter((x) => x.prenom);
         const lisibles = personnes.reduce((n, x) => n + x.jours.filter((v) => v !== "?").length, 0);
         if (personnes.length && lisibles >= personnes.length * 3) {
@@ -973,6 +975,89 @@ async function lirePlanning(image, env) {
     } catch (e) { essais.push(nomM + " : " + String(e && e.message || e).slice(0, 120)); }
   }
   return { ok: false, erreur: "l'IA n'a pas réussi à lire ce planning", details: essais };
+}
+
+
+// ---------- notifications Web Push (RFC 8291 / 8292), sans service payant ----------
+// les clés VAPID sont créées une seule fois et gardées dans la base (table config)
+let vapidCache = null, tablePushOk = false;
+const b64u = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const deB64u = (s) => Uint8Array.from(atob(String(s).replace(/-/g, "+").replace(/_/g, "/") + "===".slice((String(s).length + 3) % 4)), (c) => c.charCodeAt(0));
+const concat = (...a) => { const n = a.reduce((t, x) => t + x.length, 0), r = new Uint8Array(n); let o = 0; for (const x of a) { r.set(x, o); o += x.length; } return r; };
+const TE = new TextEncoder();
+async function tablePush(env) {
+  if (tablePushOk) return;
+  await env.DB.prepare("CREATE TABLE IF NOT EXISTS push_abos (endpoint TEXT PRIMARY KEY, salon TEXT, nom TEXT, abo TEXT, types TEXT, t INTEGER)").run();
+  tablePushOk = true;
+}
+async function clesVapid(env) {
+  if (vapidCache) return vapidCache;
+  await env.DB.prepare("CREATE TABLE IF NOT EXISTS config (cle TEXT PRIMARY KEY, valeur TEXT)").run();
+  const r = await env.DB.prepare("SELECT valeur FROM config WHERE cle = 'vapid'").first();
+  if (r) { vapidCache = JSON.parse(r.valeur); return vapidCache; }
+  const k = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
+  const v = { pub: b64u(await crypto.subtle.exportKey("raw", k.publicKey)), priv: await crypto.subtle.exportKey("jwk", k.privateKey) };
+  await env.DB.prepare("INSERT OR IGNORE INTO config (cle, valeur) VALUES ('vapid', ?)").bind(JSON.stringify(v)).run();
+  const r2 = await env.DB.prepare("SELECT valeur FROM config WHERE cle = 'vapid'").first();
+  vapidCache = JSON.parse(r2.valeur);
+  return vapidCache;
+}
+async function hmac(cle, data) {
+  const k = await crypto.subtle.importKey("raw", cle, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  return new Uint8Array(await crypto.subtle.sign("HMAC", k, data));
+}
+// chiffrement du message pour un téléphone (aes128gcm)
+async function chiffrerPush(abo, texte) {
+  const uaPub = deB64u(abo.keys.p256dh), auth = deB64u(abo.keys.auth);
+  const as = await crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, ["deriveBits"]);
+  const asPub = new Uint8Array(await crypto.subtle.exportKey("raw", as.publicKey));
+  const uaKey = await crypto.subtle.importKey("raw", uaPub, { name: "ECDH", namedCurve: "P-256" }, false, []);
+  const secret = new Uint8Array(await crypto.subtle.deriveBits({ name: "ECDH", public: uaKey }, as.privateKey, 256));
+  const prkKey = await hmac(auth, secret);
+  const ikm = await hmac(prkKey, concat(TE.encode("WebPush: info\0"), uaPub, asPub, new Uint8Array([1])));
+  const sel = crypto.getRandomValues(new Uint8Array(16));
+  const prk = await hmac(sel, ikm);
+  const cek = (await hmac(prk, concat(TE.encode("Content-Encoding: aes128gcm\0"), new Uint8Array([1])))).slice(0, 16);
+  const nonce = (await hmac(prk, concat(TE.encode("Content-Encoding: nonce\0"), new Uint8Array([1])))).slice(0, 12);
+  const k = await crypto.subtle.importKey("raw", cek, "AES-GCM", false, ["encrypt"]);
+  const chiffre = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv: nonce }, k, concat(TE.encode(texte), new Uint8Array([2]))));
+  return concat(sel, new Uint8Array([0, 0, 16, 0]), new Uint8Array([asPub.length]), asPub, chiffre);
+}
+async function jetonVapid(env, endpoint) {
+  const v = await clesVapid(env);
+  const cle = await crypto.subtle.importKey("jwk", v.priv, { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]);
+  const ent = b64u(TE.encode(JSON.stringify({ typ: "JWT", alg: "ES256" })));
+  const corps = b64u(TE.encode(JSON.stringify({ aud: new URL(endpoint).origin, exp: Math.floor(Date.now() / 1000) + 12 * 3600, sub: SITE + "/Fnac-scan/" })));
+  const sig = await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, cle, TE.encode(ent + "." + corps));
+  return "vapid t=" + ent + "." + corps + "." + b64u(sig) + ", k=" + v.pub;
+}
+function enArrierePlan(env, promesse) {
+  const p = Promise.resolve(promesse).catch(() => {});
+  try { if (env.__ctx && env.__ctx.waitUntil) env.__ctx.waitUntil(p); } catch (e) {}
+  return p;
+}
+// envoie une notification aux membres du magasin abonnés à ce type (sauf l'auteur) ; renvoie le nombre d'envois réussis
+async function pousser(env, salon, auteur, type, msg, seulement) {
+  await tablePush(env);
+  const r = await env.DB.prepare("SELECT endpoint, nom, abo, types FROM push_abos WHERE salon = ?").bind(salon).all();
+  let cibles = (r.results || []).filter((x) => x.nom !== auteur && (type === "test" || String(x.types || "").split(",").includes(type)));
+  if (seulement) cibles = cibles.filter((x) => seulement.includes(x.nom));
+  if (type === "reassort") {
+    // les demandes de réassort ne vont qu'à ceux qui peuvent les valider (administrateur, manager avec le droit)
+    const rc = await rolesConf(env), adminNom = await env.DB.prepare("SELECT valeur FROM config WHERE cle = 'admin_nom'").first().catch(() => null);
+    cibles = cibles.filter((x) => (adminNom && x.nom === adminNom.valeur) || droitsDe(x.nom, false, rc).includes("reassort"));
+  }
+  const corps = JSON.stringify({ titre: msg.titre, texte: msg.texte, url: msg.url || "./", tag: msg.tag || type });
+  let ok = 0;
+  await Promise.all(cibles.slice(0, 60).map(async (x) => {
+    try {
+      const abo = JSON.parse(x.abo);
+      const rep = await fetch(abo.endpoint, { method: "POST", headers: { "Content-Encoding": "aes128gcm", "Content-Type": "application/octet-stream", TTL: "86400", Urgency: type === "chat" ? "high" : "normal", Authorization: await jetonVapid(env, abo.endpoint) }, body: await chiffrerPush(abo, corps) });
+      if (rep.status === 404 || rep.status === 410) await env.DB.prepare("DELETE FROM push_abos WHERE endpoint = ?").bind(x.endpoint).run();
+      else if (rep.ok) ok++;
+    } catch (e) {}
+  }));
+  return ok;
 }
 
 // ---------- chat d'équipe par magasin ----------
@@ -1006,10 +1091,45 @@ async function chat(route, p, nom, affichage, admin, droits, env, now) {
     const r = await env.DB.prepare("SELECT code, nom FROM salons ORDER BY cree").all();
     return { ok: true, salons: r.results || [] };
   }
-  const code = p("code").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
+  // invitation (QR code de l'administrateur) : un jeton temporaire remplace le code du magasin, qui reste secret
+  let codeInv = "";
+  if (route === "/chat/rejoindre" && p("invit")) {
+    const jeton = p("invit").replace(/[^A-Za-z0-9]/g, "").slice(0, 32);
+    codeInv = (env.FICHES && jeton) ? (await env.FICHES.get("invit:" + jeton).catch(() => null)) || "" : "";
+    if (!codeInv) return { ok: false, erreur: "invitation expirée", inconnu: true, expiree: true };
+  }
+  const code = codeInv || p("code").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
   const salon = code ? await env.DB.prepare("SELECT code, nom FROM salons WHERE code = ?").bind(code).first() : null;
   if (!salon) return { ok: false, erreur: "code inconnu", inconnu: true };
   if (route === "/chat/rejoindre") return { ok: true, code: salon.code, salon: salon.nom };
+  if (route === "/chat/invitation") {
+    if (!admin) return { ok: false, erreur: "réservé à l'administrateur" };
+    if (!env.FICHES) return { ok: false, erreur: "stockage indisponible" };
+    const L = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789", alea = crypto.getRandomValues(new Uint8Array(12));
+    const jeton = [...alea].map((n) => L[n % L.length]).join("");
+    await env.FICHES.put("invit:" + jeton, salon.code, { expirationTtl: 14 * 24 * 3600 });
+    return { ok: true, jeton, expire: now + 14 * 24 * 3600 * 1000 };
+  }
+  // ---------- notifications (Web Push) ----------
+  if (route === "/chat/push-cle") return { ok: true, cle: (await clesVapid(env)).pub };
+  if (route === "/chat/push-abonner") {
+    let abo; try { abo = JSON.parse(p("abo")); } catch (e) { abo = null; }
+    if (!abo || !/^https:\/\//.test(abo.endpoint || "") || !abo.keys || !abo.keys.p256dh || !abo.keys.auth) return { ok: false, erreur: "abonnement invalide" };
+    const types = String(p("types")).split(",").filter((t) => ["infos", "chat", "reassort"].includes(t)).join(",");
+    await tablePush(env);
+    await env.DB.prepare("INSERT INTO push_abos (endpoint, salon, nom, abo, types, t) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(endpoint) DO UPDATE SET salon = excluded.salon, nom = excluded.nom, abo = excluded.abo, types = excluded.types, t = excluded.t")
+      .bind(abo.endpoint.slice(0, 600), code, nom, JSON.stringify(abo).slice(0, 2000), types, now).run();
+    return { ok: true, types };
+  }
+  if (route === "/chat/push-desabonner") {
+    await tablePush(env);
+    await env.DB.prepare("DELETE FROM push_abos WHERE endpoint = ? AND nom = ?").bind(p("endpoint").slice(0, 600), nom).run();
+    return { ok: true };
+  }
+  if (route === "/chat/push-test") {
+    const n = await pousser(env, code, "", "test", { titre: "BipBip 🔔", texte: "Les notifications marchent sur ce téléphone.", url: "./" }, [nom]);
+    return { ok: true, envoyees: n };
+  }
   // planning de la semaine du magasin (visible des membres du chat, avec leur code personnel)
   if (route === "/chat/planning") {
     const depuis = new Date(now - 8 * 24 * 3600 * 1000).toISOString().slice(0, 10);
@@ -1042,6 +1162,7 @@ async function chat(route, p, nom, affichage, admin, droits, env, now) {
         env.DB.prepare("INSERT INTO reassort (salon, nom, affichage, sku, titre, quantite, note, statut, t) VALUES (?, ?, ?, ?, ?, ?, ?, 'demande', ?)").bind(code, nom, affichage, sku, p("titre").replace(/\s+/g, " ").slice(0, 120), q, p("note").replace(/\s+/g, " ").slice(0, 200), now),
         env.DB.prepare("DELETE FROM reassort WHERE salon = ? AND statut <> 'demande' AND t_valide < ?").bind(code, now - 60 * 24 * 3600 * 1000),
       ]);
+      enArrierePlan(env, pousser(env, code, nom, "reassort", { titre: "📦 Demande de réassort", texte: affichage + " : " + q + " × " + (p("titre").replace(/\s+/g, " ").slice(0, 60) || sku) + " (" + sku + ")", url: "./?vue=rea" }));
       return { ok: true };
     }
     if (route === "/chat/reassort-valider") {
@@ -1074,6 +1195,7 @@ async function chat(route, p, nom, affichage, admin, droits, env, now) {
     const r = await env.DB.prepare("INSERT INTO posts (salon, nom, affichage, categorie, titre, texte, date_evt, date_fin, epingle, t, img) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?) RETURNING id")
       .bind(code, nom, affichage, CATS.includes(p("categorie")) ? p("categorie") : "info", titre, texte, d, fin, now, image ? 1 : 0).first();
     if (image && r) await env.DB.prepare("INSERT INTO post_images (post_id, image) VALUES (?, ?)").bind(r.id, image).run();
+    enArrierePlan(env, pousser(env, code, nom, "infos", { titre: "📢 Nouvelle info de " + affichage, texte: titre || "Photo partagée", url: "./?vue=info" }));
     // nettoyage : publications non épinglées de plus de 90 jours (et leurs photos)
     await env.DB.batch([
       env.DB.prepare("DELETE FROM post_images WHERE post_id IN (SELECT id FROM posts WHERE salon = ? AND epingle = 0 AND t < ? AND (date_fin = '' OR date_fin < ?))").bind(code, now - 90 * 24 * 3600 * 1000, new Date(now).toISOString().slice(0, 10)),
@@ -1144,6 +1266,7 @@ async function chat(route, p, nom, affichage, admin, droits, env, now) {
       // les messages s'effacent tout seuls après 30 jours
       env.DB.prepare("DELETE FROM messages WHERE salon = ? AND t < ?").bind(code, now - 30 * 24 * 3600 * 1000),
     ]);
+    enArrierePlan(env, pousser(env, code, nom, "chat", { titre: "💬 " + affichage, texte: texte.slice(0, 140), url: "./?vue=chat", tag: "chat-" + code }));
     return { ok: true };
   }
   if (route === "/chat/supprimer") {

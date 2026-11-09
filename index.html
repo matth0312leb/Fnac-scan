@@ -67,6 +67,27 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 .qrow button{border:0;border-radius:10px;background:var(--accent);color:#111;font-weight:700;padding:0 14px;font-size:15px}
 .qa{margin:10px 0 0;padding:10px 12px;border-radius:8px;background:var(--bg);font-size:15px;line-height:1.45}
 .qa b{display:block;font-size:13px;color:var(--muted);font-weight:600;margin-bottom:3px}
+.sheet{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px}
+.sheet.hide{display:none}
+.sheet>.card{width:100%;max-width:440px;margin:0;max-height:calc(100dvh - 32px);overflow:auto}
+.sheet h2{margin:0 0 6px;font-size:20px}
+.sheet .x{float:right;border:0;background:var(--bg);color:var(--text);width:36px;height:36px;border-radius:50%;font-size:20px;line-height:1}
+.qrimg{background:#fff;border-radius:14px;padding:10px;margin:12px auto;max-width:300px}
+.qrimg svg{display:block;width:100%;height:auto}
+.aideL{margin:14px 0 0;padding:0;list-style:none}
+.aideL li{padding:12px 0;border-top:1px solid var(--line)}
+.aideL li:first-child{border-top:0}
+.aideL b{display:block;font-size:15px;margin-bottom:3px}
+.aideL span{font-size:14px;color:var(--muted);line-height:1.45}
+#toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:70;background:#111;color:#fff;padding:12px 18px;border-radius:12px;font-size:14px;max-width:calc(100vw - 32px);box-shadow:0 6px 24px rgba(0,0,0,.25)}
+#toast.hide{display:none}
+.edp-theo{width:64px!important;flex:none!important;text-align:center}
+.edp-tot{font-size:12px;color:var(--muted);white-space:nowrap;flex:none}
+.edp-tot.ko{color:#d33;font-weight:700}
+.heures td{padding:6px 4px;border-top:1px solid var(--line);font-size:14px}
+.heures td.h{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.heures tr.ko td.h{color:#d33;font-weight:700}
+.heures{width:100%;border-collapse:collapse;margin-top:8px}
 #profil.hide{display:none}
 #profil{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px}
 #profil .card{width:100%;max-width:420px;margin:0}
@@ -395,6 +416,34 @@ body{max-width:1000px;margin-left:calc(232px + max(32px,(100vw - 1264px)/2));mar
 <div id="fili" aria-hidden="true"><svg class="fm" viewBox="0 0 512 512"><rect x="14" y="14" width="484" height="484" rx="108" fill="none" stroke="currentColor" stroke-width="28"/><g fill="currentColor"><rect x="104" y="150" width="26" height="212" rx="5"/><rect x="146" y="150" width="12" height="212" rx="4"/><rect x="174" y="150" width="34" height="212" rx="5"/><rect x="224" y="150" width="12" height="212" rx="4"/><rect x="252" y="150" width="24" height="212" rx="5"/></g><g fill="none" stroke="currentColor" stroke-width="26" stroke-linecap="round"><path d="M318 206a72 72 0 0 1 0 100"/><path d="M362 166a130 130 0 0 1 0 180"/></g></svg><div class="fn">BipBip</div></div>
 <header class="top"><img class="mark" src="logo.svg" alt="BipBip"><div><div class="tline"><div class="ttl">Bip<span>Bip</span></div><div class="slogan">l'assistant de rayon qui fait bip</div></div></div></header>
 <div id="zoom" class="hide"><img id="zoomImg" alt=""></div>
+<div id="invitBox" class="sheet hide"><div class="card">
+  <button class="x" type="button" id="invitX" aria-label="Fermer">×</button>
+  <h2>Inviter des collègues</h2>
+  <p class="aide" style="margin-top:0">Scanne avec l’appareil photo du téléphone : BipBip s’ouvre, on entre son prénom et son code, et on rejoint <b id="invitSalon"></b> directement.</p>
+  <div class="qrimg" id="invitQr"></div>
+  <p class="aide" id="invitInfo" style="text-align:center"></p>
+  <div class="infoacts"><button id="invitPartager" class="big" type="button">Partager le lien</button><button id="invitNouveau" class="big alt" type="button">Nouveau QR</button></div>
+</div></div>
+<div id="aideBox" class="sheet hide"><div class="card">
+  <button class="x" type="button" id="aideX" aria-label="Fermer">×</button>
+  <h2>Comment ça marche</h2>
+  <ul class="aideL">
+    <li><b>📷 Scanner un article</b><span>Bouton jaune « Scanner un code-barres », vise le code : bip, puis la fiche s’affiche (ou la fiche fnac.ch, selon tes réglages).</span></li>
+    <li><b>🔎 La barre de recherche</b><span>8 chiffres = SKU, 13 chiffres = EAN, ou des mots-clés pour chercher sur fnac.ch.</span></li>
+    <li><b>📚 La fiche d’un livre</b><span>Résumé, date de sortie exacte, livres similaires. « Question du client » : tape ce qu’il demande (« pour quel âge ? »), l’IA répond.</span></li>
+    <li><b>🖼️ Photo d’un article</b><span>Pas de code-barres ? Prends l’article en photo : BipBip reconnaît le livre, le jeu ou le produit.</span></li>
+    <li><b>⚖️ Comparer 2 articles</b><span>Scanne ou tape deux articles : ils s’affichent côte à côte.</span></li>
+    <li><b>🎁 Idées cadeaux</b><span>Donne l’âge et les goûts de la personne : des idées récentes, avec l’âge PEGI pour les jeux.</span></li>
+    <li><b>▮▯▮ Code-barres à rescanner</b><span>Sous chaque résultat : présente l’écran à la douchette du poste. Touche-le pour l’agrandir.</span></li>
+    <li><b>🕘 Historique</b><span>Tes derniers articles, sur n’importe quel téléphone avec ton prénom et ton code.</span></li>
+    <li><b>👥 Équipe</b><span>Infos (la plus importante s’affiche « À la une » sur l’accueil), Planning de la semaine, Réassort (demande un produit avec son SKU, le responsable valide) et Chat du magasin.</span></li>
+    <li><b>🔔 Notifications</b><span>Dans Réglages : sois prévenu des nouvelles infos et des messages, même appli fermée. Sur iPhone, installe d’abord BipBip sur l’écran d’accueil.</span></li>
+    <li><b>🔒 Ton profil</b><span>Ton prénom + ton code à 4 chiffres. Code oublié ? Demande à Matthieu de le réinitialiser.</span></li>
+    <li><b>📲 Installer l’appli</b><span>Samsung : menu ⋮ → « Ajouter à l’écran d’accueil ». iPhone : Safari → Partager → « Sur l’écran d’accueil ».</span></li>
+  </ul>
+  <p class="aide">Rien de confidentiel dans le chat et les infos : pas de données clients.</p>
+</div></div>
+<div id="toast" class="hide"></div>
 <div id="profil" class="hide"><div class="card">
   <h2>Bienvenue sur BipBip 👋</h2>
   <p class="intro">Entre ton prénom et ton code à 4 chiffres : ils te permettent de retrouver ton historique sur n'importe quel téléphone. Nouveau ? Choisis un code et retiens-le.</p>
@@ -427,6 +476,7 @@ body{max-width:1000px;margin-left:calc(232px + max(32px,(100vw - 1264px)/2));mar
     <div class="ou"><span>ou</span></div>
     <div class="cherche"><div class="champ"><input id="sku" type="text" enterkeyhint="search" placeholder="Code ou mots-clés" autocomplete="off" autocorrect="off" spellcheck="false"><button class="croix" type="button" aria-label="Effacer">×</button></div><button id="go" type="button" aria-label="Rechercher"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4-4"/></svg></button></div>
     <p class="aide" id="skuAide">8 chiffres : SKU · 13 chiffres : EAN · du texte : recherche sur fnac.ch</p>
+    <p class="aide" style="margin-top:4px"><a href="#" id="aideLien">Comment ça marche ?</a></p>
     <div class="tuiles">
       <button id="snap" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/></svg><span class="lb">Photo d’un article</span></button>
       <button id="pick" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="m21 16-5-5-9 9"/></svg><span class="lb">Code-barres en galerie</span></button>
@@ -507,6 +557,7 @@ body{max-width:1000px;margin-left:calc(232px + max(32px,(100vw - 1264px)/2));mar
       <div id="chatDetail" class="hide">
         <p class="sub" id="chatCodeLigne">Code du magasin (visible par toi seul) : <b id="chatCodeAff"></b></p>
         <p class="sub">Messages du chat effacés après 30 jours.</p>
+        <button id="chatInvit" class="big hide" type="button" style="margin:4px 0 10px">📱 Inviter des collègues (QR code)</button>
         <button id="chatQuit" type="button">Changer de magasin</button>
       </div>
     </div>
@@ -580,12 +631,26 @@ body{max-width:1000px;margin-left:calc(232px + max(32px,(100vw - 1264px)/2));mar
     <p class="aide">iPhone : le son se coupe tout seul avec le bouton silencieux (la vibration n'est pas possible dans Safari).<br>Samsung : le son suit le volume multimédia ; décoche « Son » pour ne garder que la vibration.</p>
   </div>
 
+  <div class="card rg" id="notifCard">
+    <p class="lbl">Notifications</p>
+    <p class="aide" id="notifEtat" style="margin-top:0">Reçois une alerte même quand BipBip est fermée.</p>
+    <button class="big" id="notifOn" type="button">🔔 Activer les notifications</button>
+    <div id="notifTypes" class="hide">
+      <label class="opt"><input type="checkbox" id="nInfos"> Nouvelles infos de l’équipe</label>
+      <label class="opt" style="margin-top:12px"><input type="checkbox" id="nChat"> Messages du chat</label>
+      <label class="opt hide" style="margin-top:12px" id="nReaL"><input type="checkbox" id="nRea"> Demandes de réassort</label>
+      <div class="infoacts" style="margin-top:16px"><button id="notifTest" class="big alt" type="button">Tester</button><button id="notifOff" class="big alt" type="button">Désactiver</button></div>
+    </div>
+  </div>
+
+  <button class="big alt" id="aideBtn" type="button"><span class="lb">❓ Comment ça marche</span></button>
+
   <button class="big alt hide" id="statBtn" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg><span class="lb">Statistiques de l'équipe</span></button>
   <div id="statCard" class="card hide"></div>
 
   <div class="card rg">
     <p class="lbl">À propos</p>
-    <p class="apropos"><b>BipBip</b> · l'assistant de rayon qui fait bip<br><span class="muted">Créée par Matthieu le GOAT 🐐</span></p>
+    <p class="apropos"><b>BipBip</b> · l'assistant de rayon qui fait bip<br><span class="muted">Créée par Matthieu L.</span></p>
     <p class="lbl" style="margin-top:18px">Installer sur l'écran d'accueil</p>
     <div class="inst">
       <div><b>Samsung / Android</b><span>Menu ⋮ du navigateur → « Ajouter à l'écran d'accueil »</span></div>
@@ -729,7 +794,7 @@ function connexion(){
       if (premier && PROFIL.nom) storeHist([]);   // changement de profil : on ne mélange pas les historiques
       PROFIL = { nom: j.nom, cle: cle, admin: !!j.admin, role: j.role || "equipe", droits: j.droits || [] };
       try { localStorage.setItem("profilNom", PROFIL.nom); localStorage.setItem("profilCle", cle); localStorage.setItem("profilAdmin", PROFIL.admin ? "1" : "0"); } catch(e){}
-      $("profil").className = "hide"; appliquerDroits(j); $("statCard").className = "card hide";
+      $("profil").className = "hide"; appliquerDroits(j); $("statCard").className = "card hide"; utiliserInvitation();
       chargerHistoriqueServeur(true);
     }, function(){ $("pMsg").textContent = "Serveur injoignable, réessaie."; });
 }
@@ -1603,6 +1668,7 @@ $("statBtn").onclick = afficherStats;
 renderHist(loadHist());
 majProfilUI();
 if (PROFIL.nom) chargerHistoriqueServeur(false); else ouvrirProfil();
+setTimeout(function(){ utiliserInvitation(); if (PARAMS.get("vue")) allerVue(PARAMS.get("vue")); if (PROFIL.nom) verifierNotif(); }, 0);
 
 // ---------- chat du magasin ----------
 var CHAT = { code: "", salon: "", dernier: 0, vu: 0, minuteur: null, envoi: false };
@@ -1624,7 +1690,7 @@ function ouvrirChat(){
   $("chatJoin").className = "card hide"; $("chatRoom").className = "";
   $("chatSalon").textContent = CHAT.salon || "Mon magasin";
   // le code du magasin n'est montré qu'à l'administrateur
-  $("chatCodeAff").textContent = PROFIL.admin ? CHAT.code : ""; $("chatCodeLigne").className = PROFIL.admin ? "sub" : "sub hide";
+  $("chatCodeAff").textContent = PROFIL.admin ? CHAT.code : ""; $("chatCodeLigne").className = PROFIL.admin ? "sub" : "sub hide"; $("chatInvit").className = PROFIL.admin ? "big" : "big hide";
   if (!$("vuePlan").classList.contains("hide")) { chargerPlanning(); return; }
   if (!$("vueInfo").classList.contains("hide")) { chargerInfos(); return; }
   if (!$("vueRea").classList.contains("hide")) { chargerReassort(); return; }
@@ -1736,6 +1802,173 @@ $("chatIn").addEventListener("keydown", function(e){ if (e.key === "Enter" && !e
 // ---------- planning de la semaine ----------
 var PLAN = { semaines: [], i: 0, jour: -1 };
 var JOURS = ["Lu", "Ma", "Me", "Je", "Ve", "Sa", "Di"], JOURS_LONG = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
+// ---------- QR code (mode octet, correction M, versions 1 à 10) ----------
+function qrMatrice(texte){
+  var oct = Array.prototype.slice.call(new TextEncoder().encode(texte));
+  var T = [null,[10,1,16,0,0],[16,1,28,0,0],[26,1,44,0,0],[18,2,32,0,0],[24,2,43,0,0],[16,4,27,0,0],[18,4,31,0,0],[22,2,38,2,39],[22,3,36,2,37],[26,4,43,1,44]];
+  var AL = [null,[],[6,18],[6,22],[6,26],[6,30],[6,34],[6,22,38],[6,24,42],[6,26,46],[6,28,50]];
+  var v, t;
+  for (v = 1; v <= 10; v++) { t = T[v]; var cap = t[1] * t[2] + t[3] * t[4]; if (cap * 8 >= 4 + (v < 10 ? 8 : 16) + oct.length * 8) break; }
+  if (v > 10) return null;
+  var nData = t[1] * t[2] + t[3] * t[4], bits = [];
+  var put = function(val, n){ for (var i = n - 1; i >= 0; i--) bits.push((val >> i) & 1); };
+  put(4, 4); put(oct.length, v < 10 ? 8 : 16); oct.forEach(function(b){ put(b, 8); });
+  put(0, Math.min(4, nData * 8 - bits.length)); while (bits.length % 8) bits.push(0);
+  var data = []; for (var i = 0; i < bits.length; i += 8) { var b = 0; for (var j = 0; j < 8; j++) b = b << 1 | bits[i + j]; data.push(b); }
+  for (var pad = 0; data.length < nData; pad++) data.push(pad % 2 ? 0x11 : 0xEC);
+  // Reed-Solomon sur GF(256)
+  var EXP = [], LOG = []; for (var x = 1, k = 0; k < 255; k++) { EXP[k] = x; LOG[x] = k; x <<= 1; if (x & 256) x ^= 0x11D; } for (k = 255; k < 512; k++) EXP[k] = EXP[k - 255];
+  var mul = function(a, b){ return a && b ? EXP[LOG[a] + LOG[b]] : 0; };
+  var gen = [1]; for (k = 0; k < t[0]; k++) { var g2 = []; for (i = 0; i <= gen.length; i++) g2[i] = (gen[i] || 0) ^ mul(gen[i - 1] || 0, EXP[k]); gen = g2; }
+  var rs = function(d){ var r = d.concat(new Array(t[0]).fill(0)); for (var i = 0; i < d.length; i++) { var c = r[i]; if (c) for (var j = 0; j < gen.length; j++) r[i + j] ^= mul(gen[j], c); } return r.slice(d.length); };
+  var blocs = [], o = 0;
+  for (i = 0; i < t[1]; i++) { blocs.push(data.slice(o, o + t[2])); o += t[2]; }
+  for (i = 0; i < t[3]; i++) { blocs.push(data.slice(o, o + t[4])); o += t[4]; }
+  var ecs = blocs.map(rs), flux = [], mx = Math.max(t[2], t[4]);
+  for (i = 0; i < mx; i++) blocs.forEach(function(b){ if (i < b.length) flux.push(b[i]); });
+  for (i = 0; i < t[0]; i++) ecs.forEach(function(e){ flux.push(e[i]); });
+  // placement
+  var n = 17 + 4 * v, M = [], R = [];
+  for (i = 0; i < n; i++) { M.push(new Array(n).fill(0)); R.push(new Array(n).fill(false)); }
+  var set = function(r, c, val){ M[r][c] = val ? 1 : 0; R[r][c] = true; };
+  var finder = function(r, c){ for (var a = -1; a <= 7; a++) for (var b = -1; b <= 7; b++) { var rr = r + a, cc = c + b; if (rr < 0 || cc < 0 || rr >= n || cc >= n) continue; var on = a >= 0 && a <= 6 && b >= 0 && b <= 6 && (a === 0 || a === 6 || b === 0 || b === 6 || (a >= 2 && a <= 4 && b >= 2 && b <= 4)); set(rr, cc, on); } };
+  finder(0, 0); finder(0, n - 7); finder(n - 7, 0);
+  for (i = 8; i < n - 8; i++) { set(6, i, i % 2 === 0); set(i, 6, i % 2 === 0); }
+  var al = AL[v];
+  al.forEach(function(r, ia){ al.forEach(function(c, ib){ var L = al.length - 1; if ((ia === 0 && ib === 0) || (ia === 0 && ib === L) || (ia === L && ib === 0)) return; for (var a = -2; a <= 2; a++) for (var b = -2; b <= 2; b++) set(r + a, c + b, Math.max(Math.abs(a), Math.abs(b)) !== 1); }); });
+  set(n - 8, 8, 1);
+  for (i = 0; i < 9; i++) { R[8][i] = R[i][8] = true; } for (i = 0; i < 8; i++) { R[8][n - 1 - i] = R[n - 1 - i][8] = true; }
+  if (v >= 7) { var rem = v; for (i = 0; i < 12; i++) rem = (rem << 1) ^ ((rem >> 11) * 0x1F25); var vb = (v << 12) | rem;
+    for (i = 0; i < 18; i++) { var bit = (vb >> i) & 1, a2 = Math.floor(i / 3), b2 = i % 3 + n - 11; set(a2, b2, bit); set(b2, a2, bit); } }
+  var bitsFlux = []; flux.forEach(function(b){ for (var j = 7; j >= 0; j--) bitsFlux.push((b >> j) & 1); });
+  var pos = 0, haut = true;
+  for (var col = n - 1; col > 0; col -= 2) { if (col === 6) col--; for (var c2 = 0; c2 < n; c2++) { var r = haut ? n - 1 - c2 : c2; for (var dc = 0; dc < 2; dc++) { var cc = col - dc; if (R[r][cc]) continue; M[r][cc] = pos < bitsFlux.length ? bitsFlux[pos] : 0; pos++; } } haut = !haut; }
+  // masque 0 ((r+c) pair) + informations de format (niveau M)
+  for (r = 0; r < n; r++) for (c2 = 0; c2 < n; c2++) if (!R[r][c2] && (r + c2) % 2 === 0) M[r][c2] ^= 1;
+  var f = (0 << 3) | 0, fr = f; for (i = 0; i < 10; i++) fr = (fr << 1) ^ ((fr >> 9) * 0x537); var fb = ((f << 10) | fr) ^ 0x5412;
+  var fbit = function(i){ return (fb >> i) & 1; };
+  for (i = 0; i <= 5; i++) M[i][8] = fbit(i);
+  M[7][8] = fbit(6); M[8][8] = fbit(7); M[8][7] = fbit(8);
+  for (i = 9; i < 15; i++) M[8][14 - i] = fbit(i);
+  for (i = 0; i < 8; i++) M[8][n - 1 - i] = fbit(i);
+  for (i = 8; i < 15; i++) M[n - 15 + i][8] = fbit(i);
+  M[n - 8][8] = 1;
+  return M;
+}
+function qrSvg(texte){
+  var M = qrMatrice(texte); if (!M) return "";
+  var n = M.length, q = 4, d = "";
+  for (var r = 0; r < n; r++) for (var c = 0; c < n; c++) if (M[r][c]) d += "M" + (c + q) + " " + (r + q) + "h1v1h-1z";
+  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + (n + 2 * q) + ' ' + (n + 2 * q) + '" shape-rendering="crispEdges"><rect width="100%" height="100%" fill="#fff"/><path fill="#000" d="' + d + '"/></svg>';
+}
+function toast(t, ms){ var b = $("toast"); b.textContent = t; b.className = ""; clearTimeout(toast.m); toast.m = setTimeout(function(){ b.className = "hide"; }, ms || 4000); }
+// ---------- aide ----------
+function ouvrirAide(){ $("aideBox").className = "sheet"; }
+$("aideBtn").onclick = ouvrirAide;
+$("aideLien").onclick = function(e){ e.preventDefault(); ouvrirAide(); };
+$("aideX").onclick = function(){ $("aideBox").className = "sheet hide"; };
+$("aideBox").onclick = function(e){ if (e.target === this) this.className = "sheet hide"; };
+
+// ---------- invitation par QR code (administrateur seulement) ----------
+var LIEN_APPLI = location.origin + location.pathname;
+function nouvelleInvitation(){
+  $("invitQr").innerHTML = '<p class="muted" style="text-align:center;margin:40px 0">Création…</p>'; $("invitInfo").textContent = "";
+  prof("/chat/invitation", { code: CHAT.code }).then(function(j){
+    if (!j || !j.ok) { $("invitQr").innerHTML = '<p class="muted" style="text-align:center">Impossible de créer l’invitation, réessaie.</p>'; return; }
+    var lien = LIEN_APPLI + "?invit=" + j.jeton;
+    $("invitQr").innerHTML = qrSvg(lien); $("invitQr").dataset.lien = lien;
+    var d = new Date(j.expire);
+    $("invitInfo").textContent = "Valable jusqu’au " + d.getDate() + " " + MOIS[d.getMonth()] + ". Le code du magasin reste secret.";
+  });
+}
+$("chatInvit").onclick = function(){ $("invitSalon").textContent = CHAT.salon || "le magasin"; $("invitBox").className = "sheet"; nouvelleInvitation(); };
+$("invitNouveau").onclick = nouvelleInvitation;
+$("invitX").onclick = function(){ $("invitBox").className = "sheet hide"; };
+$("invitPartager").onclick = function(){
+  var lien = $("invitQr").dataset.lien; if (!lien) return;
+  if (navigator.share) navigator.share({ title: "BipBip", text: "Rejoins l’équipe sur BipBip :", url: lien }).catch(function(){});
+  else if (navigator.clipboard) navigator.clipboard.writeText(lien).then(function(){ toast("Lien copié ✓"); });
+};
+// lien d'invitation ou ouverture depuis une notification : ?invit=… / ?vue=chat|info|rea|plan
+var PARAMS = new URLSearchParams(location.search);
+if (PARAMS.get("invit")) { try { localStorage.setItem("invit", PARAMS.get("invit")); } catch(e){} }
+if (PARAMS.get("invit") || PARAMS.get("vue")) { try { history.replaceState(null, "", location.pathname); } catch(e){} }
+function utiliserInvitation(){
+  var jeton = ""; try { jeton = localStorage.getItem("invit") || ""; } catch(e){}
+  if (!jeton || !PROFIL.nom) return;
+  prof("/chat/rejoindre", { invit: jeton }).then(function(j){
+    if (!j) return;   // serveur injoignable : on réessaiera au prochain lancement
+    try { localStorage.removeItem("invit"); } catch(e){}
+    if (!j.ok) { toast(j.expiree ? "Invitation expirée : demande un nouveau QR code à Matthieu." : "Invitation non valable.", 6000); return; }
+    CHAT.code = j.code; CHAT.salon = j.salon; CHAT.dernier = 0; CHAT.vu = 0; sauverChat();
+    tab(6); ouvrirChat(); toast("Bienvenue dans l’équipe " + j.salon + " 👋");
+  });
+}
+function allerVue(v){
+  if (!/^(chat|info|rea|plan)$/.test(v || "") || !CHAT.code || !PROFIL.nom) return;
+  tab(6); ouvrirChat(); vue(v);
+}
+if ("serviceWorker" in navigator) navigator.serviceWorker.addEventListener("message", function(e){
+  if (e.data && e.data.type === "ouvrir") { try { allerVue(new URL(e.data.url).searchParams.get("vue")); } catch(x){} }
+});
+
+// ---------- notifications ----------
+var NOTIF = { types: "infos,chat,reassort" };
+try { NOTIF.types = localStorage.getItem("notifTypes") || NOTIF.types; } catch(e){}
+function notifPossible(){ return "serviceWorker" in navigator && "PushManager" in window && "Notification" in window; }
+function iosSansInstall(){ return /iPhone|iPad|iPod/.test(navigator.userAgent) && !(navigator.standalone || (window.matchMedia && matchMedia("(display-mode: standalone)").matches)); }
+function cleU8(b){ var s = atob(b.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((b.length + 3) % 4)), a = new Uint8Array(s.length); for (var i = 0; i < s.length; i++) a[i] = s.charCodeAt(i); return a; }
+function typesCoches(){ return [["nInfos", "infos"], ["nChat", "chat"], ["nRea", "reassort"]].filter(function(x){ return $(x[0]).checked; }).map(function(x){ return x[1]; }).join(","); }
+function envoyerAbo(sub){ return prof("/chat/push-abonner", { code: CHAT.code, abo: JSON.stringify(sub), types: NOTIF.types }); }
+function majNotifUI(sub){
+  var e = $("notifEtat"), on = $("notifOn"), ty = $("notifTypes");
+  $("nReaL").className = peut("reassort") ? "opt" : "opt hide";
+  ["nInfos", "nChat", "nRea"].forEach(function(id, i){ $(id).checked = NOTIF.types.split(",").indexOf(["infos", "chat", "reassort"][i]) >= 0; });
+  if (!notifPossible()) {
+    on.className = "big hide"; ty.className = "hide";
+    e.textContent = iosSansInstall() ? "Sur iPhone : installe d’abord BipBip sur l’écran d’accueil (Safari → Partager → « Sur l’écran d’accueil »), puis ouvre-la depuis l’icône pour activer les notifications." : "Ce navigateur ne gère pas les notifications.";
+    return;
+  }
+  if (Notification.permission === "denied") { on.className = "big hide"; ty.className = "hide"; e.textContent = "Notifications bloquées : autorise-les pour ce site dans les réglages du navigateur."; return; }
+  if (!CHAT.code) { on.className = "big hide"; ty.className = "hide"; e.textContent = "Rejoins d’abord ton magasin dans l’onglet Équipe."; return; }
+  on.className = sub ? "big hide" : "big"; ty.className = sub ? "" : "hide";
+  e.textContent = sub ? "Activées sur ce téléphone ✓ Choisis ce que tu veux recevoir :" : "Reçois une alerte même quand BipBip est fermée.";
+}
+function verifierNotif(){
+  if (!notifPossible() || !navigator.serviceWorker.getRegistration) { majNotifUI(null); return; }
+  navigator.serviceWorker.getRegistration().then(function(reg){
+    if (!reg) { majNotifUI(null); return; }
+    return reg.pushManager.getSubscription().then(function(sub){
+      majNotifUI(sub);
+      // resynchronise (nouveau magasin, autre profil sur ce téléphone…)
+      if (sub && CHAT.code && PROFIL.nom && Notification.permission === "granted") envoyerAbo(sub);
+    });
+  }).catch(function(){ majNotifUI(null); });
+}
+$("notifOn").onclick = function(){
+  var b = this; b.disabled = true; $("notifEtat").textContent = "Activation…";
+  Notification.requestPermission().then(function(perm){
+    if (perm !== "granted") { b.disabled = false; majNotifUI(null); return; }
+    return Promise.all([navigator.serviceWorker.ready, prof("/chat/push-cle", { code: CHAT.code })]).then(function(r){
+      if (!r[1] || !r[1].cle) throw new Error("clé");
+      return r[0].pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: cleU8(r[1].cle) });
+    }).then(function(sub){ return envoyerAbo(sub).then(function(j){ b.disabled = false; if (!j || !j.ok) throw new Error("abo"); majNotifUI(sub); toast("Notifications activées 🔔"); }); });
+  }).catch(function(){ b.disabled = false; $("notifEtat").textContent = "Activation impossible pour le moment, réessaie."; });
+};
+["nInfos", "nChat", "nRea"].forEach(function(id){ $(id).onchange = function(){
+  NOTIF.types = typesCoches(); try { localStorage.setItem("notifTypes", NOTIF.types); } catch(e){}
+  navigator.serviceWorker.ready.then(function(reg){ return reg.pushManager.getSubscription(); }).then(function(sub){ if (sub) envoyerAbo(sub); });
+}; });
+$("notifTest").onclick = function(){ prof("/chat/push-test", { code: CHAT.code }).then(function(j){ toast(j && j.envoyees ? "Notification envoyée : regarde en haut de l’écran." : "Pas reçue ? Désactive puis réactive les notifications."); }); };
+$("notifOff").onclick = function(){
+  navigator.serviceWorker.ready.then(function(reg){ return reg.pushManager.getSubscription(); }).then(function(sub){
+    if (!sub) { majNotifUI(null); return; }
+    prof("/chat/push-desabonner", { code: CHAT.code, endpoint: sub.endpoint });
+    return sub.unsubscribe().then(function(){ majNotifUI(null); toast("Notifications désactivées"); });
+  });
+};
+$("t5").addEventListener("click", verifierNotif);
+
 // sous-onglets de l'onglet Équipe : "chat", "plan" ou "info"
 function vue(v){
   v = v === true ? "plan" : v === false ? "chat" : v;
@@ -2018,6 +2251,8 @@ function verifierInfos(){
     $("ptInfo").className = neuf ? "pt" : "pt hide";
   });
 }
+function minutesSemaine(p){ var m = 0; (p.jours || []).forEach(function(j){ (j.plages || []).forEach(function(pl){ m += minutes(pl[1]) - minutes(pl[0]); }); }); return m; }
+function hTheo(x){ var h = Math.floor(x), m = Math.round((x - h) * 60); return h + " h" + (m ? " " + ("0" + m).slice(-2) : ""); }
 function minutes(h){ var p = String(h).split(":"); return +p[0] * 60 + +p[1]; }
 function duree(m){ var h = Math.floor(m / 60), r = m % 60; return h + " h" + (r ? " " + ("0" + r).slice(-2) : ""); }
 function hFr(h){ return h.replace(/^0/, "").replace(":", "h").replace(/h00$/, "h"); }
@@ -2108,11 +2343,25 @@ function dessinerPlanning(){
       tab.appendChild(tr);
     });
     c2.appendChild(tab);
-    som.appendChild(el("b", "", "Ma semaine")); som.appendChild(el("span", "", duree(tot)));
+    som.appendChild(el("b", "", "Ma semaine")); som.appendChild(el("span", "", duree(tot) + (moiP.theo ? " / " + hTheo(moiP.theo) + " théo" : "")));
     try { c2.open = localStorage.getItem("maSemaine") === "1"; } catch(e){}
     c2.addEventListener("toggle", function(){ try { localStorage.setItem("maSemaine", c2.open ? "1" : "0"); } catch(e){} });
     box.appendChild(c2);
   }
+  var avecTheo = (w.personnes || []).some(function(p){ return p.theo; });
+  var c3 = el("details", "card masemc"), s3 = el("summary"), t3 = el("table", "heures");
+  s3.appendChild(el("b", "", "Heures de la semaine")); s3.appendChild(el("span", "", avecTheo ? "prévu / théorique" : ""));
+  c3.appendChild(s3);
+  (w.personnes || []).forEach(function(p){
+    var m = minutesSemaine(p), ko = p.theo && Math.abs(m - p.theo * 60) > 1, tr = el("tr", ko ? "ko" : "");
+    tr.appendChild(el("td", "", p.prenom));
+    tr.appendChild(el("td", "h", duree(m) + (p.theo ? " / " + hTheo(p.theo) + (ko ? " ⚠️" : " ✓") : "")));
+    t3.appendChild(tr);
+  });
+  c3.appendChild(t3);
+  try { c3.open = localStorage.getItem("heuresSem") === "1"; } catch(e){}
+  c3.addEventListener("toggle", function(){ try { localStorage.setItem("heuresSem", c3.open ? "1" : "0"); } catch(e){} });
+  box.appendChild(c3);
   box.appendChild(el("p", "aide", "Recopié du planning du responsable : l’original fait foi."));
   boutonsImport(box, false);
 }
@@ -2137,8 +2386,8 @@ function boutonsImport(box, vide){
   };
   b2.onclick = function(){
     var w = PLAN.semaines[PLAN.i];
-    if (!vide && w) editeurPlanning({ semaine: (w.titre || "").replace(/\D/g, ""), lundi: w.debut, personnes: (w.personnes || []).map(function(p){ return { prenom: p.prenom, jours: (p.jours || []).map(texteJour) }; }) }, false);
-    else editeurPlanning({ semaine: "", lundi: "", personnes: (w ? w.personnes : [{ prenom: "" }]).map(function(p){ return { prenom: p.prenom, jours: ["", "", "", "", "", "", ""] }; }) }, false);
+    if (!vide && w) editeurPlanning({ semaine: (w.titre || "").replace(/\D/g, ""), lundi: w.debut, personnes: (w.personnes || []).map(function(p){ return { prenom: p.prenom, theo: p.theo, jours: (p.jours || []).map(texteJour) }; }) }, false);
+    else editeurPlanning({ semaine: "", lundi: "", personnes: (w ? w.personnes : [{ prenom: "" }]).map(function(p){ return { prenom: p.prenom, theo: p.theo, jours: ["", "", "", "", "", "", ""] }; }) }, false);
   };
   c.appendChild(b1); c.appendChild(b2); c.appendChild(f); c.appendChild(msg);
   box.appendChild(c);
@@ -2148,7 +2397,7 @@ function hhmm(h, m){ return ("0" + (+h)).slice(-2) + ":" + (m ? ("0" + (+m)).sli
 function lireJour(t){
   t = String(t || "").trim();
   if (!t || /^(repos|reposp|r|-)$/i.test(t)) return { repos: true };
-  var re = /(\d{1,2})(?:[h:.](\d{2}))?\s*(?:-|–|à|a)\s*(\d{1,2})(?:[h:.](\d{2}))?/gi, m, pl = [];
+  var re = /(\d{1,2})(?:[h:.](\d{2})|h)?\s*(?:-|–|à|a)\s*(\d{1,2})(?:[h:.](\d{2})|h)?/gi, m, pl = [];
   while ((m = re.exec(t))) { var pa = [hhmm(m[1], m[2]), hhmm(m[3], m[4])]; if (!pl.some(function(x){ return x[0] === pa[0] && x[1] === pa[1]; })) pl.push(pa); }
   if (pl.length) return { plages: pl };
   return { note: t === "?" ? "À confirmer" : t.slice(0, 60) };
@@ -2172,13 +2421,22 @@ function editeurPlanning(data, lu){
   l0.appendChild(g1); l0.appendChild(g2); c.appendChild(l0);
   var liste = el("div"); c.appendChild(liste);
   var ajouterPersonne = function(p){
-    var d = el("div", "edp-pers"), h = el("div", "edp-h"), pn = el("input"), x = el("button", "", "×");
+    var d = el("div", "edp-pers"), h = el("div", "edp-h"), pn = el("input"), x = el("button", "", "×"), th = el("input"), tot = el("span", "edp-tot");
     pn.value = p.prenom || ""; pn.placeholder = "Prénom"; pn.className = "edp-nom"; x.type = "button"; x.setAttribute("aria-label", "Retirer");
+    th.className = "edp-theo"; th.inputMode = "decimal"; th.placeholder = "Théo"; th.title = "Heures théoriques de la semaine"; th.value = p.theo ? String(p.theo).replace(".", ",") : "";
     x.onclick = function(){ d.remove(); };
-    h.appendChild(pn); h.appendChild(x); d.appendChild(h);
+    h.appendChild(pn); h.appendChild(th); h.appendChild(tot); h.appendChild(x); d.appendChild(h);
     var gr = el("div", "edp-jours");
-    JOURS.forEach(function(n, i){ var lb = el("label"), inp = el("input"); lb.appendChild(el("span", "", n)); inp.value = (p.jours || [])[i] || ""; if (inp.value === "?") inp.className = "doute"; inp.oninput = function(){ inp.className = ""; }; lb.appendChild(inp); gr.appendChild(lb); });
-    d.appendChild(gr); liste.appendChild(d);
+    // total des heures recalculé en direct, en rouge s'il ne tombe pas sur les heures théoriques
+    var majTot = function(){
+      var m = minutesSemaine({ jours: Array.prototype.map.call(gr.querySelectorAll("input"), function(i){ return lireJour(i.value); }) });
+      var t = parseFloat(th.value.replace(",", "."));
+      tot.textContent = duree(m) + (t > 0 ? (Math.abs(m - t * 60) > 1 ? " ≠ " + hTheo(t) : " ✓") : "");
+      tot.className = "edp-tot" + (t > 0 && Math.abs(m - t * 60) > 1 ? " ko" : "");
+    };
+    JOURS.forEach(function(n, i){ var lb = el("label"), inp = el("input"); lb.appendChild(el("span", "", n)); inp.value = (p.jours || [])[i] || ""; if (inp.value === "?") inp.className = "doute"; inp.oninput = function(){ inp.className = ""; majTot(); }; lb.appendChild(inp); gr.appendChild(lb); });
+    th.oninput = majTot;
+    d.appendChild(gr); liste.appendChild(d); majTot();
   };
   (data.personnes || []).forEach(ajouterPersonne);
   var add = el("button", "big alt", "＋ Ajouter une personne"); add.type = "button"; add.onclick = function(){ ajouterPersonne({ prenom: "", jours: [] }); };
@@ -2189,9 +2447,12 @@ function editeurPlanning(data, lu){
   pub.onclick = function(){
     if (!/^\d{4}-\d{2}-\d{2}$/.test(lun.value)) { msg.textContent = "Indique la date du lundi."; lun.focus(); return; }
     var personnes = Array.prototype.map.call(liste.querySelectorAll(".edp-pers"), function(d){
-      return { prenom: d.querySelector(".edp-nom").value.trim(), jours: Array.prototype.map.call(d.querySelectorAll(".edp-jours input"), function(i){ return lireJour(i.value); }) };
+      var t = parseFloat(d.querySelector(".edp-theo").value.replace(",", "."));
+      return { prenom: d.querySelector(".edp-nom").value.trim(), theo: t > 0 && t < 80 ? t : undefined, jours: Array.prototype.map.call(d.querySelectorAll(".edp-jours input"), function(i){ return lireJour(i.value); }) };
     }).filter(function(p){ return p.prenom; });
     if (!personnes.length) { msg.textContent = "Ajoute au moins une personne."; return; }
+    var ecarts = liste.querySelectorAll(".edp-tot.ko").length;
+    if (ecarts && !window.confirm(ecarts + " personne(s) n’ont pas le bon total d’heures par rapport au théorique (en rouge). Publier quand même ?")) return;
     var doutes = liste.querySelectorAll("input.doute").length;
     if (doutes && !window.confirm(doutes + " case(s) marquée(s) « ? » n’ont pas été lues. Publier quand même (elles s’afficheront « À confirmer ») ?")) return;
     msg.textContent = "Publication…";
