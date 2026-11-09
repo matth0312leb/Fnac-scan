@@ -94,8 +94,8 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 .hcherche input{font-size:16px;padding:10px 46px 10px 12px}
 .hcherche input::-webkit-search-cancel-button{display:none}
 .hcmp{margin:12px 0 0;padding:9px 12px;border-radius:10px;background:var(--bg);font-size:14px}
-.rsec{margin:22px 6px 8px;font-size:12px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted)}
-.rs:first-child .rsec{margin-top:4px}
+.rtit{margin:22px 6px 8px;font-size:12px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted)}
+.rs:first-child .rtit{margin-top:4px}
 .rs{display:block}
 .rprof{display:flex;align-items:center;gap:14px;margin-bottom:6px}
 .rpav{flex:none;width:48px;height:48px;border-radius:50%;background:var(--accent);color:#111;font-size:22px;font-weight:800;display:flex;align-items:center;justify-content:center}
@@ -115,6 +115,39 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 .rlist{padding:4px 0;margin-bottom:16px;overflow:hidden}
 .rlist>button,.rlist summary{display:flex;align-items:center;gap:12px;width:100%;border:0;border-top:1px solid var(--line);background:none;color:var(--text);font:inherit;font-size:15.5px;font-weight:600;text-align:left;padding:13px 16px;cursor:pointer;list-style:none}
 .rlist>:first-child,.rlist>:first-child summary{border-top:0}
+.ic,.si{fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.hico .ic{width:20px;height:20px}
+.hico.li{background:rgba(225,169,37,.16);color:#b8860b}
+.hico.pr{background:rgba(70,120,220,.13);color:#3a6fd8}
+.hico.ph{background:rgba(46,157,91,.14);color:#2e9d5b}
+.rlist .ri{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:9px;background:var(--bg);color:var(--text)}
+.rlist .si{width:19px;height:19px}
+.segobj button{display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.segobj .ic{width:20px;height:20px}
+.cvt{display:inline-flex;align-items:center;gap:6px}.cvt .ic{width:18px;height:18px;color:#2e9d5b}
+.evide{text-align:center;padding:18px 10px 8px}
+.evic{width:64px;height:64px;margin:0 auto 12px;border-radius:50%;background:rgba(225,169,37,.15);color:#c8941a;display:flex;align-items:center;justify-content:center}
+.evic .ic{width:30px;height:30px}
+.evide b{display:block;font-size:16.5px;margin-bottom:4px}
+.evide p{margin:0 auto;max-width:300px;font-size:14px;line-height:1.45;color:var(--muted)}
+.evide .big{margin-top:14px;font-size:16px;padding:12px}
+.entre{animation:entre .24s ease-out}
+@keyframes entre{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.objbar i{transition:width .5s cubic-bezier(.2,.8,.2,1)}
+.big,.dacts button,.pm,.hfiltres button,.seg button,#bnav button{transition:transform .1s,background-color .2s,color .2s}
+.big:active,.dacts button:active,.pm:active,.hfiltres button:active{transform:scale(.97)}
+#bnav button:active{transform:scale(.92)}
+#splash{position:fixed;inset:0;z-index:200;background:#111;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;transition:opacity .4s;animation:secours .3s 3s forwards}
+@keyframes secours{to{opacity:0;visibility:hidden;pointer-events:none}}
+#splash img{width:96px;height:96px;border-radius:24px;animation:pop .5s cubic-bezier(.2,1.4,.4,1)}
+#splash .spn{font-family:"Fredoka",system-ui,sans-serif;font-weight:700;font-size:34px;color:#fff;letter-spacing:.3px}
+#splash .spn span{color:var(--accent)}
+#splash .spb{width:120px;height:4px;border-radius:2px;background:#2a2a2a;overflow:hidden}
+#splash .spb i{display:block;height:100%;width:40%;border-radius:2px;background:var(--accent);animation:spb 1s ease-in-out infinite}
+#splash.part{opacity:0;pointer-events:none}
+@keyframes pop{from{transform:scale(.6);opacity:0}to{transform:none;opacity:1}}
+@keyframes spb{from{transform:translateX(-100%)}to{transform:translateX(250%)}}
+@media (prefers-reduced-motion:reduce){.entre,#splash img,#splash .spb i{animation:none}.objbar i{transition:none}}
 .rlist>button.hide{display:none}
 .rlist summary::-webkit-details-marker{display:none}
 .rlist .ri{width:26px;text-align:center;font-size:18px}
@@ -292,21 +325,25 @@ div.seg button{padding-left:0;padding-right:0;min-width:0;white-space:nowrap;ove
 #raSku{flex:1;font-size:18px;letter-spacing:1px}
 #raQ{width:76px;flex:none;text-align:center;font-size:18px}
 #raTitre,#raNote{font-size:16px;padding:12px}
-.rsec{display:flex;justify-content:space-between;align-items:baseline;margin:6px 2px 8px}
-.rsec b{font-size:16px}.rsec span{font-size:13px;color:var(--muted)}
-.dem{padding:12px 0;border-top:1px solid var(--line)}
-.dem:first-child{border-top:0}
-.dem .l1{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
-.dem .sku{font-size:19px;font-weight:800;letter-spacing:1px;font-variant-numeric:tabular-nums}
-.dem .q{font-size:15px;font-weight:700;color:var(--muted)}
-.dem .ti{font-size:15px;margin:2px 0 0}
-.dem .no{font-size:14px;color:var(--muted);margin:2px 0 0;font-style:italic}
-.dem .qui{font-size:12px;color:var(--muted);margin:4px 0 0}
-.dem .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
-.dem .acts button{border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:8px;padding:8px 12px;font-size:14px;font-weight:600}
-.dem .acts .ok{background:#2e9e4f;color:#fff;border-color:transparent}
-.dem.fait .sku{color:var(--muted)}
-.dem .etat{font-size:12px;font-weight:700;color:#2e9e4f}
+.rsec{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin:0 0 4px}
+.rsec b{font-size:16px;white-space:nowrap}.rsec span{font-size:12.5px;color:var(--muted);text-align:right}
+.dem{padding:14px 0;border-top:1px solid var(--line)}
+.rsec+.dem,.dem:first-child{border-top:0}
+.dem .l1{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.dtx{min-width:0;display:flex;flex-direction:column;gap:3px}
+.dti{font-size:16px;line-height:1.3;overflow-wrap:anywhere}
+.dsub{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.dem .q{flex:none;font-size:14px;font-weight:800;background:var(--bg);border-radius:8px;padding:3px 9px}
+.dem .no{font-size:14px;color:var(--muted);margin:6px 0 0;font-style:italic}
+.dacts{display:flex;gap:6px;margin-top:10px}
+.dacts button{flex:1 1 auto;min-width:0;display:flex;align-items:center;justify-content:center;gap:4px;border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:10px;padding:9px 6px;font-size:13.5px;font-weight:600;white-space:nowrap;letter-spacing:-.1px}
+.dacts button span{overflow:hidden;text-overflow:ellipsis}
+.dacts .ic{width:17px;height:17px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.dacts .ok{background:#2e9e4f;color:#fff;border-color:transparent}
+.dacts .seul{flex:none;width:42px;padding:9px 0}
+.dacts .del{color:#d64545}
+.dem.fait .dti{color:var(--muted)}
+.dem .etat{font-size:12.5px;font-weight:700;color:#2e9e4f;margin:6px 0 0}
 .dem .etat.refuse{color:#d64545}
 .seg button{font-size:14px;padding:9px 2px}
 #infoPhotoBox{position:relative;margin:0 0 10px}
@@ -465,10 +502,10 @@ div.seg button{padding-left:0;padding-right:0;min-width:0;white-space:nowrap;ove
 .reg{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
 .reg:first-of-type{border-top:0}
 .reg button{border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:8px;padding:8px 12px;font-size:14px;font-weight:600}
-#fili{position:fixed;left:0;right:0;top:46vh;bottom:calc(70px + env(safe-area-inset-bottom,0px));z-index:-1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;pointer-events:none;user-select:none;opacity:.07;color:var(--text)}
+#fili{position:fixed;left:0;right:0;top:46vh;bottom:calc(70px + env(safe-area-inset-bottom,0px));z-index:-1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;pointer-events:none;user-select:none;opacity:.045;color:var(--text)}
 #fili .fm{width:min(34vw,150px);height:min(34vw,150px);display:block}
 #fili .fn{font-family:"Fredoka",system-ui,sans-serif;font-weight:700;font-size:min(22vw,110px);line-height:1;letter-spacing:1px}
-@media (prefers-color-scheme:light){:root:not([data-theme="dark"]) #fili{opacity:.06}}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]) #fili{opacity:.04}}
 .warn{font-size:12px;color:var(--muted);margin:4px 0 12px}
 .desc.clip{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
 .more{border:0;background:none;color:var(--muted);text-decoration:underline;padding:0;margin:0 0 12px;font-size:14px;display:block}
@@ -548,9 +585,19 @@ body{max-width:1000px;margin-left:calc(232px + max(32px,(100vw - 1264px)/2));mar
 #p5 .apropos{column-span:all}
 #cadeauCard,#mainRes{max-width:1000px}
 }
+@supports ((-webkit-backdrop-filter:blur(1px)) or (backdrop-filter:blur(1px))){
+#bnav{background:rgba(255,255,255,.72);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-top-color:rgba(0,0,0,.08)}
+.sheet{background:rgba(0,0,0,.35);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.sheet>.card{background:rgba(255,255,255,.88);-webkit-backdrop-filter:saturate(180%) blur(24px);backdrop-filter:saturate(180%) blur(24px)}
+.seg,.segobj{background:rgba(255,255,255,.65);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+#toast{-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) #bnav{background:rgba(30,30,30,.72);border-top-color:rgba(255,255,255,.08)}:root:not([data-theme="light"]) .sheet>.card{background:rgba(34,34,34,.88)}:root:not([data-theme="light"]) .seg,:root:not([data-theme="light"]) .segobj{background:rgba(34,34,34,.65)}}
+@media (min-width:1100px){#bnav{background:rgba(255,255,255,.6)}}
+}
 </style>
 </head>
 <body>
+<div id="splash" aria-hidden="true"><img src="logo.svg" alt=""><div class="spn">Bip<span>Bip</span></div><div class="spb"><i></i></div></div>
 <div id="fili" aria-hidden="true"><svg class="fm" viewBox="0 0 512 512"><rect x="14" y="14" width="484" height="484" rx="108" fill="none" stroke="currentColor" stroke-width="28"/><g fill="currentColor"><rect x="104" y="150" width="26" height="212" rx="5"/><rect x="146" y="150" width="12" height="212" rx="4"/><rect x="174" y="150" width="34" height="212" rx="5"/><rect x="224" y="150" width="12" height="212" rx="4"/><rect x="252" y="150" width="24" height="212" rx="5"/></g><g fill="none" stroke="currentColor" stroke-width="26" stroke-linecap="round"><path d="M318 206a72 72 0 0 1 0 100"/><path d="M362 166a130 130 0 0 1 0 180"/></g></svg><div class="fn">BipBip</div></div>
 <header class="top"><img class="mark" src="logo.svg" alt="BipBip"><div><div class="tline"><div class="ttl">Bip<span>Bip</span></div><div class="slogan">l'assistant de rayon qui fait bip</div></div></div></header>
 <div id="zoom" class="hide"><img id="zoomImg" alt=""></div>
@@ -683,7 +730,7 @@ body{max-width:1000px;margin-left:calc(232px + max(32px,(100vw - 1264px)/2));mar
   </div>
   <p class="hcmp hide" id="hCmpAide"></p>
   <div id="hist"></div>
-  <p class="muted vide hide" id="vide">Aucun article pour l’instant. Scanne ou saisis un code : il apparaîtra ici.</p>
+  <div class="hide" id="vide"></div>
 </div>
 <p class="aide" style="margin:0 4px 16px">Touche un article pour revoir sa fiche. « ⋯ » pour ajouter une note, comparer ou supprimer.</p>
 </div>
@@ -764,7 +811,7 @@ body{max-width:1000px;margin-left:calc(232px + max(32px,(100vw - 1264px)/2));mar
   </section>
 
   <section class="rs">
-  <p class="rsec">Scan</p>
+  <p class="rtit">Scan</p>
   <div class="card rg">
     <label class="opt"><input type="checkbox" id="auto"><span>Ouvrir fnac.ch dès qu’un code est scanné<small>Sauf les livres. Décoché : tu vois d’abord la fiche BipBip.</small></span></label>
     <label class="opt"><input type="checkbox" id="sonOn"><span>Son « bip »</span></label>
@@ -775,10 +822,10 @@ body{max-width:1000px;margin-left:calc(232px + max(32px,(100vw - 1264px)/2));mar
   </section>
 
   <section class="rs">
-  <p class="rsec">Notifications</p>
+  <p class="rtit">Notifications</p>
   <div class="card rg" id="notifCard">
     <p class="aide" id="notifEtat" style="margin-top:0">Reçois une alerte même quand BipBip est fermée.</p>
-    <button class="big" id="notifOn" type="button">🔔 Activer les notifications</button>
+    <button class="big" id="notifOn" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg><span class="lb">Activer les notifications</span></button>
     <div id="notifTypes" class="hide">
       <label class="opt"><input type="checkbox" id="nInfos"><span>Nouvelles infos de l’équipe</span></label>
       <label class="opt"><input type="checkbox" id="nChat"><span>Messages du chat</span></label>
@@ -789,11 +836,11 @@ body{max-width:1000px;margin-left:calc(232px + max(32px,(100vw - 1264px)/2));mar
   </section>
 
   <section class="rs">
-  <p class="rsec">Aide</p>
+  <p class="rtit">Aide</p>
   <div class="card rlist">
-    <button id="aideBtn" type="button"><span class="ri">❓</span><span class="rt">Comment ça marche</span><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
-    <button id="bvRevoir" type="button"><span class="ri">👋</span><span class="rt">Revoir la présentation</span><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
-    <details class="rins"><summary><span class="ri">📲</span><span class="rt">Installer sur l’écran d’accueil</span><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></summary>
+    <button id="aideBtn" type="button"><span class="ri"><svg class="si" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6"/><path d="M12 17h.01"/></svg></span><span class="rt">Comment ça marche</span><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
+    <button id="bvRevoir" type="button"><span class="ri"><svg class="si" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/><path d="m10 8.5 4 2-4 2z"/></svg></span><span class="rt">Revoir la présentation</span><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
+    <details class="rins"><summary><span class="ri"><svg class="si" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M12 7v7M9 11l3 3 3-3"/></svg></span><span class="rt">Installer sur l’écran d’accueil</span><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></summary>
       <div class="inst">
         <button class="big hide" id="installBtn" type="button">📲 Installer BipBip sur ce téléphone</button>
         <div><b>Samsung / Android</b><span>Menu ⋮ du navigateur → « Ajouter à l’écran d’accueil »</span></div>
@@ -804,9 +851,9 @@ body{max-width:1000px;margin-left:calc(232px + max(32px,(100vw - 1264px)/2));mar
   </section>
 
   <section class="rs hide" id="adminSec">
-  <p class="rsec">Administration</p>
+  <p class="rtit">Administration</p>
   <div class="card rlist">
-    <button class="hide" id="statBtn" type="button"><span class="ri">📊</span><span class="rt">Statistiques de l’équipe</span><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
+    <button class="hide" id="statBtn" type="button"><span class="ri"><svg class="si" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V11M10 20V5M16 20v-6M22 20H2"/></svg></span><span class="rt">Statistiques de l’équipe</span><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
   </div>
   <div id="statCard" class="card hide"></div>
   <div class="card rg hide" id="rolesCard">
@@ -825,6 +872,26 @@ body{max-width:1000px;margin-left:calc(232px + max(32px,(100vw - 1264px)/2));mar
 var BASE = "https://www.fr.fnac.ch/SearchResult/ResultList.aspx?Search=";
 var scanner = null, running = false, last = "", lastAt = 0;
 var $ = function(id){ return document.getElementById(id); };
+// écran de démarrage : 0,6 s minimum pour voir le logo, puis fondu (le CSS le retire seul au bout de 3 s quoi qu'il arrive)
+(function(){ var t0 = Date.now(), fait = false, fin = function(){ if (fait) return; fait = true; setTimeout(function(){ var sp = document.getElementById("splash"); if (!sp) return; sp.className = "part"; setTimeout(function(){ if (sp.parentNode) sp.parentNode.removeChild(sp); }, 450); }, Math.max(0, 600 - (Date.now() - t0))); };
+  document.addEventListener("DOMContentLoaded", fin); if (document.readyState !== "loading") fin(); setTimeout(fin, 2000); })();
+var IC = {
+  livre: '<path d="M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5z"/><path d="M5 19.5A1.5 1.5 0 0 0 6.5 21H19"/>',
+  boite: '<path d="M3.5 7.5 12 3l8.5 4.5v9L12 21l-8.5-4.5z"/><path d="m3.5 7.5 8.5 4.5 8.5-4.5M12 12v9"/>',
+  photo: '<path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/>',
+  carte: '<rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="M2.5 10h19M6 15h4"/>',
+  info: '<path d="M12 3.5 14.6 9l5.9.6-4.4 4 1.3 5.9L12 16.4l-5.4 3.1 1.3-5.9-4.4-4 5.9-.6z"/>',
+  cal: '<rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
+  bulle: '<path d="M4 5h16v11H9l-5 4z"/>',
+  vide: '<circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/>',
+  valide: '<circle cx="12" cy="12" r="9"/><path d="m8 12.5 2.8 2.8L16.5 9.5"/>',
+  cb: '<path d="M4 6v12M7.5 6v12M10 6v12M13.5 6v12M16 6v12M20 6v12"/>',
+  ok: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
+  non: '<path d="M6 6l12 12M18 6 6 18"/>',
+  retour: '<path d="M9 7 4 12l5 5"/><path d="M4 12h11a5 5 0 0 1 0 10h-2"/>',
+  suppr: '<path d="M5 7h14M10 7V4.5h4V7M7 7l1 13h8l1-13"/>',
+  copie: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/>'
+};
 // change le texte d'un bouton sans effacer son icône
 var ICONES = { cam: '<path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/>', livre: '<path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5z"/><path d="M4 19a2 2 0 0 1 2-2h13"/>' };
 // bouton avec icône (créé par le code)
@@ -839,7 +906,8 @@ function groupeDe(v){ return GROUPES[7].indexOf(v) > -1 ? 7 : 6; }
 function tab(n){
   ONGLET = n;
   [1, 4, 5, 6, 7].forEach(function(i){ $("t" + i).className = n === i ? "on" : ""; });
-  [1, 4, 5, 6].forEach(function(i){ $("p" + i).className = n === i || (i === 6 && n === 7) ? "" : "hide"; });
+  [1, 4, 5, 6].forEach(function(i){ $("p" + i).className = n === i || (i === 6 && n === 7) ? "entre" : "hide"; });
+  setTimeout(function(){ [1, 4, 5, 6].forEach(function(i){ if ($("p" + i).className === "entre") $("p" + i).className = ""; }); if (typeof majFili === "function") majFili(); }, 260);
   if (n === 6 || n === 7) [["info", "vInfo"], ["plan", "vPlan"], ["chat", "vChat"], ["obj", "vObj"], ["rea", "vRea"]].forEach(function(x){ $(x[1]).style.display = GROUPES[n].indexOf(x[0]) > -1 ? "" : "none"; });
   $("mainRes").className = n >= 4 ? "hide" : "";
   if (typeof majCmp === "function") majCmp();
@@ -1121,8 +1189,8 @@ function renderHist(h){
     if (HF.f && cat(x) !== HF.f) return false;
     return !q || ((x.ti || "") + " " + x.c + " " + (x.n || "")).toLowerCase().indexOf(q) > -1;
   });
-  $("vide").className = liste.length ? "muted vide hide" : "muted vide";
-  $("vide").textContent = h.length ? "Aucun article ne correspond." : "Aucun article pour l’instant. Scanne ou saisis un code : il apparaîtra ici.";
+  $("vide").className = liste.length ? "hide" : "";
+  $("vide").innerHTML = ""; if (!liste.length) $("vide").appendChild(h.length ? etatVide("vide", "Aucun article ne correspond", "Essaie un autre mot ou un autre filtre.") : etatVide("cb", "Pas encore d’article", "Scanne ou tape un code : il apparaîtra ici, rangé par jour.", ["Scanner un article", function(){ tab(1); }]));
   var aide = $("hCmpAide");
   aide.className = cmpSel.length === 1 ? "hcmp" : "hcmp hide";
   aide.textContent = "⚖️ Choisis un 2e article à comparer (⋯ → Comparer).";
@@ -1134,7 +1202,7 @@ function renderHist(h){
     var etiquette = ph ? "Photo" : (sku ? "SKU " : livre ? "ISBN " : "EAN ") + code;
     var li = el("li", "hit" + (cmpSel.indexOf(x.c) > -1 ? " sel" : "") + (HF.ouvert === x.c ? " ouv" : ""));
     var main = el("button", "hmain"); main.type = "button"; main.title = "Revoir la fiche";
-    main.appendChild(el("span", "hico", ph ? "📷" : livre ? "📖" : "📦"));
+    var hi = el("span", "hico " + (ph ? "ph" : livre ? "li" : "pr")); hi.innerHTML = svgIc(ph ? "photo" : livre ? "livre" : "boite"); main.appendChild(hi);
     var tx = el("span", "htxt");
     tx.appendChild(el("b", "", x.ti || etiquette));
     var heure = x.t ? (grp === "Aujourd’hui" || grp === "Hier" ? new Date(x.t).toLocaleTimeString("fr-CH", { hour: "2-digit", minute: "2-digit" }) : new Date(x.t).toLocaleDateString("fr-CH", { day: "numeric", month: "short" })) : "";
@@ -2005,7 +2073,7 @@ function ajouterMessages(liste, premier){
     box.appendChild(d);
     CHAT.dernier = Math.max(CHAT.dernier, m.id);
   });
-  if (premier && !liste.length) box.innerHTML = '<p class="vide">Aucun message pour l’instant.<br>Écris le premier !</p>';
+  if (premier && !liste.length) { box.innerHTML = ""; box.appendChild(etatVide("bulle", "Aucun message pour l’instant", "Écris le premier ! Tu peux joindre une photo et citer un collègue avec @.")); }
   if (chatOuvert() && (premier || bas)) window.scrollTo(0, document.body.scrollHeight);
 }
 function chargerMessages(premier){
@@ -2377,7 +2445,7 @@ function dessinerObjectifs(){
   var box = $("vueObj"), j = OBJ.data, gere = j.peutGerer, moiN = j.moi; box.innerHTML = "";
   // Adhésions / CEMBRA
   var sg = el("div", "segobj");
-  ["adh", "cembra"].forEach(function(t){ var b = el("button", t + (OBJ.type === t ? " on" : ""), t === "adh" ? "💳 Adhésions" : "🟩 CEMBRA"); b.type = "button"; b.onclick = function(){ OBJ.type = t; OBJ.edit = ""; try { localStorage.setItem("objType", t); } catch(e){} dessinerObjectifs(); }; sg.appendChild(b); });
+  ["adh", "cembra"].forEach(function(t){ var b = el("button", t + (OBJ.type === t ? " on" : "")); b.innerHTML = svgIc("carte") + "<span>" + (t === "adh" ? "Adhésions" : "CEMBRA") + "</span>"; b.type = "button"; b.onclick = function(){ OBJ.type = t; OBJ.edit = ""; try { localStorage.setItem("objType", t); } catch(e){} dessinerObjectifs(); }; sg.appendChild(b); });
   box.appendChild(sg);
   var lignes = j.lignes.filter(function(x){ return x.type === OBJ.type; });
   var c = el("div", "card");
@@ -2408,7 +2476,7 @@ function dessinerObjectifs(){
   if (OBJ.type === "cembra") {
     var V = 0, nv = 0; lignes.forEach(function(x){ if (x.v != null) { V += x.v; nv++; } });
     var cv = el("div", "objval");
-    cv.appendChild(el("span", "", "✅ Cartes validées par CEMBRA"));
+    var cvt = el("span", "cvt"); cvt.innerHTML = svgIc("valide") + "<span>Cartes validées par CEMBRA</span>"; cv.appendChild(cvt);
     cv.appendChild(el("b", "", nv ? V + " / " + R + " demandes" + (R ? " · " + Math.round(V / R * 100) + " %" : "") : "pas encore saisi"));
     c.appendChild(cv);
   }
@@ -2420,7 +2488,7 @@ function dessinerObjectifs(){
   if (enCours && j.vendeur !== false) ajoute(moiN, PROFIL.nom);
   if (estChef) (j.equipe || []).forEach(function(m){ ajoute(m.n, m.a); });
   rows.sort(function(a, b){ return (b.n === moiN) - (a.n === moiN) || String(a.a).localeCompare(String(b.a)); });
-  if (!rows.length) c2.appendChild(el("p", "muted", "Personne n’a encore rempli d’objectif ce mois-ci."));
+  if (!rows.length) c2.appendChild(etatVide("carte", "Pas encore d’objectif ce mois-ci", "Les objectifs apparaîtront ici dès que quelqu’un aura rempli les siens."));
   var envoyer = function(x, data){
     if (x.n !== moiN) data.cible = x.a;
     return majObjectif(data);
@@ -2433,7 +2501,10 @@ function dessinerObjectifs(){
     if (!modifiable) l1.appendChild(el("span", "nb", (x.r || 0) + " / " + (x.o == null ? "?" : x.o)));
     l1.appendChild(el("span", "pc", x.o ? pc + " %" : ""));
     d.appendChild(l1);
-    var bar = el("div", "objbar"), bi = el("i", coul); bi.style.width = Math.min(100, pc) + "%"; bar.appendChild(bi); d.appendChild(bar);
+    var bar = el("div", "objbar"), bi = el("i", coul), cleB = OBJ.type + ":" + x.n, cible = Math.min(100, pc);
+    OBJ.lw = OBJ.lw || {}; bi.style.width = (OBJ.lw[cleB] || 0) + "%"; OBJ.lw[cleB] = cible;
+    requestAnimationFrame(function(){ requestAnimationFrame(function(){ bi.style.width = cible + "%"; }); });
+    bar.appendChild(bi); d.appendChild(bar);
     if (modifiable) {
       var ctl = el("div", "objctl"), moins = el("button", "pm", "−"), plus = el("button", "pm plus", "+"), ir = el("input", "objn"), io = el("input", "objn obj");
       moins.type = plus.type = "button"; moins.setAttribute("aria-label", "Retirer une carte"); plus.setAttribute("aria-label", "Ajouter une carte");
@@ -2452,7 +2523,7 @@ function dessinerObjectifs(){
       d.appendChild(ctl);
     }
     if (OBJ.type === "cembra" && (x.r || x.v != null)) {
-      d.appendChild(el("div", "objcap", "✅ Validées par CEMBRA"));
+      d.appendChild(el("div", "objcap", "Validées par CEMBRA"));
       var lv = el("div", "objv");
       if (estChef) {
         var vm = el("button", "pm", "−"), vp = el("button", "pm", "+"), iv = el("input", "objn");
@@ -2479,13 +2550,16 @@ function dessinerObjectifs(){
   if (estChef) box.appendChild(el("p", "aide", "Touche un nombre pour le changer directement, ou utilise − / +. Les managers n’ont pas d’objectif cartes."));
   box.appendChild(el("p", "aide", "Taux d’atteinte en vert si on est dans le rythme du mois, orange si un peu en retard, rouge si en retard."));
 }
+function majFili(){ var f = $("fili"); if (f) f.style.visibility = document.documentElement.scrollHeight <= innerHeight + 40 ? "visible" : "hidden"; }
+setInterval(majFili, 700); window.addEventListener("resize", majFili);
 // sous-onglets : Équipe ("info", "plan", "chat") et Magasin ("obj", "rea")
 function vue(v){
   v = v === true ? "plan" : v === false ? "chat" : v;
-  var g = groupeDe(v); VUEG[g] = v; try { localStorage.setItem("vueGroupe", JSON.stringify(VUEG)); } catch(e){}
+  var g = groupeDe(v); VUEG[g] = v;
+  ["vueChat", "vuePlan", "vueInfo", "vueRea", "vueObj"].forEach(function(id){ $(id).classList.remove("entre"); }); try { localStorage.setItem("vueGroupe", JSON.stringify(VUEG)); } catch(e){}
   if (ONGLET !== g) tab(g);
   [["chat", "vChat", "vueChat"], ["plan", "vPlan", "vuePlan"], ["info", "vInfo", "vueInfo"], ["rea", "vRea", "vueRea"], ["obj", "vObj", "vueObj"]].forEach(function(x){
-    $(x[1]).className = v === x[0] ? "on" : ""; $(x[2]).className = v === x[0] ? "" : "hide";
+    $(x[1]).className = v === x[0] ? "on" : ""; $(x[2]).className = v === x[0] ? "entre" : "hide";
   });
   if (v === "plan") chargerPlanning(); else if (v === "obj") chargerObjectifs(); else if (v === "info") chargerInfos(); else if (v === "rea") chargerReassort(); else { CHAT.dernier = 0; chargerMessages(true); }
   if (typeof boucleChat === "function") boucleChat();   // rythme de rafraîchissement du chat (4 s quand il est affiché)
@@ -2612,7 +2686,7 @@ function chargerInfos(){
     if (!j || !j.ok) { box.innerHTML = '<p class="muted" style="text-align:center;margin:24px 0">Infos indisponibles pour le moment.</p>'; return; }
     var posts = j.posts || []; INFO.peutTout = !!j.peutTout;
     box.innerHTML = "";
-    if (!posts.length) box.innerHTML = '<div class="card vide-info"><p>Rien de publié pour l’instant.</p><p class="aide">Une nouveauté, une sortie de jeu ou de livre, une opération en magasin ? Publie-la ici pour toute l’équipe.</p></div>';
+    if (!posts.length) { box.innerHTML = ""; var cv0 = el("div", "card"); cv0.appendChild(etatVide("info", "Rien de publié pour l’instant", "Une nouveauté, une sortie, une opération en magasin ? Publie-la ici pour toute l’équipe.")); box.appendChild(cv0); }
     var auj = new Date(); auj.setHours(0, 0, 0, 0);
     posts.forEach(function(x){
       var c = el("article", "card post" + (x.e ? " epingle" : "") + (x.id > INFO.vu && !moi(x.n) ? " neuf" : "")), cat = CATS[x.c] || CATS.info;
@@ -2661,9 +2735,9 @@ function chargerReassort(){
     box.innerHTML = "";
     var c1 = el("div", "card"), h1 = el("div", "rsec");
     h1.appendChild(el("b", "", "En attente (" + att.length + ")"));
-    h1.appendChild(el("span", "", REA.peutValider ? "Coche quand la commande est passée" : "Validé par le responsable"));
+    h1.appendChild(el("span", "", REA.peutValider ? "À valider" : "Validé par le responsable"));
     c1.appendChild(h1);
-    if (!att.length) c1.appendChild(el("p", "muted", "Aucune demande en attente."));
+    if (!att.length) c1.appendChild(etatVide("ok", "Tout est à jour", REA.peutValider ? "Aucune demande ne t’attend." : "Besoin d’un produit en rayon ? Demande-le avec le formulaire au-dessus."));
     att.forEach(function(x){ c1.appendChild(ligneDemande(x)); });
     box.appendChild(c1);
     if (faits.length) {
@@ -2676,23 +2750,37 @@ function chargerReassort(){
     pointRea(false);
   });
 }
+// page vide : grande icône douce, titre, texte, bouton facultatif
+function etatVide(ic, titre, texte, btn){
+  var d = el("div", "evide"), r = el("div", "evic"); r.innerHTML = svgIc(ic); d.appendChild(r);
+  d.appendChild(el("b", "", titre)); if (texte) d.appendChild(el("p", "", texte));
+  if (btn) { var b = el("button", "big alt", btn[0]); b.type = "button"; b.onclick = btn[1]; d.appendChild(b); }
+  return d;
+}
+function svgIc(nom){ return '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">' + IC[nom] + '</svg>'; }
 function ligneDemande(x){
-  var d = el("div", "dem" + (x.statut !== "demande" ? " fait" : "")), l1 = el("div", "l1");
-  l1.appendChild(el("span", "sku", x.sku));
+  var fait = x.statut !== "demande";
+  var d = el("div", "dem" + (fait ? " fait" : "")), l1 = el("div", "l1"), tx = el("div", "dtx");
+  tx.appendChild(el("b", "dti", x.titre || ("SKU " + x.sku)));
+  tx.appendChild(el("span", "dsub", (x.titre ? x.sku + " · " : "") + (moi(x.n) ? "toi" : x.a) + " · " + ago(x.t)));
+  l1.appendChild(tx);
   l1.appendChild(el("span", "q", "× " + (x.q || 1)));
   d.appendChild(l1);
-  if (x.titre) d.appendChild(el("p", "ti", x.titre));
-  if (x.note) d.appendChild(el("p", "no", x.note));
-  d.appendChild(el("p", "qui", "Demandé par " + (moi(x.n) ? "toi" : x.a) + " · " + ago(x.t)));
-  if (x.statut !== "demande") d.appendChild(el("p", "etat" + (x.statut === "refuse" ? " refuse" : ""), (x.statut === "refuse" ? "✕ Pas commandé" : "✓ Commandé") + (x.v ? " par " + x.v : "") + (x.tv ? " · " + ago(x.tv) : "")));
-  var acts = el("div", "acts"), act = function(txt, cls, f){ var b = el("button", cls, txt); b.type = "button"; b.onclick = f; acts.appendChild(b); };
+  if (x.note) d.appendChild(el("p", "no", "« " + x.note + " »"));
+  if (fait) d.appendChild(el("p", "etat" + (x.statut === "refuse" ? " refuse" : ""), (x.statut === "refuse" ? "✕ Pas commandé" : "✓ Commandé") + (x.v ? " par " + x.v : "") + (x.tv ? " · " + ago(x.tv) : "")));
+  var acts = el("div", "dacts");
+  var act = function(ic, txt, cls, f, seul){ var b = el("button", cls + (seul ? " seul" : "")); b.type = "button"; b.innerHTML = (ic ? svgIc(ic) : "") + (seul ? "" : "<span></span>"); if (!seul) b.lastChild.textContent = txt; b.setAttribute("aria-label", txt); b.title = txt; b.onclick = f; acts.appendChild(b); return b; };
   var maj = function(route, data){ return function(){ prof(route, Object.assign({ code: CHAT.code, id: x.id }, data)).then(chargerReassort); }; };
-  act("🏷️ Code-barres", "", function(){ zoomCodeBarre(x.sku); });
+  // code-barres en icône seule quand il y a d'autres boutons à côté (responsable)
+  act("cb", "Code-barres", "", function(){ zoomCodeBarre(x.sku); }, REA.peutValider);
   // « Copier le SKU » : seulement sur ordinateur (souris + grand écran), inutile sur téléphone
-  if (navigator.clipboard && window.matchMedia && window.matchMedia("(pointer: fine) and (min-width: 900px)").matches) act("Copier le SKU", "", function(){ navigator.clipboard.writeText(x.sku).then(function(){ this.textContent = "Copié ✓"; }.bind(this)); });
-  if (REA.peutValider && x.statut === "demande") { act("✓ Commandé", "ok", maj("/chat/reassort-valider", { statut: "commande" })); act("Pas commandé", "", maj("/chat/reassort-valider", { statut: "refuse" })); }
-  if (REA.peutValider && x.statut !== "demande") act("Remettre en attente", "", maj("/chat/reassort-valider", { statut: "demande" }));
-  if ((moi(x.n) && x.statut === "demande") || REA.peutValider) act(moi(x.n) && x.statut === "demande" ? "Annuler ma demande" : "Supprimer", "", function(){ if (window.confirm("Supprimer cette demande ?")) maj("/chat/reassort-supprimer", {})(); });
+  if (navigator.clipboard && window.matchMedia && window.matchMedia("(pointer: fine) and (min-width: 900px)").matches) act("copie", "Copier le SKU", "", function(){ var b = this; navigator.clipboard.writeText(x.sku).then(function(){ b.lastChild.textContent = "Copié ✓"; }); });
+  if (REA.peutValider && !fait) { act("ok", "Commandé", "ok", maj("/chat/reassort-valider", { statut: "commande" })); act("", "Pas commandé", "", maj("/chat/reassort-valider", { statut: "refuse" })); }
+  if (REA.peutValider && fait) act("retour", "Remettre en attente", "", maj("/chat/reassort-valider", { statut: "demande" }));
+  if ((moi(x.n) && !fait) || REA.peutValider) {
+    var annul = moi(x.n) && !fait && !REA.peutValider;
+    act("suppr", annul ? "Annuler ma demande" : "Supprimer", "del", function(){ if (window.confirm(annul ? "Annuler ta demande ?" : "Supprimer cette demande ?")) maj("/chat/reassort-supprimer", {})(); }, !annul);
+  }
   d.appendChild(acts);
   return d;
 }
@@ -2785,7 +2873,7 @@ function chargerPlanning(){
   prof("/chat/planning", { code: CHAT.code }).then(function(j){
     if (!j || !j.ok) { box.innerHTML = '<div class="card"><p class="muted">Planning indisponible pour le moment.</p></div>'; return; }
     PLAN.semaines = j.semaines || []; PLAN.peutImporter = !!j.peutImporter;
-    if (!PLAN.semaines.length) { box.innerHTML = '<div class="card"><p class="muted">Pas encore de planning pour cette semaine.</p></div>'; boutonsImport(box, true); return; }
+    if (!PLAN.semaines.length) { box.innerHTML = ""; var cp0 = el("div", "card"); cp0.appendChild(etatVide("cal", "Pas encore de planning", "Le planning de la semaine s’affichera ici dès qu’il sera importé.")); box.appendChild(cp0); boutonsImport(box, true); return; }
     // semaine en cours par défaut, et le jour d'aujourd'hui
     var auj = new Date(); auj.setHours(12, 0, 0, 0);
     PLAN.i = 0;
