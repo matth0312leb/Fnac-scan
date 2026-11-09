@@ -147,6 +147,13 @@ div.seg button{padding-left:0;padding-right:0;min-width:0;white-space:nowrap;ove
 .objctl .objn{width:58px;margin:0;text-align:center;font-size:20px;font-weight:700;padding:8px 4px;border-radius:10px;font-variant-numeric:tabular-nums}
 .objctl .sur{font-size:14px;color:var(--muted);margin-left:auto}
 .objctl .objn.obj{font-weight:600}
+.objcap{font-size:12px;color:var(--muted);margin-top:8px}
+.objv{display:flex;align-items:center;gap:6px;margin:6px 0 4px;font-size:14px}
+.objv .pm{flex:none;width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:var(--card);color:var(--text);font-size:20px;font-weight:700;line-height:1;padding:0}
+.objv .pm:disabled{opacity:.35}
+.objv .objn{width:50px;margin:0;text-align:center;font-size:17px;font-weight:700;padding:6px 4px;border-radius:10px}
+.objv .sur{color:var(--muted);white-space:nowrap}
+.objval{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;padding:10px 12px;border-radius:12px;background:var(--bg);font-size:14px}
 #profil.hide{display:none}
 #profil{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px}
 #profil .card{width:100%;max-width:420px;margin:0}
@@ -2246,7 +2253,7 @@ function majObjectif(data){
   return prof("/chat/objectif-maj", Object.assign({ code: CHAT.code, mois: OBJ.mois, type: OBJ.type }, data)).then(function(j){
     if (!j || !j.ok) { toast((j && j.erreur) || "Pas enregistré, réessaie."); return; }
     var L = OBJ.data.lignes, i = L.findIndex(function(x){ return x.n === j.ligne.n && x.type === j.ligne.type; });
-    var nl = { n: j.ligne.n, a: j.ligne.a, type: j.ligne.type, o: j.ligne.o, r: j.ligne.r, maj: Date.now(), par: PROFIL.nom };
+    var nl = { n: j.ligne.n, a: j.ligne.a, type: j.ligne.type, o: j.ligne.o, r: j.ligne.r, v: j.ligne.v, maj: Date.now(), par: PROFIL.nom };
     if (i >= 0) L[i] = nl; else L.push(nl);
     dessinerObjectifs();
   });
@@ -2273,7 +2280,7 @@ function dessinerObjectifs(){
   var jm = joursMois(OBJ.mois), enCours = OBJ.mois === moisISO(new Date());
   var attendu = enCours ? Math.round(jm.ecoule / jm.tot * 100) : 100, taux = O ? Math.round(R / O * 100) : 0;
   var tt = el("div", "objtot"), a1 = el("div"), a2 = el("div"), a3 = el("div", "taux " + (O ? couleurTaux(taux, attendu) : ""));
-  a1.appendChild(el("b", "", String(R))); a1.appendChild(el("span", "", "Réalisé"));
+  a1.appendChild(el("b", "", String(R))); a1.appendChild(el("span", "", OBJ.type === "cembra" ? "Demandes" : "Réalisé"));
   a2.appendChild(el("b", "", String(O))); a2.appendChild(el("span", "", "Objectif"));
   a3.appendChild(el("b", "", O ? taux + " %" : "–")); a3.appendChild(el("span", "", "Taux d’atteinte"));
   tt.appendChild(a1); tt.appendChild(a2); tt.appendChild(a3); c.appendChild(tt);
@@ -2283,6 +2290,13 @@ function dessinerObjectifs(){
     inf.appendChild(el("span", "", "Rythme attendu aujourd’hui : " + attendu + " %"));
   } else if (!O) inf.appendChild(el("span", "", "Pas encore d’objectif pour ce mois."));
   c.appendChild(inf);
+  if (OBJ.type === "cembra") {
+    var V = 0, nv = 0; lignes.forEach(function(x){ if (x.v != null) { V += x.v; nv++; } });
+    var cv = el("div", "objval");
+    cv.appendChild(el("span", "", "✅ Cartes validées par CEMBRA"));
+    cv.appendChild(el("b", "", nv ? V + " / " + R + " demandes" + (R ? " · " + Math.round(V / R * 100) + " %" : "") : "pas encore saisi"));
+    c.appendChild(cv);
+  }
   box.appendChild(c);
   // chacun : une ligne par vendeur, avec −/+ et les chiffres modifiables directement
   var c2 = el("div", "card"), estChef = gere;
@@ -2314,18 +2328,39 @@ function dessinerObjectifs(){
       // réponse immédiate à l'écran, le serveur suit
       var pas = function(v){ x.r = Math.max(0, (x.r || 0) + v); ir.value = x.r; moins.disabled = !(x.r > 0); envoyer(x, { delta: String(v) }); };
       moins.onclick = function(){ pas(-1); };
-      plus.onclick = function(){ pas(1); if (estMoiL) toast(OBJ.type === "adh" ? "Adhésion ajoutée 💳" : "Carte CEMBRA ajoutée 🟩", 1500); };
+      plus.onclick = function(){ pas(1); if (estMoiL) toast(OBJ.type === "adh" ? "Adhésion ajoutée 💳" : "Demande CEMBRA ajoutée 🟩", 1500); };
       var valider = function(inp, champ){ return function(){ var v = inp.value.trim(); if (v === String(champ === "realise" ? (x.r || 0) : (x.o == null ? "" : x.o))) return; if (v !== "" && !/^\d{1,3}$/.test(v)) { inp.value = champ === "realise" ? (x.r || 0) : (x.o == null ? "" : x.o); return; } var data = {}; data[champ] = v === "" && champ === "realise" ? "0" : v; envoyer(x, data); }; };
       ir.onchange = valider(ir, "realise"); io.onchange = valider(io, "objectif");
       [ir, io].forEach(function(inp){ inp.onfocus = function(){ inp.select(); }; inp.onkeydown = function(e){ if (e.key === "Enter") inp.blur(); }; });
       ctl.appendChild(moins); ctl.appendChild(ir); ctl.appendChild(plus); ctl.appendChild(el("span", "sur", "sur")); ctl.appendChild(io);
+      if (OBJ.type === "cembra") d.appendChild(el("div", "objcap", "Demandes envoyées"));
       d.appendChild(ctl);
+    }
+    if (OBJ.type === "cembra" && (x.r || x.v != null)) {
+      d.appendChild(el("div", "objcap", "✅ Validées par CEMBRA"));
+      var lv = el("div", "objv");
+      if (estChef) {
+        var vm = el("button", "pm", "−"), vp = el("button", "pm", "+"), iv = el("input", "objn");
+        vm.type = vp.type = "button"; vm.setAttribute("aria-label", "Une validée de moins"); vp.setAttribute("aria-label", "Une validée de plus");
+        iv.inputMode = "numeric"; iv.value = x.v == null ? "" : x.v; iv.placeholder = "?"; iv.setAttribute("aria-label", "Cartes validées de " + x.a);
+        vm.disabled = !(x.v > 0); vp.disabled = (x.v || 0) >= (x.r || 0);
+        var vpas = function(dv){ x.v = Math.max(0, Math.min(x.r || 0, (x.v || 0) + dv)); iv.value = x.v; vm.disabled = !(x.v > 0); vp.disabled = x.v >= (x.r || 0); envoyer(x, { vdelta: String(dv) }); };
+        vm.onclick = function(){ vpas(-1); }; vp.onclick = function(){ vpas(1); };
+        iv.onfocus = function(){ iv.select(); }; iv.onkeydown = function(e){ if (e.key === "Enter") iv.blur(); };
+        iv.onchange = function(){ var v = iv.value.trim(); if (v !== "" && !/^\d{1,3}$/.test(v)) { iv.value = x.v == null ? "" : x.v; return; } envoyer(x, { valide: v === "" ? "x" : v }); };
+        lv.appendChild(vm); lv.appendChild(iv); lv.appendChild(vp);
+        lv.appendChild(el("span", "sur", "sur " + (x.r || 0) + " demande" + ((x.r || 0) > 1 ? "s" : "")));
+      } else {
+        lv.appendChild(el("b", "", x.v == null ? "en attente de saisie" : x.v + " / " + (x.r || 0) + " demande" + ((x.r || 0) > 1 ? "s" : "")));
+      }
+      d.appendChild(lv);
     }
     if (x.o != null) d.appendChild(el("span", "ec", (x.r - x.o >= 0 ? "Objectif atteint ✓ (+" + (x.r - x.o) + ")" : "Encore " + (x.o - x.r) + " à faire") + (PROFIL.admin && x.par && cleNom(x.par) !== cleNom(x.a) ? " · modifié par " + x.par : "")));
     else if (modifiable) d.appendChild(el("span", "ec", estMoiL ? "Indique ton objectif du mois dans la case de droite." : "Objectif pas encore fixé."));
     c2.appendChild(d);
   });
   box.appendChild(c2);
+  if (OBJ.type === "cembra") box.appendChild(el("p", "aide", estChef ? "Chacun compte ses demandes CEMBRA envoyées. Quand le service répond, indique ici combien ont été validées pour chaque personne." : "Compte ici chaque demande CEMBRA envoyée. Mesud ou Inès indiquent ensuite combien ont été validées."));
   if (estChef) box.appendChild(el("p", "aide", "Touche un nombre pour le changer directement, ou utilise − / +. Les managers n’ont pas d’objectif cartes."));
   box.appendChild(el("p", "aide", "Taux d’atteinte en vert si on est dans le rythme du mois, orange si un peu en retard, rouge si en retard."));
 }

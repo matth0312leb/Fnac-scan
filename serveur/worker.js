@@ -1211,12 +1211,14 @@ async function chat(route, p, nom, affichage, admin, droits, env, now) {
   // ---------- Objectifs du mois : cartes Adhésion et Mastercard CEMBRA ----------
   if (route.startsWith("/chat/objectif")) {
     await env.DB.prepare("CREATE TABLE IF NOT EXISTS objectifs (salon TEXT, mois TEXT, nom TEXT, affichage TEXT, type TEXT, objectif INTEGER, realise INTEGER DEFAULT 0, maj INTEGER, maj_par TEXT, PRIMARY KEY (salon, mois, nom, type))").run();
+    // CEMBRA : nombre de demandes acceptées par le service, saisi par Mesud / Inès
+    try { await env.DB.prepare("ALTER TABLE objectifs ADD COLUMN valide INTEGER").run(); } catch (e) {}
     const gere = peut("objectifs");
     const mois = /^\d{4}-\d{2}$/.test(p("mois")) ? p("mois") : new Date(now).toISOString().slice(0, 7);
     // les managers (Mesud, Inès…) n'ont pas d'objectif cartes : ils contrôlent seulement
     const rcO = await rolesConf(env), estManager = (n) => rcO.roles[n] === "manager";
     if (route === "/chat/objectifs") {
-      const r = await env.DB.prepare("SELECT nom AS n, affichage AS a, type, objectif AS o, realise AS r, maj, maj_par AS par FROM objectifs WHERE salon = ? AND mois = ? ORDER BY affichage").bind(code, mois).all();
+      const r = await env.DB.prepare("SELECT nom AS n, affichage AS a, type, objectif AS o, realise AS r, valide AS v, maj, maj_par AS par FROM objectifs WHERE salon = ? AND mois = ? ORDER BY affichage").bind(code, mois).all();
       const prec = await env.DB.prepare("SELECT COUNT(*) AS n FROM objectifs WHERE salon = ? AND mois < ?").bind(code, mois).first();
       let equipe = [];
       if (gere) {
@@ -1234,17 +1236,25 @@ async function chat(route, p, nom, affichage, admin, droits, env, now) {
       if (estManager(cible)) return { ok: false, erreur: "pas d'objectif cartes pour les managers" };
       let aff = affichage;
       if (cible !== nom) { const pr = await env.DB.prepare("SELECT affichage FROM profils WHERE nom = ?").bind(cible).first(); aff = pr ? pr.affichage : p("cible").slice(0, 30); }
-      const ex = await env.DB.prepare("SELECT objectif, realise FROM objectifs WHERE salon = ? AND mois = ? AND nom = ? AND type = ?").bind(code, mois, cible, type).first();
+      const ex = await env.DB.prepare("SELECT objectif, realise, valide FROM objectifs WHERE salon = ? AND mois = ? AND nom = ? AND type = ?").bind(code, mois, cible, type).first();
       const borne = (v) => Math.max(0, Math.min(999, v));
       let obj = ex ? ex.objectif : null, real = ex ? ex.realise : 0;
       if (p("objectif") !== "") { const v = parseInt(p("objectif"), 10); obj = isNaN(v) ? null : borne(v); }
       if (p("realise") !== "") { const v = parseInt(p("realise"), 10); if (!isNaN(v)) real = borne(v); }
       if (p("delta") !== "") { const v = parseInt(p("delta"), 10); if (v === 1 || v === -1) real = borne(real + v); }
-      await env.DB.prepare("INSERT INTO objectifs (salon, mois, nom, affichage, type, objectif, realise, maj, maj_par) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(salon, mois, nom, type) DO UPDATE SET affichage = excluded.affichage, objectif = excluded.objectif, realise = excluded.realise, maj = excluded.maj, maj_par = excluded.maj_par")
-        .bind(code, mois, cible, aff, type, obj, real, now, affichage).run();
+      let val = ex ? ex.valide : null;
+      if (p("valide") !== "" || p("vdelta") !== "") {
+        if (type !== "cembra" || !gere) return { ok: false, erreur: "les cartes validées sont saisies par le responsable" };
+        if (p("valide") !== "") { const v = parseInt(p("valide"), 10); val = isNaN(v) ? null : borne(v); }
+        if (p("vdelta") !== "") { const v = parseInt(p("vdelta"), 10); if (v === 1 || v === -1) val = borne((val || 0) + v); }
+      }
+      // on ne peut pas valider plus de cartes que de demandes envoyées
+      if (val != null && val > real) val = real;
+      await env.DB.prepare("INSERT INTO objectifs (salon, mois, nom, affichage, type, objectif, realise, valide, maj, maj_par) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(salon, mois, nom, type) DO UPDATE SET affichage = excluded.affichage, objectif = excluded.objectif, realise = excluded.realise, valide = excluded.valide, maj = excluded.maj, maj_par = excluded.maj_par")
+        .bind(code, mois, cible, aff, type, obj, real, val, now, affichage).run();
       // on garde 13 mois d'historique
       await env.DB.prepare("DELETE FROM objectifs WHERE salon = ? AND mois < ?").bind(code, new Date(now - 400 * 24 * 3600 * 1000).toISOString().slice(0, 7)).run();
-      return { ok: true, ligne: { n: cible, a: aff, type, o: obj, r: real } };
+      return { ok: true, ligne: { n: cible, a: aff, type, o: obj, r: real, v: val } };
     }
     if (route === "/chat/objectif-suppr") {
       if (!gere) return { ok: false, erreur: "réservé au responsable" };
