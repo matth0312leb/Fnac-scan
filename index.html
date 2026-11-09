@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>BipBip</title>
 <meta name="theme-color" content="#111111">
+<script>try { var th = localStorage.getItem("theme"); if (th === "light" || th === "dark") document.documentElement.setAttribute("data-theme", th); } catch(e){}</script>
 <link rel="manifest" href="manifest.json?v=2">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -585,6 +586,16 @@ body{max-width:1000px;margin-left:calc(232px + max(32px,(100vw - 1264px)/2));mar
 #p5 .apropos{column-span:all}
 #cadeauCard,#mainRes{max-width:1000px}
 }
+.theme{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.theme button{display:flex;flex-direction:column;align-items:center;gap:8px;border:2px solid var(--line);background:var(--bg);color:var(--text);border-radius:14px;padding:10px 4px 9px;font-size:13.5px;font-weight:600}
+.theme button.on{border-color:var(--accent);background:var(--card)}
+.tv{position:relative;width:52px;height:64px;border-radius:9px;overflow:hidden;border:1px solid rgba(128,128,128,.35);display:block}
+.tv i{position:absolute;left:7px;right:7px;height:8px;border-radius:3px}
+.tv i:first-child{top:9px}.tv i:last-child{top:22px;right:18px}
+.tv.clair{background:#f6f6f4}.tv.clair i{background:#fff;box-shadow:0 0 0 1px #ddd}
+.tv.sombre{background:#141414}.tv.sombre i{background:#2b2b2b}
+.tv.auto{background:linear-gradient(135deg,#f6f6f4 50%,#141414 50%)}.tv.auto i{background:#e1a925}
+.tv::after{content:"";position:absolute;left:7px;bottom:8px;width:16px;height:6px;border-radius:3px;background:#e1a925}
 @supports ((-webkit-backdrop-filter:blur(1px)) or (backdrop-filter:blur(1px))){
 #bnav{background:rgba(255,255,255,.72);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-top-color:rgba(0,0,0,.08)}
 .sheet{background:rgba(0,0,0,.35);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
@@ -592,6 +603,7 @@ body{max-width:1000px;margin-left:calc(232px + max(32px,(100vw - 1264px)/2));mar
 .seg,.segobj{background:rgba(255,255,255,.65);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
 #toast{-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px)}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) #bnav{background:rgba(30,30,30,.72);border-top-color:rgba(255,255,255,.08)}:root:not([data-theme="light"]) .sheet>.card{background:rgba(34,34,34,.88)}:root:not([data-theme="light"]) .seg,:root:not([data-theme="light"]) .segobj{background:rgba(34,34,34,.65)}}
+:root[data-theme="dark"] #bnav{background:rgba(30,30,30,.72);border-top-color:rgba(255,255,255,.08)}:root[data-theme="dark"] .sheet>.card{background:rgba(34,34,34,.88)}:root[data-theme="dark"] .seg,:root[data-theme="dark"] .segobj{background:rgba(34,34,34,.65)}
 @media (min-width:1100px){#bnav{background:rgba(255,255,255,.6)}}
 }
 </style>
@@ -807,6 +819,18 @@ body{max-width:1000px;margin-left:calc(232px + max(32px,(100vw - 1264px)/2));mar
     <div class="rpav" id="regAv">?</div>
     <div class="rpt"><b id="regNom">—</b><p class="role" id="regRole"></p><p class="aide rpdroits" id="regDroits"></p></div>
     <div class="reg"><button id="regChange" type="button">Changer</button></div>
+  </div>
+  </section>
+
+  <section class="rs">
+  <p class="rtit">Apparence</p>
+  <div class="card rg">
+    <div class="theme" id="themeChoix" role="radiogroup" aria-label="Apparence">
+      <button type="button" data-t="auto"><span class="tv auto"><i></i><i></i></span>Automatique</button>
+      <button type="button" data-t="light"><span class="tv clair"><i></i><i></i></span>Clair</button>
+      <button type="button" data-t="dark"><span class="tv sombre"><i></i><i></i></span>Sombre</button>
+    </div>
+    <p class="aide" id="themeAide" style="margin:10px 0 0"></p>
   </div>
   </section>
 
@@ -2552,6 +2576,15 @@ function dessinerObjectifs(){
 }
 function majFili(){ var f = $("fili"); if (f) f.style.visibility = document.documentElement.scrollHeight <= innerHeight + 40 ? "visible" : "hidden"; }
 setInterval(majFili, 700); window.addEventListener("resize", majFili);
+// ---------- apparence : automatique (suit le téléphone), clair ou sombre ----------
+function appliquerTheme(t){
+  if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t); else document.documentElement.removeAttribute("data-theme");
+  try { if (t === "light" || t === "dark") localStorage.setItem("theme", t); else localStorage.removeItem("theme"); } catch(e){}
+  [].forEach.call(document.querySelectorAll("#themeChoix button"), function(b){ var on = b.getAttribute("data-t") === (t || "auto"); b.className = on ? "on" : ""; b.setAttribute("aria-checked", on ? "true" : "false"); b.setAttribute("role", "radio"); });
+  $("themeAide").textContent = t === "light" ? "Toujours le fond blanc." : t === "dark" ? "Toujours le fond noir." : "Suit le réglage clair ou sombre de ton téléphone.";
+}
+(function(){ var t = ""; try { t = localStorage.getItem("theme") || ""; } catch(e){} appliquerTheme(t); })();
+[].forEach.call(document.querySelectorAll("#themeChoix button"), function(b){ b.onclick = function(){ appliquerTheme(b.getAttribute("data-t")); }; });
 // sous-onglets : Équipe ("info", "plan", "chat") et Magasin ("obj", "rea")
 function vue(v){
   v = v === true ? "plan" : v === false ? "chat" : v;
