@@ -1959,7 +1959,22 @@ $("notifOn").onclick = function(){
   NOTIF.types = typesCoches(); try { localStorage.setItem("notifTypes", NOTIF.types); } catch(e){}
   navigator.serviceWorker.ready.then(function(reg){ return reg.pushManager.getSubscription(); }).then(function(sub){ if (sub) envoyerAbo(sub); });
 }; });
-$("notifTest").onclick = function(){ prof("/chat/push-test", { code: CHAT.code }).then(function(j){ toast(j && j.envoyees ? "Notification envoyée : regarde en haut de l’écran." : "Pas reçue ? Désactive puis réactive les notifications."); }); };
+$("notifTest").onclick = function(){
+  var b = this; b.disabled = true;
+  // on renvoie d'abord l'abonnement de ce téléphone au serveur, puis on teste
+  navigator.serviceWorker.ready.then(function(reg){ return reg.pushManager.getSubscription(); }).then(function(sub){
+    if (!sub) { b.disabled = false; majNotifUI(null); toast("Ce téléphone n’est plus abonné : touche « Activer les notifications »."); return; }
+    return envoyerAbo(sub).then(function(a){
+      if (!a || !a.ok) throw new Error("abonnement refusé : " + ((a && a.erreur) || "serveur injoignable"));
+      return prof("/chat/push-test", { code: CHAT.code });
+    }).then(function(j){
+      b.disabled = false;
+      var jr = (j && j.journal) || [], d = jr[0] || {};
+      if (j && j.envoyees) toast("Notification envoyée ✓ Elle doit apparaître en haut de l’écran (vérifie le mode Ne pas déranger).", 6000);
+      else toast("Échec de l’envoi" + (d.statut ? " (" + d.hote + " : " + d.statut + ")" : d.erreur ? " (" + d.erreur + ")" : " (aucun abonnement trouvé)") + ". Envoie une capture à Matthieu.", 9000);
+    });
+  }).catch(function(e){ b.disabled = false; toast(String(e.message || e), 8000); });
+};
 $("notifOff").onclick = function(){
   navigator.serviceWorker.ready.then(function(reg){ return reg.pushManager.getSubscription(); }).then(function(sub){
     if (!sub) { majNotifUI(null); return; }

@@ -1048,15 +1048,21 @@ async function pousser(env, salon, auteur, type, msg, seulement) {
     cibles = cibles.filter((x) => (adminNom && x.nom === adminNom.valeur) || droitsDe(x.nom, false, rc).includes("reassort"));
   }
   const corps = JSON.stringify({ titre: msg.titre, texte: msg.texte, url: msg.url || "./", tag: msg.tag || type });
-  let ok = 0;
+  let ok = 0; const journal = [];
   await Promise.all(cibles.slice(0, 60).map(async (x) => {
+    const hote = (() => { try { return new URL(x.endpoint).host; } catch (e) { return "?"; } })();
     try {
       const abo = JSON.parse(x.abo);
       const rep = await fetch(abo.endpoint, { method: "POST", headers: { "Content-Encoding": "aes128gcm", "Content-Type": "application/octet-stream", TTL: "86400", Urgency: type === "chat" ? "high" : "normal", Authorization: await jetonVapid(env, abo.endpoint) }, body: await chiffrerPush(abo, corps) });
+      const txt = rep.ok ? "" : (await rep.text().catch(() => "")).slice(0, 160);
+      journal.push({ nom: x.nom, hote, statut: rep.status, txt });
       if (rep.status === 404 || rep.status === 410) await env.DB.prepare("DELETE FROM push_abos WHERE endpoint = ?").bind(x.endpoint).run();
       else if (rep.ok) ok++;
-    } catch (e) {}
+    } catch (e) { journal.push({ nom: x.nom, hote, erreur: String(e && e.message || e).slice(0, 160) }); }
   }));
+  // dernier envoi gardé pour le diagnostic
+  try { await env.DB.prepare("INSERT INTO config (cle, valeur) VALUES ('push_journal', ?) ON CONFLICT(cle) DO UPDATE SET valeur = excluded.valeur").bind(JSON.stringify({ t: Date.now(), type, cibles: cibles.length, journal })).run(); } catch (e) {}
+  pousser.dernier = { cibles: cibles.length, journal };
   return ok;
 }
 
@@ -1119,6 +1125,7 @@ async function chat(route, p, nom, affichage, admin, droits, env, now) {
     await tablePush(env);
     await env.DB.prepare("INSERT INTO push_abos (endpoint, salon, nom, abo, types, t) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(endpoint) DO UPDATE SET salon = excluded.salon, nom = excluded.nom, abo = excluded.abo, types = excluded.types, t = excluded.t")
       .bind(abo.endpoint.slice(0, 600), code, nom, JSON.stringify(abo).slice(0, 2000), types, now).run();
+    try { await env.DB.prepare("INSERT INTO config (cle, valeur) VALUES ('push_journal_abo', ?) ON CONFLICT(cle) DO UPDATE SET valeur = excluded.valeur").bind(JSON.stringify({ t: now, nom, hote: new URL(abo.endpoint).host, types })).run(); } catch (e) {}
     return { ok: true, types };
   }
   if (route === "/chat/push-desabonner") {
@@ -1128,7 +1135,7 @@ async function chat(route, p, nom, affichage, admin, droits, env, now) {
   }
   if (route === "/chat/push-test") {
     const n = await pousser(env, code, "", "test", { titre: "BipBip 🔔", texte: "Les notifications marchent sur ce téléphone.", url: "./" }, [nom]);
-    return { ok: true, envoyees: n };
+    return { ok: true, envoyees: n, ...(pousser.dernier || {}) };
   }
   // planning de la semaine du magasin (visible des membres du chat, avec leur code personnel)
   if (route === "/chat/planning") {
