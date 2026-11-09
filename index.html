@@ -2321,7 +2321,7 @@ function dessinerObjectifs(){
       ctl.appendChild(moins); ctl.appendChild(ir); ctl.appendChild(plus); ctl.appendChild(el("span", "sur", "sur")); ctl.appendChild(io);
       d.appendChild(ctl);
     }
-    if (x.o != null) d.appendChild(el("span", "ec", (x.r - x.o >= 0 ? "Objectif atteint ✓ (+" + (x.r - x.o) + ")" : "Encore " + (x.o - x.r) + " à faire") + (x.par && cleNom(x.par) !== cleNom(x.a) ? " · modifié par " + x.par : "")));
+    if (x.o != null) d.appendChild(el("span", "ec", (x.r - x.o >= 0 ? "Objectif atteint ✓ (+" + (x.r - x.o) + ")" : "Encore " + (x.o - x.r) + " à faire") + (PROFIL.admin && x.par && cleNom(x.par) !== cleNom(x.a) ? " · modifié par " + x.par : "")));
     else if (modifiable) d.appendChild(el("span", "ec", estMoiL ? "Indique ton objectif du mois dans la case de droite." : "Objectif pas encore fixé."));
     c2.appendChild(d);
   });

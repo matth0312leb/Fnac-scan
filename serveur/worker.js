@@ -1223,7 +1223,7 @@ async function chat(route, p, nom, affichage, admin, droits, env, now) {
         const e = await env.DB.prepare("SELECT nom, affichage FROM profils WHERE vu > ? ORDER BY affichage").bind(now - 90 * 24 * 3600 * 1000).all();
         equipe = (e.results || []).filter((x) => !estManager(x.nom)).map((x) => ({ n: x.nom, a: x.affichage }));
       }
-      return { ok: true, mois, peutGerer: gere, moi: nom, vendeur: !estManager(nom), equipe, lignes: (r.results || []).filter((x) => !estManager(x.n)), historique: !!(prec && prec.n) };
+      return { ok: true, mois, peutGerer: gere, moi: nom, vendeur: !estManager(nom), equipe, lignes: (r.results || []).filter((x) => !estManager(x.n)).map((x) => admin ? x : { ...x, par: undefined }), historique: !!(prec && prec.n) };
     }
     if (route === "/chat/objectif-maj") {
       const type = ["adh", "cembra"].includes(p("type")) ? p("type") : "";
