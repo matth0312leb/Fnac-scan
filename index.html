@@ -68,6 +68,63 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 .qa{margin:10px 0 0;padding:10px 12px;border-radius:8px;background:var(--bg);font-size:15px;line-height:1.45}
 .qa b{display:block;font-size:13px;color:var(--muted);font-weight:600;margin-bottom:3px}
 .sheet{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px}
+.hgrp{margin:16px 0 4px;font-size:12px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted)}
+.hliste{margin:0}
+.hliste li.hit{padding:0;border-top:1px solid var(--line)}
+.hliste li.hit:first-child{border-top:0}
+.hrow2{display:flex;align-items:center;gap:4px}
+.hmain{flex:1;min-width:0;display:flex;align-items:center;gap:12px;border:0;background:none;color:var(--text);text-align:left;padding:11px 0;font:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.hico{flex:none;width:38px;height:38px;border-radius:10px;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:19px}
+.htxt{min-width:0;display:flex;flex-direction:column;gap:2px}
+.htxt b{font-size:15.5px;line-height:1.3;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow-wrap:anywhere}
+.htxt small{font-size:12.5px;color:var(--muted)}
+.htxt em{font-style:normal;font-size:12.5px;align-self:flex-start;border-radius:6px;padding:1px 7px;margin-top:2px}
+.hnote{background:var(--bg);color:var(--text)}
+.hsel{background:var(--accent);color:#111;font-weight:700}
+.hplus{flex:none;width:40px;height:40px;border:0;border-radius:50%;background:none;color:var(--muted);font-size:22px;font-weight:700;line-height:1;padding:0}
+.hit.ouv .hplus{background:var(--bg);color:var(--text)}
+.hdet{padding:0 0 12px 50px}
+.hdet .note{margin:0 0 4px;width:100%}
+.hdet .saved{display:block;min-height:16px;margin-bottom:4px}
+.hdet .acts .suppr{color:#d64545}
+.hfiltres{display:flex;gap:6px;overflow-x:auto;margin:10px 0 2px;scrollbar-width:none}
+.hfiltres button{flex:none;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:18px;padding:7px 12px;font-size:13.5px;font-weight:600}
+.hfiltres button.on{background:var(--text);color:var(--card);border-color:var(--text)}
+.hcherche{margin-top:12px}
+.hcherche input{font-size:16px;padding:10px 46px 10px 12px}
+.hcherche input::-webkit-search-cancel-button{display:none}
+.hcmp{margin:12px 0 0;padding:9px 12px;border-radius:10px;background:var(--bg);font-size:14px}
+.rsec{margin:22px 6px 8px;font-size:12px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted)}
+.rs:first-child .rsec{margin-top:4px}
+.rs{display:block}
+.rprof{display:flex;align-items:center;gap:14px;margin-bottom:6px}
+.rpav{flex:none;width:48px;height:48px;border-radius:50%;background:var(--accent);color:#111;font-size:22px;font-weight:800;display:flex;align-items:center;justify-content:center}
+.rpt{flex:1;min-width:0}
+.rpt b{font-size:18px}
+.rprof .role{margin:4px 0 0}
+.rprof .role span{margin:0;font-size:12.5px;font-weight:700}
+.rprof .reg{border:0;padding:0}
+.rpdroits{margin:6px 0 0}
+.rpdroits:empty{display:none}
+.rg .opt{display:flex;align-items:flex-start;gap:12px;margin:0;padding:12px 0;border-top:1px solid var(--line);font-size:15.5px;line-height:1.35}
+.rg .opt:first-of-type{border-top:0;padding-top:2px}
+.rg .opt small{display:block;font-size:13px;color:var(--muted);margin-top:3px}
+.rdet{margin-top:12px;font-size:14px}
+.rdet summary{color:var(--muted);cursor:pointer}
+.rdet p{margin:8px 0 0;color:var(--muted);line-height:1.5}
+.rlist{padding:4px 0;margin-bottom:16px;overflow:hidden}
+.rlist>button,.rlist summary{display:flex;align-items:center;gap:12px;width:100%;border:0;border-top:1px solid var(--line);background:none;color:var(--text);font:inherit;font-size:15.5px;font-weight:600;text-align:left;padding:13px 16px;cursor:pointer;list-style:none}
+.rlist>:first-child,.rlist>:first-child summary{border-top:0}
+.rlist>button.hide{display:none}
+.rlist summary::-webkit-details-marker{display:none}
+.rlist .ri{width:26px;text-align:center;font-size:18px}
+.rlist .rt{flex:1}
+.rlist .chev{width:18px;height:18px;fill:none;stroke:var(--muted);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .15s}
+.rins[open] .chev{transform:rotate(90deg)}
+.rins .inst{padding:0 16px 14px}
+.rins .inst .big{margin:0}
+#p5 .apropos{text-align:center;font-size:13px;color:var(--muted);line-height:1.6;margin:22px 0 10px}
+#p5 .apropos b{color:var(--text)}
 .sheet.hide{display:none}
 .sheet>.card{width:100%;max-width:440px;margin:0;max-height:calc(100dvh - 32px);overflow:auto}
 .sheet h2{margin:0 0 6px;font-size:20px}
@@ -263,6 +320,7 @@ div.seg button{padding-left:0;padding-right:0;min-width:0;white-space:nowrap;ove
 #zoom img{max-width:100%;max-height:100%;object-fit:contain}
 /* Infos (publications) */
 .seg button{position:relative}
+#bnav .badge.pt0{min-width:10px;width:10px;height:10px;padding:0;font-size:0;background:#d64545;top:4px}
 .seg .pt{position:absolute;top:7px;right:12px;width:8px;height:8px;border-radius:50%;background:#d64545}
 .cats{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
 .cats button{border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:20px;padding:7px 12px;font-size:14px;font-weight:600}
@@ -404,7 +462,6 @@ div.seg button{padding-left:0;padding-right:0;min-width:0;white-space:nowrap;ove
 .inst{display:flex;flex-direction:column;gap:10px}
 .inst div{background:var(--bg);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:3px;font-size:14px;line-height:1.4}
 .inst span{color:var(--muted)}
-#statBtn{margin:0 0 16px}
 .reg{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
 .reg:first-of-type{border-top:0}
 .reg button{border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:8px;padding:8px 12px;font-size:14px;font-weight:600}
@@ -488,6 +545,7 @@ body{max-width:1000px;margin-left:calc(232px + max(32px,(100vw - 1264px)/2));mar
 #infoListe>*,#raListe>*{margin:0}
 #p5{columns:2;column-gap:16px}
 #p5>*{break-inside:avoid}
+#p5 .apropos{column-span:all}
 #cadeauCard,#mainRes{max-width:1000px}
 }
 </style>
@@ -515,8 +573,9 @@ body{max-width:1000px;margin-left:calc(232px + max(32px,(100vw - 1264px)/2));mar
     <li><b>⚖️ Comparer 2 articles</b><span>Scanne ou tape deux articles : ils s’affichent côte à côte.</span></li>
     <li><b>🎁 Idées cadeaux</b><span>Donne l’âge et les goûts de la personne : des idées récentes, avec l’âge PEGI pour les jeux.</span></li>
     <li><b>🏷️ Code-barres à rescanner</b><span>Sous chaque résultat : présente l’écran à la douchette du poste. Touche-le pour l’agrandir.</span></li>
-    <li><b>🕘 Historique</b><span>Tes derniers articles, sur n’importe quel téléphone avec ton prénom et ton code.</span></li>
-    <li><b>👥 Équipe</b><span>Infos (la plus importante s’affiche « À la une » sur l’accueil), Planning de la semaine, Réassort (demande un produit avec son SKU, le responsable valide) et Chat du magasin.</span></li>
+    <li><b>🕘 Historique</b><span>Tes derniers articles, rangés par jour, sur n’importe quel téléphone avec ton prénom et ton code. « ⋯ » pour ajouter une note, comparer ou supprimer.</span></li>
+    <li><b>👥 Équipe</b><span>Infos (la plus importante s’affiche « À la une » sur l’accueil), Planning de la semaine et Chat du magasin.</span></li>
+    <li><b>🏬 Magasin</b><span>Objectifs cartes Adhésion et CEMBRA (chacun suit les siens avec − / +), et Réassort : demande un produit avec son SKU, le responsable valide.</span></li>
     <li><b>🔔 Notifications</b><span>Dans Réglages : sois prévenu des nouvelles infos et des messages, même appli fermée. Sur iPhone, installe d’abord BipBip sur l’écran d’accueil.</span></li>
     <li><b>🔒 Ton profil</b><span>Ton prénom + ton code à 4 chiffres. Code oublié ? Demande à Matthieu de le réinitialiser.</span></li>
     <li><b>📲 Installer l’appli</b><span>Samsung : menu ⋮ → « Ajouter à l’écran d’accueil ». iPhone : Safari → Partager → « Sur l’écran d’accueil ».</span></li>
@@ -541,7 +600,8 @@ body{max-width:1000px;margin-left:calc(232px + max(32px,(100vw - 1264px)/2));mar
 <nav id="bnav"><div class="in">
   <button id="t1" class="on" type="button"><svg viewBox="0 0 24 24"><path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2"/><path d="M8 8v8M11 8v8M13.5 8v8M16 8v8"/></svg>Rechercher</button>
   <button id="t4" type="button"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>Historique<span class="badge" id="nb">0</span></button>
-  <button id="t6" type="button"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg>Équipe<span class="badge" id="nbChat" style="display:none">0</span></button>
+  <button id="t6" type="button"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 19c.8-3.4 3.2-5 6-5s5.2 1.6 6 5"/><path d="M16 5.2a3 3 0 0 1 0 5.6M18 14c1.6.6 2.6 2.2 3 5"/></svg>Équipe<span class="badge" id="nbChat" style="display:none">0</span></button>
+  <button id="t7" type="button"><svg viewBox="0 0 24 24"><path d="M5 11v9h14v-9"/><path d="M3.5 7.5 5.5 4h13l2 3.5v1a2.8 2.8 0 0 1-5.6 0 2.8 2.8 0 0 1-5.8 0 2.8 2.8 0 0 1-5.6 0z"/><path d="M10 20v-5h4v5"/></svg>Magasin<span class="badge pt0 hide" id="nbMag">•</span></button>
   <button id="t5" type="button"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg>Réglages</button>
 </div></nav>
 
@@ -612,15 +672,20 @@ body{max-width:1000px;margin-left:calc(232px + max(32px,(100vw - 1264px)/2));mar
 </div>
 
 <div id="p4" class="hide">
-<p class="intro" style="margin:0 2px 14px">Touche un code pour revoir sa fiche. Choisis « Comparer » sur deux articles pour les mettre côte à côte.</p>
 <div id="cmpBar" class="cmpbar hide"><button class="big" id="cmpGo" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4v16M16 4v16M4 8h8M12 16h8"/></svg><span class="lb">Comparer les 2 articles</span></button></div>
 <div id="cmpRes" class="card hide"></div>
 
 <div id="histCard" class="card">
-  <div class="hhead"><span class="lbl" style="margin:0">Derniers articles</span><button id="clr" type="button">Tout effacer</button></div>
-  <ul id="hist"></ul>
+  <div class="hhead"><span class="lbl" style="margin:0">Mes articles</span><button id="clr" type="button">Tout effacer</button></div>
+  <div id="hOutils" class="hide">
+    <div class="hcherche"><div class="champ"><input id="hCherche" type="search" autocomplete="off" placeholder="Retrouver un article…"><button class="croix" type="button" aria-label="Effacer">×</button></div></div>
+    <div class="hfiltres" id="hFiltres"><button type="button" data-f="" class="on">Tout</button><button type="button" data-f="livre">Livres</button><button type="button" data-f="produit">Produits</button><button type="button" data-f="photo">Photos</button></div>
+  </div>
+  <p class="hcmp hide" id="hCmpAide"></p>
+  <div id="hist"></div>
   <p class="muted vide hide" id="vide">Aucun article pour l’instant. Scanne ou saisis un code : il apparaîtra ici.</p>
 </div>
+<p class="aide" style="margin:0 4px 16px">Touche un article pour revoir sa fiche. « ⋯ » pour ajouter une note, comparer ou supprimer.</p>
 </div>
 
 <div id="p6" class="hide">
@@ -690,65 +755,70 @@ body{max-width:1000px;margin-left:calc(232px + max(32px,(100vw - 1264px)/2));mar
 </div>
 
 <div id="p5" class="hide">
-  <div class="card rg">
-    <p class="lbl">Profil</p>
-    <div class="reg"><span>Connecté : <b id="regNom">—</b></span><button id="regChange" type="button"><svg class="ic" style="width:16px;height:16px" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>Changer</button></div>
-    <p class="role" id="regRole"></p>
-    <p class="aide" id="regDroits"></p>
-    <p class="aide">Ton historique et tes notes suivent ton prénom, sur n'importe quel téléphone.</p>
+  <section class="rs">
+  <div class="card rg rprof">
+    <div class="rpav" id="regAv">?</div>
+    <div class="rpt"><b id="regNom">—</b><p class="role" id="regRole"></p><p class="aide rpdroits" id="regDroits"></p></div>
+    <div class="reg"><button id="regChange" type="button">Changer</button></div>
   </div>
+  </section>
 
+  <section class="rs">
+  <p class="rsec">Scan</p>
+  <div class="card rg">
+    <label class="opt"><input type="checkbox" id="auto"><span>Ouvrir fnac.ch dès qu’un code est scanné<small>Sauf les livres. Décoché : tu vois d’abord la fiche BipBip.</small></span></label>
+    <label class="opt"><input type="checkbox" id="sonOn"><span>Son « bip »</span></label>
+    <label class="opt"><input type="checkbox" id="vibOn"><span>Vibration légère</span></label>
+    <button id="bipTest" type="button" style="margin-top:14px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5v14l11-7z"/></svg>Tester le bip</button>
+    <details class="rdet"><summary>Le son ne marche pas ?</summary><p>iPhone : le son se coupe avec le bouton silencieux, et la vibration n’est pas possible dans Safari.<br>Samsung : le son suit le volume multimédia ; décoche « Son » pour ne garder que la vibration.</p></details>
+  </div>
+  </section>
+
+  <section class="rs">
+  <p class="rsec">Notifications</p>
+  <div class="card rg" id="notifCard">
+    <p class="aide" id="notifEtat" style="margin-top:0">Reçois une alerte même quand BipBip est fermée.</p>
+    <button class="big" id="notifOn" type="button">🔔 Activer les notifications</button>
+    <div id="notifTypes" class="hide">
+      <label class="opt"><input type="checkbox" id="nInfos"><span>Nouvelles infos de l’équipe</span></label>
+      <label class="opt"><input type="checkbox" id="nChat"><span>Messages du chat</span></label>
+      <label class="opt hide" id="nReaL"><input type="checkbox" id="nRea"><span>Demandes de réassort</span></label>
+      <div class="infoacts" style="margin-top:16px"><button id="notifTest" class="big alt" type="button">Tester</button><button id="notifOff" class="big alt" type="button">Désactiver</button></div>
+    </div>
+  </div>
+  </section>
+
+  <section class="rs">
+  <p class="rsec">Aide</p>
+  <div class="card rlist">
+    <button id="aideBtn" type="button"><span class="ri">❓</span><span class="rt">Comment ça marche</span><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
+    <button id="bvRevoir" type="button"><span class="ri">👋</span><span class="rt">Revoir la présentation</span><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
+    <details class="rins"><summary><span class="ri">📲</span><span class="rt">Installer sur l’écran d’accueil</span><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></summary>
+      <div class="inst">
+        <button class="big hide" id="installBtn" type="button">📲 Installer BipBip sur ce téléphone</button>
+        <div><b>Samsung / Android</b><span>Menu ⋮ du navigateur → « Ajouter à l’écran d’accueil »</span></div>
+        <div><b>iPhone</b><span>Dans Safari, bouton Partager → « Sur l’écran d’accueil »</span></div>
+      </div>
+    </details>
+  </div>
+  </section>
+
+  <section class="rs hide" id="adminSec">
+  <p class="rsec">Administration</p>
+  <div class="card rlist">
+    <button class="hide" id="statBtn" type="button"><span class="ri">📊</span><span class="rt">Statistiques de l’équipe</span><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
+  </div>
+  <div id="statCard" class="card hide"></div>
   <div class="card rg hide" id="rolesCard">
     <p class="lbl">Rôles et droits</p>
-    <p class="aide" style="margin-top:0">👑 Administrateur (toi) : tous les droits, toujours. Coche ce que les managers ont le droit de faire. Pour nommer quelqu'un manager : Statistiques de l'équipe → Gérer.</p>
+    <p class="aide" style="margin-top:0">👑 Administrateur (toi) : tous les droits, toujours. Coche ce que les managers ont le droit de faire. Pour nommer quelqu’un manager : Statistiques de l’équipe → Gérer.</p>
     <p class="clab" id="rolesManagers"></p>
     <div id="rolesDroits"></div>
     <p class="aide" id="rolesMsg"></p>
   </div>
+  </section>
 
-  <div class="card rg">
-    <p class="lbl">Options</p>
-    <label class="opt"><input type="checkbox" id="auto"> Ouvrir la fiche fnac.ch dès qu'un code est scanné (sauf livres)</label>
-    <p class="aide">Décoché, tu vois d'abord la fiche BipBip (résumé, question du client…) avant d'ouvrir fnac.ch.</p>
-  </div>
-
-  <div class="card rg">
-    <p class="lbl">Bip au scan</p>
-    <label class="opt"><input type="checkbox" id="sonOn"> Son « bip »</label>
-    <label class="opt" style="margin-top:12px"><input type="checkbox" id="vibOn"> Vibration légère</label>
-    <button id="bipTest" type="button" style="margin-top:16px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5v14l11-7z"/></svg>Tester le bip</button>
-    <p class="aide">iPhone : le son se coupe tout seul avec le bouton silencieux (la vibration n'est pas possible dans Safari).<br>Samsung : le son suit le volume multimédia ; décoche « Son » pour ne garder que la vibration.</p>
-  </div>
-
-  <div class="card rg" id="notifCard">
-    <p class="lbl">Notifications</p>
-    <p class="aide" id="notifEtat" style="margin-top:0">Reçois une alerte même quand BipBip est fermée.</p>
-    <button class="big" id="notifOn" type="button">🔔 Activer les notifications</button>
-    <div id="notifTypes" class="hide">
-      <label class="opt"><input type="checkbox" id="nInfos"> Nouvelles infos de l’équipe</label>
-      <label class="opt" style="margin-top:12px"><input type="checkbox" id="nChat"> Messages du chat</label>
-      <label class="opt hide" style="margin-top:12px" id="nReaL"><input type="checkbox" id="nRea"> Demandes de réassort</label>
-      <div class="infoacts" style="margin-top:16px"><button id="notifTest" class="big alt" type="button">Tester</button><button id="notifOff" class="big alt" type="button">Désactiver</button></div>
-    </div>
-  </div>
-
-  <button class="big alt" id="aideBtn" type="button"><span class="lb">❓ Comment ça marche</span></button>
-  <button class="big alt" id="bvRevoir" type="button"><span class="lb">👋 Revoir la présentation</span></button>
-
-  <button class="big alt hide" id="statBtn" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg><span class="lb">Statistiques de l'équipe</span></button>
-  <div id="statCard" class="card hide"></div>
-
-  <div class="card rg">
-    <p class="lbl">À propos</p>
-    <p class="apropos"><b>BipBip</b> · l'assistant de rayon qui fait bip<br><span class="muted">Créée par Matthieu L.</span></p>
-    <p class="lbl" style="margin-top:18px">Installer sur l'écran d'accueil</p>
-    <div class="inst">
-      <div><b>Samsung / Android</b><span>Menu ⋮ du navigateur → « Ajouter à l'écran d'accueil »</span></div>
-      <div><b>iPhone</b><span>Dans Safari, bouton Partager → « Sur l'écran d'accueil »</span></div>
-    </div>
-    <button class="big hide" id="installBtn" type="button" style="margin-top:12px">📲 Installer BipBip sur ce téléphone</button>
-    <p class="aide" id="regVer"></p>
-  </div>
+  <p class="apropos"><b>BipBip</b> · l’assistant de rayon qui fait bip<br>Créée par Matthieu L. · <span id="regVer"></span></p>
 </div>
 
 <script>
@@ -761,8 +831,16 @@ var ICONES = { cam: '<path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4
 function btnIc(cls, icone, txt){ var b = document.createElement("button"); b.type = "button"; b.className = cls; b.innerHTML = '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">' + ICONES[icone] + '</svg><span class="lb"></span>'; b.querySelector(".lb").textContent = txt; return b; }
 function lab(id, txt){ var b = $(id), s = b && b.querySelector(".lb"); if (s) s.textContent = txt; else if (b) b.textContent = txt; }
 
+// onglets du bas : 1 Rechercher, 4 Historique, 6 Équipe, 7 Magasin, 5 Réglages
+// Équipe et Magasin partagent la même page (#p6), chacun avec ses sous-onglets
+var ONGLET = 1, GROUPES = { 6: ["info", "plan", "chat"], 7: ["obj", "rea"] }, VUEG = { 6: "info", 7: "obj" };
+try { var vg = JSON.parse(localStorage.getItem("vueGroupe") || "{}"); if (GROUPES[6].indexOf(vg[6]) > -1) VUEG[6] = vg[6]; if (GROUPES[7].indexOf(vg[7]) > -1) VUEG[7] = vg[7]; } catch(e){}
+function groupeDe(v){ return GROUPES[7].indexOf(v) > -1 ? 7 : 6; }
 function tab(n){
-  [1, 4, 5, 6].forEach(function(i){ $("p" + i).className = n === i ? "" : "hide"; $("t" + i).className = n === i ? "on" : ""; });
+  ONGLET = n;
+  [1, 4, 5, 6, 7].forEach(function(i){ $("t" + i).className = n === i ? "on" : ""; });
+  [1, 4, 5, 6].forEach(function(i){ $("p" + i).className = n === i || (i === 6 && n === 7) ? "" : "hide"; });
+  if (n === 6 || n === 7) [["info", "vInfo"], ["plan", "vPlan"], ["chat", "vChat"], ["obj", "vObj"], ["rea", "vRea"]].forEach(function(x){ $(x[1]).style.display = GROUPES[n].indexOf(x[0]) > -1 ? "" : "none"; });
   $("mainRes").className = n >= 4 ? "hide" : "";
   if (typeof majCmp === "function") majCmp();
   window.scrollTo(0, 0);
@@ -773,6 +851,8 @@ $("t4").onclick = function(){ tab(4); };
 $("t5").addEventListener("click", stop);
 $("t6").addEventListener("click", stop);
 $("t6").onclick = function(){ tab(6); ouvrirChat(); };
+$("t7").addEventListener("click", stop);
+$("t7").onclick = function(){ tab(7); ouvrirChat(); };
 $("t5").onclick = function(){ tab(5); };
 
 // ---------- profil (prénom) ----------
@@ -820,10 +900,12 @@ function setTitre(c, ti){
 }
 function majProfilUI(){
   $("who").textContent = PROFIL.nom ? "Salut " + PROFIL.nom + " 👋" : "";
-  $("statBtn").className = peut("stats") ? "big alt" : "big alt hide";
+  $("statBtn").className = peut("stats") ? "" : "hide";
+  $("adminSec").className = peut("stats") || PROFIL.admin ? "rs" : "rs hide";
+  $("regAv").textContent = PROFIL.nom ? PROFIL.nom.charAt(0).toUpperCase() : "?";
   var role = PROFIL.admin ? "admin" : PROFIL.role || "equipe";
-  $("regRole").innerHTML = ""; if (PROFIL.nom) { $("regRole").appendChild(document.createTextNode("Rôle :")); $("regRole").appendChild(el("span", "", ROLES[role] || "Équipe")); }
-  $("regDroits").textContent = role === "admin" ? "Tous les droits." : role === "manager" ? ((PROFIL.droits || []).length ? "Tes droits : " + PROFIL.droits.map(function(d){ return (CATALOGUE[d] || d).toLowerCase(); }).join(" ; ") + "." : "Aucun droit particulier pour l’instant.") : "";
+  $("regRole").innerHTML = ""; if (PROFIL.nom) { $("regRole").appendChild(el("span", "", ROLES[role] || "Équipe")); }
+  $("regDroits").textContent = role === "admin" ? "" : role === "manager" ? ((PROFIL.droits || []).length ? "Tes droits : " + PROFIL.droits.map(function(d){ return (CATALOGUE[d] || d).toLowerCase(); }).join(" ; ") + "." : "Aucun droit particulier pour l’instant.") : "";
   $("rolesCard").className = PROFIL.admin ? "card rg" : "card rg hide";
   $("regNom").textContent = PROFIL.nom || "—";
 }
@@ -1021,48 +1103,82 @@ function ago(t){
   if (hh < 24) return "il y a " + hh + " h";
   return "il y a " + Math.round(hh / 24) + " j";
 }
+var HF = { f: "", q: "", ouvert: "" };
+function groupeJour(t){
+  if (!t) return "Plus ancien";
+  var d = new Date(t), auj = new Date(); auj.setHours(0, 0, 0, 0);
+  var j = Math.floor((auj - new Date(d.getFullYear(), d.getMonth(), d.getDate())) / 864e5);
+  return j <= 0 ? "Aujourd’hui" : j === 1 ? "Hier" : j < 7 ? "Cette semaine" : "Plus ancien";
+}
 function renderHist(h){
-  $("nb").textContent = h.length; $("nb").style.display = h.length ? "" : "none";
-  $("vide").className = h.length ? "muted vide hide" : "muted vide";
+  $("nb").style.display = "none";
   $("clr").style.visibility = h.length ? "visible" : "hidden";
+  $("hOutils").className = h.length >= 6 ? "" : "hide";
   setTimeout(renderCmp, 0);
-  var ul = $("hist"); ul.innerHTML = "";
-  h.forEach(function(x){
-    var sku = x.c.indexOf("s:") === 0, ph = x.c.indexOf("p:") === 0, code = (sku || ph) ? x.c.slice(2) : x.c;
-    var etiquette = ph ? "Photo" : (sku ? "SKU " : (isBook(code) ? "Livre · EAN " : "EAN ")) + code;
-    var li = document.createElement("li");
-    var top = document.createElement("div"); top.className = "hrow";
-    var bloc = document.createElement("div"); bloc.style.minWidth = "0";
-    var b = document.createElement("b"); b.textContent = x.ti || etiquette;
-    b.className = "hcode"; b.title = "Revoir la fiche";
-    bloc.appendChild(b);
-    if (x.ti) { var sc = document.createElement("div"); sc.className = "hsub"; sc.textContent = etiquette; bloc.appendChild(sc); }
-    b.onclick = function(){ tab(x.c.indexOf("s:") === 0 ? 2 : 1); last = ""; show(x.c); window.scrollTo({ top: 0, behavior: "smooth" }); };
-    var s = document.createElement("span"); s.className = "muted"; s.textContent = ago(x.t);
-    var ok = document.createElement("span"); ok.className = "saved";
-    top.appendChild(bloc); top.appendChild(ok); top.appendChild(s); li.appendChild(top);
-    var inp = document.createElement("input"); inp.className = "note"; inp.placeholder = "Prix, remarque…"; inp.value = x.n || "";
-    inp.oninput = function(){
-      var hh = loadHist(); hh.forEach(function(y){ if (y.c === x.c) y.n = inp.value; }); storeHist(hh);
-      clearTimeout(inp.tm); inp.tm = setTimeout(function(){ prof("/profil/note", { article: x.c, note: inp.value }); }, 800);
-      ok.textContent = "✓ Enregistré"; clearTimeout(ok.tm); ok.tm = setTimeout(function(){ ok.textContent = ""; }, 1500);
-    };
-    li.appendChild(inp);
-    var acts = document.createElement("div"); acts.className = "acts";
-    var a1 = document.createElement("a"); a1.href = urlFor(x.c); a1.target = "_blank"; a1.rel = "noopener"; a1.textContent = "Ouvrir";
-    var d = document.createElement("button"); d.type = "button"; d.textContent = "Supprimer";
-    d.onclick = function(){ var hh = loadHist().filter(function(y){ return y.c !== x.c; }); storeHist(hh); renderHist(hh); prof("/profil/supprimer", { article: x.c }); };
-    var cp = document.createElement("button"); cp.type = "button"; cp.textContent = "Comparer";
-    if (cmpSel.indexOf(x.c) > -1) cp.className = "sel";
-    cp.onclick = function(){
-      var i = cmpSel.indexOf(x.c);
-      if (i > -1) cmpSel.splice(i, 1); else { cmpSel.push(x.c); if (cmpSel.length > 2) cmpSel.shift(); }
-      renderHist(loadHist());
-    };
-    acts.appendChild(a1); acts.appendChild(cp); acts.appendChild(d); li.appendChild(acts);
+  var cat = function(x){ var t = typeDe(x.c); return t === "sku" ? "produit" : t; };
+  var q = HF.q.toLowerCase();
+  var liste = h.filter(function(x){
+    if (HF.f && cat(x) !== HF.f) return false;
+    return !q || ((x.ti || "") + " " + x.c + " " + (x.n || "")).toLowerCase().indexOf(q) > -1;
+  });
+  $("vide").className = liste.length ? "muted vide hide" : "muted vide";
+  $("vide").textContent = h.length ? "Aucun article ne correspond." : "Aucun article pour l’instant. Scanne ou saisis un code : il apparaîtra ici.";
+  var aide = $("hCmpAide");
+  aide.className = cmpSel.length === 1 ? "hcmp" : "hcmp hide";
+  aide.textContent = "⚖️ Choisis un 2e article à comparer (⋯ → Comparer).";
+  var box = $("hist"); box.innerHTML = ""; var grp = "", ul = null;
+  liste.forEach(function(x){
+    var g = groupeJour(x.t);
+    if (g !== grp) { grp = g; box.appendChild(el("p", "hgrp", g)); ul = el("ul", "hliste"); box.appendChild(ul); }
+    var sku = x.c.indexOf("s:") === 0, ph = x.c.indexOf("p:") === 0, code = (sku || ph) ? x.c.slice(2) : x.c, livre = !sku && !ph && isBook(code);
+    var etiquette = ph ? "Photo" : (sku ? "SKU " : livre ? "ISBN " : "EAN ") + code;
+    var li = el("li", "hit" + (cmpSel.indexOf(x.c) > -1 ? " sel" : "") + (HF.ouvert === x.c ? " ouv" : ""));
+    var main = el("button", "hmain"); main.type = "button"; main.title = "Revoir la fiche";
+    main.appendChild(el("span", "hico", ph ? "📷" : livre ? "📖" : "📦"));
+    var tx = el("span", "htxt");
+    tx.appendChild(el("b", "", x.ti || etiquette));
+    var heure = x.t ? (grp === "Aujourd’hui" || grp === "Hier" ? new Date(x.t).toLocaleTimeString("fr-CH", { hour: "2-digit", minute: "2-digit" }) : new Date(x.t).toLocaleDateString("fr-CH", { day: "numeric", month: "short" })) : "";
+    tx.appendChild(el("small", "", (x.ti ? etiquette + " · " : "") + heure));
+    if (x.n) tx.appendChild(el("em", "hnote", "📝 " + x.n));
+    if (cmpSel.indexOf(x.c) > -1) tx.appendChild(el("em", "hsel", "⚖️ À comparer"));
+    main.appendChild(tx);
+    main.onclick = function(){ tab(1); last = ""; show(x.c); window.scrollTo({ top: 0, behavior: "smooth" }); };
+    var plus = el("button", "hplus", "⋯"); plus.type = "button"; plus.setAttribute("aria-label", "Options de l’article"); plus.setAttribute("aria-expanded", HF.ouvert === x.c ? "true" : "false");
+    plus.onclick = function(){ HF.ouvert = HF.ouvert === x.c ? "" : x.c; renderHist(loadHist()); };
+    var top = el("div", "hrow2"); top.appendChild(main); top.appendChild(plus); li.appendChild(top);
+    if (HF.ouvert === x.c) {
+      var det = el("div", "hdet");
+      var ok = el("span", "saved");
+      var inp = el("input", "note"); inp.placeholder = "Ajouter une note : prix, remarque…"; inp.value = x.n || "";
+      inp.oninput = function(){
+        var hh = loadHist(); hh.forEach(function(y){ if (y.c === x.c) y.n = inp.value; }); storeHist(hh);
+        clearTimeout(inp.tm); inp.tm = setTimeout(function(){ prof("/profil/note", { article: x.c, note: inp.value }); }, 800);
+        ok.textContent = "✓ Enregistré"; clearTimeout(ok.tm); ok.tm = setTimeout(function(){ ok.textContent = ""; }, 1500);
+      };
+      inp.onkeydown = function(e){ if (e.key === "Enter") inp.blur(); };
+      inp.onblur = function(){ if ((x.n || "") !== inp.value) renderHist(loadHist()); };
+      det.appendChild(inp); det.appendChild(ok);
+      var acts = el("div", "acts");
+      var a1 = el("a", "", "fnac.ch ↗"); a1.href = urlFor(x.c); a1.target = "_blank"; a1.rel = "noopener";
+      var cp = el("button", cmpSel.indexOf(x.c) > -1 ? "sel" : "", cmpSel.indexOf(x.c) > -1 ? "✓ Comparer" : "Comparer"); cp.type = "button";
+      cp.onclick = function(){
+        var i = cmpSel.indexOf(x.c);
+        if (i > -1) cmpSel.splice(i, 1); else { cmpSel.push(x.c); if (cmpSel.length > 2) cmpSel.shift(); }
+        HF.ouvert = ""; renderHist(loadHist());
+      };
+      var d = el("button", "suppr", "Supprimer"); d.type = "button";
+      d.onclick = function(){ var hh = loadHist().filter(function(y){ return y.c !== x.c; }); HF.ouvert = ""; storeHist(hh); renderHist(hh); prof("/profil/supprimer", { article: x.c }); };
+      acts.appendChild(a1); acts.appendChild(cp); acts.appendChild(d); det.appendChild(acts);
+      li.appendChild(det);
+    }
     ul.appendChild(li);
   });
 }
+$("hCherche").oninput = function(){ HF.q = this.value.trim(); renderHist(loadHist()); };
+$("hCherche").parentNode.querySelector(".croix").onclick = function(){ $("hCherche").value = ""; HF.q = ""; renderHist(loadHist()); };
+[].forEach.call(document.querySelectorAll("#hFiltres button"), function(b){
+  b.onclick = function(){ HF.f = b.getAttribute("data-f"); [].forEach.call(document.querySelectorAll("#hFiltres button"), function(x){ x.className = x === b ? "on" : ""; }); renderHist(loadHist()); };
+});
 var cmpSel = [];
 function label(c){ if (c.indexOf("p:") === 0) return "« " + c.slice(2) + " »"; return c.indexOf("s:") === 0 ? "SKU fnac.ch " + c.slice(2) : (isBook(c) ? "ISBN " : "EAN ") + c; }
 function claudeUrl(q){ return "https://www.google.com/search?udm=50&hl=fr&q=" + encodeURIComponent(q); }
@@ -1789,7 +1905,7 @@ $("bipTest").onclick = function(){ bip(); };
 
 $("again").onclick = function(){ tab(1); window.scrollTo({ top: 0, behavior: "smooth" }); if (!running) start(); };
 $("regChange").onclick = ouvrirProfil;
-try { $("regVer").textContent = "Version du " + new Date(document.lastModified).toLocaleDateString("fr-CH"); } catch(e){}
+try { $("regVer").textContent = "version du " + new Date(document.lastModified).toLocaleDateString("fr-CH"); } catch(e){}
 $("pGo").onclick = connexion;
 $("pNom").addEventListener("keydown", function(e){ if (e.key === "Enter") { if ($("pCle").value) connexion(); else $("pCle").focus(); } });
 $("pCle").addEventListener("keydown", function(e){ if (e.key === "Enter") connexion(); });
@@ -1797,7 +1913,7 @@ $("statBtn").onclick = afficherStats;
 renderHist(loadHist());
 majProfilUI();
 if (PROFIL.nom) chargerHistoriqueServeur(false); else ouvrirProfil();
-setTimeout(function(){ utiliserInvitation(); if (PARAMS.get("vue")) allerVue(PARAMS.get("vue")); if (PROFIL.nom) verifierNotif(); if (PROFIL.nom && !PARAMS.get("vue") && !bienvenueVue()) setTimeout(ouvrirBienvenue, 600); }, 0);
+setTimeout(function(){ utiliserInvitation(); if (PARAMS.get("vue")) allerVue(PARAMS.get("vue")); if (PROFIL.nom) verifierNotif(); if (PROFIL.nom && CHAT.code) verifierReassort(); if (PROFIL.nom && !PARAMS.get("vue") && !bienvenueVue()) setTimeout(ouvrirBienvenue, 600); }, 0);
 function bienvenueVue(){ try { return localStorage.getItem("bienvenue") === "1"; } catch(e){ return true; } }
 
 // ---------- chat du magasin ----------
@@ -1821,12 +1937,11 @@ function ouvrirChat(){
   $("chatSalon").textContent = CHAT.salon || "Mon magasin";
   // le code du magasin n'est montré qu'à l'administrateur
   $("chatCodeAff").textContent = PROFIL.admin ? CHAT.code : ""; $("chatCodeLigne").className = PROFIL.admin ? "sub" : "sub hide"; $("chatInvit").className = PROFIL.admin ? "big" : "big hide";
-  if (!$("vuePlan").classList.contains("hide")) { chargerPlanning(); return; }
-  if (!$("vueInfo").classList.contains("hide")) { chargerInfos(); return; }
-  if (!$("vueRea").classList.contains("hide")) { chargerReassort(); return; }
-  verifierInfos(); verifierReassort();
-  if (!CHAT.dernier) $("chatList").innerHTML = '<p class="vide">Chargement…</p>';
-  chargerMessages(true);
+  var g = ONGLET === 7 ? 7 : 6, v = VUEG[g];
+  if (v !== "info") verifierInfos();
+  if (v !== "rea") verifierReassort();
+  if (v === "chat" && !CHAT.dernier) $("chatList").innerHTML = '<p class="vide">Chargement…</p>';
+  vue(v);
 }
 function rejoindre(code){
   code = String(code || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
@@ -2038,7 +2153,7 @@ function toast(t, ms){ var b = $("toast"); b.textContent = t; b.className = ""; 
 
 // ---------- accueil des nouveaux (une seule fois par téléphone) ----------
 var INSTALL = null;
-window.addEventListener("beforeinstallprompt", function(e){ e.preventDefault(); INSTALL = e; $("installBtn").className = "big"; });
+window.addEventListener("beforeinstallprompt", function(e){ e.preventDefault(); INSTALL = e; $("installBtn").className = "big"; try { document.querySelector(".rins").open = true; } catch(x){} });
 window.addEventListener("appinstalled", function(){ INSTALL = null; $("installBtn").className = "big hide"; toast("BipBip est installée ✓"); });
 function estInstallee(){ return !!(navigator.standalone || (window.matchMedia && matchMedia("(display-mode: standalone)").matches)); }
 function installer(){ if (!INSTALL) return; INSTALL.prompt(); INSTALL.userChoice.then(function(){ INSTALL = null; $("installBtn").className = "big hide"; if (BV.i === 2) etapeBienvenue(); }); }
@@ -2055,8 +2170,8 @@ function etapeBienvenue(){
   } else if (BV.i === 1) {
     e.appendChild(el("div", "bvgros", "👥"));
     e.appendChild(el("h2", "", "Ton équipe dans la poche"));
-    e.appendChild(el("p", "", "Dans l’onglet Équipe :"));
-    var u2 = el("ul"); ["📌 les infos du magasin (la plus importante s’affiche sur l’accueil)", "🗓️ le planning de la semaine", "📦 les demandes de réassort", "💬 le chat, avec photos et @prénom"].forEach(function(t){ u2.appendChild(el("li", "", t)); }); e.appendChild(u2);
+    e.appendChild(el("p", "", "Dans les onglets Équipe et Magasin :"));
+    var u2 = el("ul"); ["📌 les infos du magasin (la plus importante s’affiche sur l’accueil)", "🗓️ le planning de la semaine", "💬 le chat, avec photos et @prénom", "🎯 tes objectifs cartes Adhésion et CEMBRA", "📦 les demandes de réassort"].forEach(function(t){ u2.appendChild(el("li", "", t)); }); e.appendChild(u2);
     e.appendChild(el("p", "", "Rien de confidentiel dedans : pas de données clients."));
   } else {
     e.appendChild(el("div", "bvgros", "🚀"));
@@ -2142,7 +2257,7 @@ function utiliserInvitation(){
 }
 function allerVue(v){
   if (!/^(chat|info|rea|plan|obj)$/.test(v || "") || !CHAT.code || !PROFIL.nom) return;
-  tab(6); ouvrirChat(); vue(v);
+  VUEG[groupeDe(v)] = v; tab(groupeDe(v)); ouvrirChat();
 }
 if ("serviceWorker" in navigator) navigator.serviceWorker.addEventListener("message", function(e){
   if (e.data && e.data.type === "ouvrir") { try { allerVue(new URL(e.data.url).searchParams.get("vue")); } catch(x){} }
@@ -2364,9 +2479,11 @@ function dessinerObjectifs(){
   if (estChef) box.appendChild(el("p", "aide", "Touche un nombre pour le changer directement, ou utilise − / +. Les managers n’ont pas d’objectif cartes."));
   box.appendChild(el("p", "aide", "Taux d’atteinte en vert si on est dans le rythme du mois, orange si un peu en retard, rouge si en retard."));
 }
-// sous-onglets de l'onglet Équipe : "chat", "plan" ou "info"
+// sous-onglets : Équipe ("info", "plan", "chat") et Magasin ("obj", "rea")
 function vue(v){
   v = v === true ? "plan" : v === false ? "chat" : v;
+  var g = groupeDe(v); VUEG[g] = v; try { localStorage.setItem("vueGroupe", JSON.stringify(VUEG)); } catch(e){}
+  if (ONGLET !== g) tab(g);
   [["chat", "vChat", "vueChat"], ["plan", "vPlan", "vuePlan"], ["info", "vInfo", "vueInfo"], ["rea", "vRea", "vueRea"], ["obj", "vObj", "vueObj"]].forEach(function(x){
     $(x[1]).className = v === x[0] ? "on" : ""; $(x[2]).className = v === x[0] ? "" : "hide";
   });
@@ -2437,7 +2554,7 @@ function dessinerUne(x){
     if (x.img) { var im = el("img", "unephoto"); im.alt = ""; corps.appendChild(im); chargerPhoto(x.id, im); }
     c.appendChild(corps);
     var plus = el("button", "uneplus", "Toutes les infos de l’équipe ›"); plus.type = "button";
-    plus.onclick = function(){ stop(); tab(6); ouvrirChat(); vue("info"); };
+    plus.onclick = function(){ stop(); VUEG[6] = "info"; tab(6); ouvrirChat(); };
     c.appendChild(plus);
 }
 function dateLongue(iso){ var d = new Date(iso + "T12:00:00"); return JOURS_LONG[(d.getDay() + 6) % 7].toLowerCase() + " " + (d.getDate() === 1 ? "1er" : d.getDate()) + " " + MOIS[d.getMonth()] + (d.getFullYear() !== new Date().getFullYear() ? " " + d.getFullYear() : ""); }
@@ -2556,7 +2673,7 @@ function chargerReassort(){
       faits.forEach(function(x){ c2.appendChild(ligneDemande(x)); });
       box.appendChild(c2);
     }
-    $("ptRea").className = "pt hide";
+    pointRea(false);
   });
 }
 function ligneDemande(x){
@@ -2590,12 +2707,13 @@ $("raGo").onclick = function(){
     chargerReassort();
   });
 };
+function pointRea(on){ $("ptRea").className = on ? "pt" : "pt hide"; $("nbMag").className = on ? "badge pt0" : "badge pt0 hide"; }
 // point rouge sur « Réassort » pour le responsable quand des demandes attendent
 function verifierReassort(){
   if (!CHAT.code) return;
   prof("/chat/reassort", { code: CHAT.code }).then(function(j){
     var n = j && j.ok && j.peutValider ? (j.demandes || []).filter(function(x){ return x.statut === "demande"; }).length : 0;
-    $("ptRea").className = n ? "pt" : "pt hide";
+    pointRea(!!n);
   });
 }
 
