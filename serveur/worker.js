@@ -60,6 +60,14 @@ export default {
       }
       if (url.pathname === "/livre") return await sendCache(await livre(code, env));
       if (url.pathname === "/similaires") return await sendCache(await similaires(code, env));
+      if (url.pathname === "/serie") {
+        // liste des tomes : gardée 3 jours (les nouveaux tomes arrivent vite)
+        const cs = "serie:v1:" + code;
+        if (env.FICHES && !frais) { try { const d = await env.FICHES.get(cs, "json"); if (d) return send({ ...d, memoire: true }); } catch (e) {} }
+        const o = await serie(code);
+        if (o.trouve && env.FICHES) { try { await env.FICHES.put(cs, JSON.stringify(o), { expirationTtl: 3 * 24 * 3600 }); } catch (e) {} }
+        return send(o);
+      }
       if (url.pathname === "/produit") return await sendCache(await produit(code, env));
       if (url.pathname === "/comparer") {
         const g = (k) => (url.searchParams.get(k) || "").trim().slice(0, 120);
@@ -977,6 +985,76 @@ async function lirePlanning(image, env) {
   return { ok: false, erreur: "l'IA n'a pas réussi à lire ce planning", details: essais };
 }
 
+
+
+// ---------- tous les tomes d'une série : uniquement les catalogues (BnF, swisscovery), aucune IA ----------
+// « One Piece. 107, Le héros légendaire » → { nom: "One Piece", n: 107, sous: "Le héros légendaire" }
+function decouperSerie(titre) {
+  const t = String(titre || "").split(" / ")[0].replace(/\s*\[.*?\]\s*/g, " ").replace(/\s+/g, " ").trim();
+  const m = t.match(/^(.{2,120}?)\s*(?:\.|,|-|–|:)\s*(?:tome|t\.|vol\.?|volume|n°|no\.?|#)?\s*(\d{1,4})(?:\s*(?:,|:|\.|-|–)\s*(.*))?$/i);
+  if (!m) return null;
+  const n = parseInt(m[2], 10), nom = m[1].replace(/\s*[.,:;\-–]\s*$/, "").trim();
+  if (!(n >= 1 && n <= 2000) || motsDe(nom).length === 0) return null;
+  return { nom, n, sous: (m[3] || "").replace(/\s*[.,;:]\s*$/, "").trim() };
+}
+const normSerie = (t) => String(t || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+async function bnfPage(requete, debut) {
+  const r = await get("https://catalogue.bnf.fr/api/SRU?version=1.2&operation=searchRetrieve&recordSchema=dublincore&maximumRecords=50&startRecord=" + debut + "&query=" + encodeURIComponent(requete), { timeout: 9000 });
+  if (r.status !== 200) return { total: 0, recs: [], erreur: "BnF " + r.status };
+  const total = parseInt((r.text.match(/<srw:numberOfRecords>(\d+)</) || [])[1] || "0", 10);
+  const recs = [...r.text.matchAll(/<srw:record>([\s\S]*?)<\/srw:record>/g)].map((m) => {
+    const rec = m[1], dc = (tag) => [...rec.matchAll(new RegExp("<dc:" + tag + "[^>]*>([\\s\\S]*?)</dc:" + tag + ">", "g"))].map((x) => strip(x[1]));
+    const isbn = (rec.match(/ISBN\s*(97[89][\d\- ]{10,17})/) || [])[1];
+    return { titre: dc("title")[0] || "", editeur: dc("publisher").join(" "), auteur: dc("creator")[0] || "", date: (dc("date")[0] || "").slice(0, 4), isbn: isbn ? isbn.replace(/\D/g, "") : "" };
+  });
+  return { total, recs };
+}
+async function serie(isbn) {
+  if (!/^97[89]\d{10}$/.test(isbn)) return { trouve: false, erreur: "ISBN attendu" };
+  // 1) le livre scanné : son titre catalogue dit s'il fait partie d'une série, et quel tome c'est
+  const ici = (await bnfPage('bib.isbn all "' + isbn + '"', 1).catch(() => ({ recs: [] }))).recs[0];
+  let base = ici && decouperSerie(ici.titre), editeur = ici ? ici.editeur : "", auteur = ici ? ici.auteur : "";
+  if (!base) {
+    // repli : catalogue suisse, champ « collection / série » (MARC 490 ou 800/830)
+    const r = await get("https://swisscovery.slsp.ch/view/sru/41SLSP_NETWORK?version=1.2&operation=searchRetrieve&recordSchema=marcxml&maximumRecords=1&query=alma.isbn%3D" + isbn).catch(() => null);
+    if (r && r.status === 200) {
+      const champ = (tag, code) => { const re = new RegExp('<datafield[^>]*tag="' + tag + '"[^>]*>([\\s\\S]*?)</datafield>'); const m = r.text.match(re); const sm = m && m[1].match(new RegExp('<subfield code="' + code + '">([\\s\\S]*?)</subfield>')); return sm ? strip(sm[1]).replace(/\s*[\/:;,.]\s*$/, "") : ""; };
+      for (const tag of ["800", "830", "490"]) {
+        const nom = champ(tag, tag === "800" ? "t" : "a"), v = (champ(tag, "v").match(/\d{1,4}/) || [])[0];
+        if (nom && v) { base = { nom, n: parseInt(v, 10), sous: "" }; break; }
+      }
+      editeur = editeur || champ("264", "b") || champ("260", "b"); auteur = auteur || champ("100", "a");
+    }
+  }
+  if (!base) return { trouve: false, raison: "pas de série", message: "Les catalogues n’indiquent pas que ce livre fait partie d’une série." };
+  // 2) tous les livres du catalogue BnF portant ce titre de série (même auteur), page par page
+  const mots = motsDe(base.nom).slice(0, 6), nomAuteur = motsDe(String(auteur).split(",")[0]).slice(-1)[0] || "";
+  if (!mots.length) return { trouve: false, raison: "titre trop court" };
+  const req = 'bib.title all "' + mots.join(" ") + '"' + (nomAuteur ? ' and bib.author all "' + nomAuteur + '"' : "");
+  const p1 = await bnfPage(req, 1).catch(() => ({ total: 0, recs: [], erreur: "BnF injoignable" }));
+  if (p1.erreur && !p1.recs.length) return { trouve: false, raison: "catalogue injoignable", message: "Le catalogue de la BnF ne répond pas, réessaie plus tard.", detail: p1.erreur };
+  const pages = [];
+  for (let d = 51; d <= Math.min(p1.total, 400); d += 50) pages.push(bnfPage(req, d).catch(() => ({ recs: [] })));
+  const recs = p1.recs.concat(...(await Promise.all(pages)).map((x) => x.recs));
+  // 3) on ne garde que « <même titre de série>. <numéro> » chez le même éditeur : pas d'hors-série, pas d'autre édition
+  const cible = normSerie(base.nom), edMots = motsDe(String(editeur).replace(/^.*:\s*/, ""));
+  const memeEditeur = (e) => !edMots.length || motsDe(e).some((w) => edMots.includes(w));
+  const parN = {};
+  for (const x of recs) {
+    const d = decouperSerie(x.titre);
+    if (!d || normSerie(d.nom) !== cible || !memeEditeur(x.editeur)) continue;
+    const prec = parN[d.n];
+    const mieux = !prec || (x.isbn && !prec.isbn) || (!!x.isbn === !!prec.isbn && /^9782/.test(x.isbn) && !/^9782/.test(prec.isbn)) || (!!x.isbn === !!prec.isbn && x.date && prec.date && x.date < prec.date);
+    if (mieux) parN[d.n] = { n: d.n, titre: d.sous, isbn: x.isbn, annee: x.date };
+  }
+  if (!parN[base.n]) parN[base.n] = { n: base.n, titre: base.sous, isbn, annee: ici ? ici.date : "" };
+  const tomes = Object.values(parN).sort((a, b) => a.n - b.n);
+  // un seul tome trouvé : ce n'est sans doute pas une série (« Paris - 1900 »…) → on ne montre rien plutôt qu'une liste fausse
+  if (tomes.length < 2) return { trouve: false, raison: "pas d'autres tomes", message: "Aucun autre tome de cette série dans le catalogue de la BnF." };
+  const max = tomes[tomes.length - 1].n, manquants = [];
+  for (let i = 1; i <= max && manquants.length < 60; i++) if (!parN[i]) manquants.push(i);
+  return { trouve: true, source: "BnF", serie: base.nom, editeur: String(editeur).replace(/^.*:\s*/, "").replace(/\s*\(.*\)\s*$/, ""), ici: base.n, tomes, dernier: max, manquants, complet: !manquants.length };
+}
 
 // ---------- notifications Web Push (RFC 8291 / 8292), sans service payant ----------
 // les clés VAPID sont créées une seule fois et gardées dans la base (table config)

@@ -81,13 +81,22 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 .aideL span{font-size:14px;color:var(--muted);line-height:1.45}
 #toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:70;background:#111;color:#fff;padding:12px 18px;border-radius:12px;font-size:14px;max-width:calc(100vw - 32px);box-shadow:0 6px 24px rgba(0,0,0,.25)}
 #toast.hide{display:none}
-.edp-theo{width:64px!important;flex:none!important;text-align:center}
+.edp-theo{width:96px!important;flex:none!important;text-align:center}
 .edp-tot{font-size:12px;color:var(--muted);white-space:nowrap;flex:none}
 .edp-tot.ko{color:#d33;font-weight:700}
 .heures td{padding:6px 4px;border-top:1px solid var(--line);font-size:14px}
 .heures td.h{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
 .heures tr.ko td.h{color:#d33;font-weight:700}
 .heures{width:100%;border-collapse:collapse;margin-top:8px}
+.serie{margin-top:14px;border:1px solid var(--line);border-radius:14px;padding:12px}
+.serieh b{display:block;font-size:16px}.serieh span{font-size:13px;color:var(--muted)}
+.tomes{list-style:none;margin:10px 0 0;padding:0;max-height:340px;overflow:auto;position:relative}
+.tomes li{display:flex;gap:10px;align-items:baseline;padding:8px 4px;border-top:1px solid var(--line);font-size:14px}
+.tomes li b{flex:none;min-width:42px}
+.tomes li .ti{flex:1;min-width:0}
+.tomes li .an{flex:none;color:var(--muted);font-size:12px}
+.tomes li.lien{cursor:pointer}
+.tomes li.ici{background:var(--bg);border-radius:8px;font-weight:600}
 #profil.hide{display:none}
 #profil{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px}
 #profil .card{width:100%;max-width:420px;margin:0}
@@ -1011,6 +1020,36 @@ function poserQuestion(){
     }, function(){ clearTimeout(tm); rep.textContent = "Serveur injoignable, réessaie."; });
 }
 var COURANT = "";
+// ---------- tous les tomes d'une série (catalogue BnF, sans IA) ----------
+function tomesSerie(isbn, box, btn){
+  btn.disabled = true; btn.querySelector(".lb").textContent = "Recherche dans le catalogue…";
+  fetch(SERVEUR + "/serie?isbn=" + isbn).then(function(r){ return r.json(); }).then(function(j){
+    if (isbn !== COURANT) return;
+    var c = el("div", "serie");
+    if (!j || !j.trouve) {
+      btn.disabled = false; btn.querySelector(".lb").textContent = "Tous les tomes de la série";
+      c.appendChild(el("p", "muted", (j && j.message) || "Série introuvable dans le catalogue."));
+      btn.replaceWith(c); return;
+    }
+    var h = el("div", "serieh"); h.appendChild(el("b", "", j.serie)); h.appendChild(el("span", "", j.tomes.length + " tomes au catalogue" + (j.editeur ? " · " + j.editeur : "")));
+    c.appendChild(h);
+    var ul = el("ul", "tomes"), cur = null;
+    j.tomes.forEach(function(t){
+      var li = el("li", t.n === j.ici ? "ici" : "");
+      li.appendChild(el("b", "", "T" + t.n));
+      li.appendChild(el("span", "ti", t.titre || ""));
+      li.appendChild(el("span", "an", t.n === j.ici ? "ce livre" : t.annee || ""));
+      if (t.isbn && t.n !== j.ici) { li.className += " lien"; li.onclick = function(){ show(t.isbn); window.scrollTo(0, 0); }; }
+      if (t.n === j.ici) cur = li;
+      ul.appendChild(li);
+    });
+    c.appendChild(ul);
+    if (j.manquants && j.manquants.length) c.appendChild(el("p", "warn", "Pas trouvés au catalogue : tome" + (j.manquants.length > 1 ? "s " : " ") + j.manquants.slice(0, 15).join(", ") + (j.manquants.length > 15 ? "…" : "") + ". La liste peut donc être incomplète."));
+    c.appendChild(el("p", "aide", "Source : catalogue de la BnF, sans IA. Touche un tome pour sa fiche. Les sorties des dernières semaines peuvent ne pas encore y figurer (dernier trouvé : tome " + j.dernier + ")."));
+    btn.replaceWith(c);
+    if (cur) ul.scrollTop = Math.max(0, cur.offsetTop - 120);
+  }).catch(function(){ btn.disabled = false; btn.querySelector(".lb").textContent = "Catalogue injoignable : réessayer"; });
+}
 function livresSimilaires(isbn, box, btn){
   btn.disabled = true; btn.querySelector(".lb").textContent = "Recherche de suggestions…";
   var ctl = ("AbortController" in window) ? new AbortController() : null;
@@ -1069,6 +1108,13 @@ function bookHtml(b){
     var sb = btnIc("big alt", "livre", "Livres similaires à proposer");
     sb.onclick = function(){ livresSimilaires(COURANT, box, sb); };
     box.appendChild(sb);
+    // tous les tomes : seulement si le titre ressemble à un tome d'une série
+    if (b.series || /(\btome\b|\bt\.?\s?\d|\bvol(ume)?\.?\s?\d|[.,:\-–]\s*\d{1,4}\b|#\s?\d)/i.test(b.title || "")) {
+      var tb = btnIc("big alt", "livre", "Tous les tomes de la série");
+      var isbnSerie = COURANT;
+      tb.onclick = function(){ tomesSerie(isbnSerie, box, tb); };
+      box.appendChild(tb);
+    }
   }
 }
 var MOIS = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
@@ -2358,7 +2404,7 @@ function dessinerPlanning(){
       tab.appendChild(tr);
     });
     c2.appendChild(tab);
-    som.appendChild(el("b", "", "Ma semaine")); som.appendChild(el("span", "", duree(tot) + (moiP.theo ? " / " + hTheo(moiP.theo) + " théo" : "")));
+    som.appendChild(el("b", "", "Ma semaine")); som.appendChild(el("span", "", duree(tot) + (moiP.theo ? " / " + hTheo(moiP.theo) + " théorique" : "")));
     try { c2.open = localStorage.getItem("maSemaine") === "1"; } catch(e){}
     c2.addEventListener("toggle", function(){ try { localStorage.setItem("maSemaine", c2.open ? "1" : "0"); } catch(e){} });
     box.appendChild(c2);
@@ -2438,7 +2484,7 @@ function editeurPlanning(data, lu){
   var ajouterPersonne = function(p){
     var d = el("div", "edp-pers"), h = el("div", "edp-h"), pn = el("input"), x = el("button", "", "×"), th = el("input"), tot = el("span", "edp-tot");
     pn.value = p.prenom || ""; pn.placeholder = "Prénom"; pn.className = "edp-nom"; x.type = "button"; x.setAttribute("aria-label", "Retirer");
-    th.className = "edp-theo"; th.inputMode = "decimal"; th.placeholder = "Théo"; th.title = "Heures théoriques de la semaine"; th.value = p.theo ? String(p.theo).replace(".", ",") : "";
+    th.className = "edp-theo"; th.inputMode = "decimal"; th.placeholder = "Théorique"; th.title = "Heures théoriques de la semaine"; th.value = p.theo ? String(p.theo).replace(".", ",") : "";
     x.onclick = function(){ d.remove(); };
     h.appendChild(pn); h.appendChild(th); h.appendChild(tot); h.appendChild(x); d.appendChild(h);
     var gr = el("div", "edp-jours");

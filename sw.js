@@ -1,6 +1,6 @@
 // Réseau d'abord (toujours la dernière version), copie locale si pas de connexion.
-var CACHE = "scan-v71";
-var FILES = ["./", "index.html", "manifest.json", "bipbip-192.png", "logo.svg",
+var CACHE = "scan-v72";
+var FILES = ["./", "index.html", "manifest.json", "bipbip-192.png", "badge-96.png", "logo.svg",
   "https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"];
 self.addEventListener("install", function(e){
   e.waitUntil(caches.open(CACHE).then(function(c){ return c.addAll(FILES); }).catch(function(){}));
@@ -28,7 +28,7 @@ self.addEventListener("push", function(e){
   var d = {};
   try { d = e.data ? e.data.json() : {}; } catch (x) { d = { titre: "BipBip", texte: e.data ? e.data.text() : "" }; }
   e.waitUntil(self.registration.showNotification(d.titre || "BipBip", {
-    body: d.texte || "", icon: "bipbip-192.png", badge: "bipbip-192.png",
+    body: d.texte || "", icon: "bipbip-192.png", badge: "badge-96.png",
     tag: d.tag || undefined, renotify: !!d.tag, data: { url: d.url || "./" }
   }));
 });
