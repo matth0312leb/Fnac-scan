@@ -837,6 +837,7 @@ const DROITS = {
   infos: "Modifier, supprimer et épingler toutes les infos",
   planning: "Importer et modifier le planning",
   reassort: "Valider les demandes de réassort",
+  objectifs: "Fixer et corriger les objectifs cartes (Adhésion, CEMBRA) de chacun",
   chat: "Supprimer n'importe quel message du chat",
   stats: "Voir les statistiques de l'équipe",
   profils: "Gérer les profils (renommer, fusionner, supprimer, réinitialiser un code)",
@@ -1206,6 +1207,42 @@ async function chat(route, p, nom, affichage, admin, droits, env, now) {
     const jeton = [...alea].map((n) => L[n % L.length]).join("");
     await env.FICHES.put("invit:" + jeton, salon.code, { expirationTtl: 14 * 24 * 3600 });
     return { ok: true, jeton, expire: now + 14 * 24 * 3600 * 1000 };
+  }
+  // ---------- Objectifs du mois : cartes Adhésion et Mastercard CEMBRA ----------
+  if (route.startsWith("/chat/objectif")) {
+    await env.DB.prepare("CREATE TABLE IF NOT EXISTS objectifs (salon TEXT, mois TEXT, nom TEXT, affichage TEXT, type TEXT, objectif INTEGER, realise INTEGER DEFAULT 0, maj INTEGER, maj_par TEXT, PRIMARY KEY (salon, mois, nom, type))").run();
+    const gere = peut("objectifs");
+    const mois = /^\d{4}-\d{2}$/.test(p("mois")) ? p("mois") : new Date(now).toISOString().slice(0, 7);
+    if (route === "/chat/objectifs") {
+      const r = await env.DB.prepare("SELECT nom AS n, affichage AS a, type, objectif AS o, realise AS r, maj, maj_par AS par FROM objectifs WHERE salon = ? AND mois = ? ORDER BY affichage").bind(code, mois).all();
+      const prec = await env.DB.prepare("SELECT COUNT(*) AS n FROM objectifs WHERE salon = ? AND mois < ?").bind(code, mois).first();
+      return { ok: true, mois, peutGerer: gere, moi: nom, lignes: r.results || [], historique: !!(prec && prec.n) };
+    }
+    if (route === "/chat/objectif-maj") {
+      const type = ["adh", "cembra"].includes(p("type")) ? p("type") : "";
+      if (!type) return { ok: false, erreur: "type attendu (adh ou cembra)" };
+      // chacun gère sa ligne ; le responsable (droit « objectifs ») peut toucher à toutes
+      const cible = p("cible") ? p("cible").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").slice(0, 30) : nom;
+      if (cible !== nom && !gere) return { ok: false, erreur: "réservé au responsable" };
+      let aff = affichage;
+      if (cible !== nom) { const pr = await env.DB.prepare("SELECT affichage FROM profils WHERE nom = ?").bind(cible).first(); aff = pr ? pr.affichage : p("cible").slice(0, 30); }
+      const ex = await env.DB.prepare("SELECT objectif, realise FROM objectifs WHERE salon = ? AND mois = ? AND nom = ? AND type = ?").bind(code, mois, cible, type).first();
+      const borne = (v) => Math.max(0, Math.min(999, v));
+      let obj = ex ? ex.objectif : null, real = ex ? ex.realise : 0;
+      if (p("objectif") !== "") { const v = parseInt(p("objectif"), 10); obj = isNaN(v) ? null : borne(v); }
+      if (p("realise") !== "") { const v = parseInt(p("realise"), 10); if (!isNaN(v)) real = borne(v); }
+      if (p("delta") !== "") { const v = parseInt(p("delta"), 10); if (v === 1 || v === -1) real = borne(real + v); }
+      await env.DB.prepare("INSERT INTO objectifs (salon, mois, nom, affichage, type, objectif, realise, maj, maj_par) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(salon, mois, nom, type) DO UPDATE SET affichage = excluded.affichage, objectif = excluded.objectif, realise = excluded.realise, maj = excluded.maj, maj_par = excluded.maj_par")
+        .bind(code, mois, cible, aff, type, obj, real, now, affichage).run();
+      // on garde 13 mois d'historique
+      await env.DB.prepare("DELETE FROM objectifs WHERE salon = ? AND mois < ?").bind(code, new Date(now - 400 * 24 * 3600 * 1000).toISOString().slice(0, 7)).run();
+      return { ok: true, ligne: { n: cible, a: aff, type, o: obj, r: real } };
+    }
+    if (route === "/chat/objectif-suppr") {
+      if (!gere) return { ok: false, erreur: "réservé au responsable" };
+      await env.DB.prepare("DELETE FROM objectifs WHERE salon = ? AND mois = ? AND nom = ?").bind(code, mois, p("cible").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").slice(0, 30)).run();
+      return { ok: true };
+    }
   }
   // ---------- notifications (Web Push) ----------
   if (route === "/chat/push-cle") return { ok: true, cle: (await clesVapid(env)).pub };

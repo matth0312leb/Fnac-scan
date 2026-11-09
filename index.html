@@ -106,6 +106,40 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 .bvpts{display:flex;gap:6px;justify-content:center;margin:14px 0}
 .bvpts i{width:8px;height:8px;border-radius:50%;background:var(--line)}
 .bvpts i.on{background:var(--accent);width:22px;border-radius:4px}
+div.seg button{padding-left:0;padding-right:0;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13.5px;letter-spacing:-.2px}
+@media (min-width:430px){div.seg button{font-size:15px;letter-spacing:0}}
+.segobj{display:flex;gap:6px;margin:0 0 12px}
+.segobj button{flex:1;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:999px;padding:10px;font-weight:700;font-size:15px}
+.segobj button.on.adh{background:#f2d43a;color:#111;border-color:#f2d43a}
+.segobj button.on.cembra{background:#7fb04a;color:#111;border-color:#7fb04a}
+.objtot{display:grid;grid-template-columns:1fr 1fr 1.2fr;gap:8px;text-align:center;margin-top:8px}
+.objtot div{background:var(--bg);border-radius:12px;padding:10px 4px}
+.objtot b{display:block;font-size:24px}
+.objtot span{font-size:12px;color:var(--muted)}
+.objtot .taux b{font-size:28px}
+.objtot .taux.vert{background:#2e9d5b;color:#fff}.objtot .taux.orange{background:#e8912d;color:#fff}.objtot .taux.rouge{background:#d64545;color:#fff}
+.objtot .taux span{color:inherit;opacity:.9}
+.objinfo{display:flex;justify-content:space-between;gap:8px;font-size:13px;color:var(--muted);margin-top:10px;flex-wrap:wrap}
+.objp{padding:12px 0;border-top:1px solid var(--line)}
+.objp:first-of-type{border-top:0}
+.objp .l1{display:flex;align-items:baseline;gap:8px}
+.objp .l1 b{flex:1;font-size:16px}
+.objp .l1 .nb{font-weight:700;font-variant-numeric:tabular-nums}
+.objp .l1 .pc{min-width:46px;text-align:right;font-size:13px;color:var(--muted)}
+.objbar{height:8px;background:var(--bg);border-radius:4px;overflow:hidden;margin:6px 0 2px}
+.objbar i{display:block;height:100%;border-radius:4px;background:var(--accent)}
+.objbar i.vert{background:#2e9d5b}.objbar i.orange{background:#e8912d}.objbar i.rouge{background:#d64545}
+.objp .ec{font-size:12px;color:var(--muted)}
+.objp.moi{background:var(--bg);margin:0 -10px;padding:12px 10px;border-radius:12px}
+.objact{display:flex;gap:8px;margin-top:10px;align-items:center}
+.objact .big{margin:0;width:auto}
+.objact .big:last-child{flex:none;padding-left:16px;padding-right:16px}
+.objact .plus{flex:1;font-size:24px;padding:8px}
+.objact .moins{flex:1;font-size:24px;padding:8px}
+.objedit{display:flex;gap:8px;margin-top:10px;align-items:flex-end;flex-wrap:wrap}
+.objedit label{flex:1;min-width:90px;font-size:12px;color:var(--muted)}
+.objedit input{width:100%;margin-top:4px;text-align:center;font-size:18px}
+.objedit button{flex:none}
 #profil.hide{display:none}
 #profil{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px}
 #profil .card{width:100%;max-width:420px;margin:0}
@@ -478,6 +512,7 @@ body{max-width:1000px;margin-left:calc(232px + max(32px,(100vw - 1264px)/2));mar
 <div id="bienvenue" class="sheet hide"><div class="card">
   <div id="bvEtape"></div>
   <div class="bvpts" id="bvPts"><i></i><i></i><i></i></div>
+  <label class="opt" style="margin:0 0 12px;font-size:14px"><input type="checkbox" id="bvCompris"> J’ai compris, ne plus afficher</label>
   <div class="infoacts"><button class="big alt" id="bvPasser" type="button">Passer</button><button class="big" id="bvSuite" type="button">Suivant</button></div>
 </div></div>
 <div id="toast" class="hide"></div>
@@ -598,7 +633,7 @@ body{max-width:1000px;margin-left:calc(232px + max(32px,(100vw - 1264px)/2));mar
         <button id="chatQuit" type="button">Changer de magasin</button>
       </div>
     </div>
-    <div class="seg"><button id="vInfo" class="on" type="button">Infos<i class="pt hide" id="ptInfo"></i></button><button id="vPlan" type="button">Planning</button><button id="vRea" type="button">Réassort<i class="pt hide" id="ptRea"></i></button><button id="vChat" type="button">Chat<i class="pt hide" id="ptChat"></i></button></div>
+    <div class="seg"><button id="vInfo" class="on" type="button">Infos<i class="pt hide" id="ptInfo"></i></button><button id="vPlan" type="button">Planning</button><button id="vObj" type="button">Objectifs</button><button id="vRea" type="button">Réassort<i class="pt hide" id="ptRea"></i></button><button id="vChat" type="button">Chat<i class="pt hide" id="ptChat"></i></button></div>
     <div id="vueChat" class="hide">
     <div id="chatList"></div>
     <div id="chatSugg" class="hide"></div>
@@ -625,6 +660,7 @@ body{max-width:1000px;margin-left:calc(232px + max(32px,(100vw - 1264px)/2));mar
       </div>
       <div id="infoListe"></div>
     </div>
+    <div id="vueObj" class="hide"></div>
     <div id="vueRea" class="hide">
       <div class="card rform">
         <p class="lbl">Demander un produit</p>
@@ -683,6 +719,7 @@ body{max-width:1000px;margin-left:calc(232px + max(32px,(100vw - 1264px)/2));mar
   </div>
 
   <button class="big alt" id="aideBtn" type="button"><span class="lb">❓ Comment ça marche</span></button>
+  <button class="big alt" id="bvRevoir" type="button"><span class="lb">👋 Revoir la présentation</span></button>
 
   <button class="big alt hide" id="statBtn" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg><span class="lb">Statistiques de l'équipe</span></button>
   <div id="statCard" class="card hide"></div>
@@ -835,8 +872,7 @@ function connexion(){
       PROFIL = { nom: j.nom, cle: cle, admin: !!j.admin, role: j.role || "equipe", droits: j.droits || [] };
       try { localStorage.setItem("profilNom", PROFIL.nom); localStorage.setItem("profilCle", cle); localStorage.setItem("profilAdmin", PROFIL.admin ? "1" : "0"); } catch(e){}
       $("profil").className = "hide"; appliquerDroits(j); $("statCard").className = "card hide"; utiliserInvitation();
-      var dejaAccueilli = false; try { dejaAccueilli = localStorage.getItem("bienvenue") === "1"; } catch(e){}
-      if (premier && !dejaAccueilli) setTimeout(ouvrirBienvenue, 400);
+      if (!bienvenueVue()) setTimeout(ouvrirBienvenue, 400);
       chargerHistoriqueServeur(true);
     }, function(){ $("pMsg").textContent = "Serveur injoignable, réessaie."; });
 }
@@ -1747,7 +1783,8 @@ $("statBtn").onclick = afficherStats;
 renderHist(loadHist());
 majProfilUI();
 if (PROFIL.nom) chargerHistoriqueServeur(false); else ouvrirProfil();
-setTimeout(function(){ utiliserInvitation(); if (PARAMS.get("vue")) allerVue(PARAMS.get("vue")); if (PROFIL.nom) verifierNotif(); }, 0);
+setTimeout(function(){ utiliserInvitation(); if (PARAMS.get("vue")) allerVue(PARAMS.get("vue")); if (PROFIL.nom) verifierNotif(); if (PROFIL.nom && !PARAMS.get("vue") && !bienvenueVue()) setTimeout(ouvrirBienvenue, 600); }, 0);
+function bienvenueVue(){ try { return localStorage.getItem("bienvenue") === "1"; } catch(e){ return true; } }
 
 // ---------- chat du magasin ----------
 var CHAT = { code: "", salon: "", dernier: 0, vu: 0, minuteur: null, envoi: false };
@@ -2030,10 +2067,12 @@ function etapeBienvenue(){
   $("bvSuite").textContent = BV.i < 2 ? "Suivant" : "C’est parti !";
   $("bvPasser").style.display = BV.i < 2 ? "" : "none";
 }
-function ouvrirBienvenue(){ BV.i = 0; etapeBienvenue(); $("bienvenue").className = "sheet"; try { localStorage.setItem("bienvenue", "1"); } catch(e){} }
-function fermerBienvenue(){ $("bienvenue").className = "sheet hide"; }
+function ouvrirBienvenue(){ BV.i = 0; $("bvCompris").checked = false; etapeBienvenue(); $("bienvenue").className = "sheet"; }
+// revient à chaque ouverture tant que « J'ai compris » n'est pas coché
+function fermerBienvenue(){ $("bienvenue").className = "sheet hide"; if ($("bvCompris").checked) { try { localStorage.setItem("bienvenue", "1"); } catch(e){} } }
 $("bvSuite").onclick = function(){ if (BV.i < 2) { BV.i++; etapeBienvenue(); } else fermerBienvenue(); };
 $("bvPasser").onclick = fermerBienvenue;
+$("bvRevoir").onclick = ouvrirBienvenue;
 // ---------- aide ----------
 function ouvrirAide(){ $("aideBox").className = "sheet"; }
 $("aideBtn").onclick = ouvrirAide;
@@ -2077,7 +2116,7 @@ function utiliserInvitation(){
   });
 }
 function allerVue(v){
-  if (!/^(chat|info|rea|plan)$/.test(v || "") || !CHAT.code || !PROFIL.nom) return;
+  if (!/^(chat|info|rea|plan|obj)$/.test(v || "") || !CHAT.code || !PROFIL.nom) return;
   tab(6); ouvrirChat(); vue(v);
 }
 if ("serviceWorker" in navigator) navigator.serviceWorker.addEventListener("message", function(e){
@@ -2156,18 +2195,154 @@ $("notifOff").onclick = function(){
 };
 $("t5").addEventListener("click", verifierNotif);
 
+
+// ---------- Objectifs du mois : cartes Adhésion et Mastercard CEMBRA ----------
+var OBJ = { type: "adh", mois: "", data: null, edit: "" };
+try { OBJ.type = localStorage.getItem("objType") || "adh"; } catch(e){}
+var OBJ_NOMS = { adh: "Adhésions", cembra: "Mastercard CEMBRA" };
+function moisISO(d){ return d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2); }
+// jours d'ouverture (lundi → samedi) du mois : total, écoulés (aujourd'hui compte pour moitié), restants (aujourd'hui compris)
+function joursMois(mois){
+  var a = +mois.slice(0, 4), m = +mois.slice(5, 7) - 1, auj = new Date(); auj.setHours(12, 0, 0, 0);
+  var tot = 0, ecoule = 0, reste = 0;
+  for (var d = new Date(a, m, 1, 12); d.getMonth() === m; d.setDate(d.getDate() + 1)) {
+    if (d.getDay() === 0) continue;
+    tot++;
+    if (d < auj && d.toDateString() !== auj.toDateString()) ecoule++;
+    else if (d.toDateString() === auj.toDateString()) { ecoule += 0.5; reste++; }
+    else reste++;
+  }
+  return { tot: tot, ecoule: ecoule, reste: reste };
+}
+function couleurTaux(taux, attendu){ if (attendu <= 0) return taux > 0 ? "vert" : "orange"; var r = taux / attendu; return r >= 1 ? "vert" : r >= 0.7 ? "orange" : "rouge"; }
+function chargerObjectifs(){
+  if (!OBJ.mois) OBJ.mois = moisISO(new Date());
+  var box = $("vueObj");
+  if (!OBJ.data || OBJ.data.mois !== OBJ.mois) box.innerHTML = '<div class="card"><p class="muted">Chargement des objectifs…</p></div>';
+  prof("/chat/objectifs", { code: CHAT.code, mois: OBJ.mois }).then(function(j){
+    if (!j || !j.ok) { box.innerHTML = '<div class="card"><p class="muted">Objectifs indisponibles pour le moment.</p></div>'; return; }
+    OBJ.data = j; dessinerObjectifs();
+  });
+}
+function majObjectif(data){
+  return prof("/chat/objectif-maj", Object.assign({ code: CHAT.code, mois: OBJ.mois, type: OBJ.type }, data)).then(function(j){
+    if (!j || !j.ok) { toast((j && j.erreur) || "Pas enregistré, réessaie."); return; }
+    var L = OBJ.data.lignes, i = L.findIndex(function(x){ return x.n === j.ligne.n && x.type === j.ligne.type; });
+    var nl = { n: j.ligne.n, a: j.ligne.a, type: j.ligne.type, o: j.ligne.o, r: j.ligne.r, maj: Date.now(), par: PROFIL.nom };
+    if (i >= 0) L[i] = nl; else L.push(nl);
+    dessinerObjectifs();
+  });
+}
+function dessinerObjectifs(){
+  var box = $("vueObj"), j = OBJ.data, gere = j.peutGerer, moiN = j.moi; box.innerHTML = "";
+  // Adhésions / CEMBRA
+  var sg = el("div", "segobj");
+  ["adh", "cembra"].forEach(function(t){ var b = el("button", t + (OBJ.type === t ? " on" : ""), t === "adh" ? "💳 Adhésions" : "🟩 CEMBRA"); b.type = "button"; b.onclick = function(){ OBJ.type = t; OBJ.edit = ""; try { localStorage.setItem("objType", t); } catch(e){} dessinerObjectifs(); }; sg.appendChild(b); });
+  box.appendChild(sg);
+  var lignes = j.lignes.filter(function(x){ return x.type === OBJ.type; });
+  var c = el("div", "card");
+  // mois
+  var tete = el("div", "plsem"), av = el("button", "", "‹"), ap = el("button", "", "›"), t = el("div");
+  av.type = ap.type = "button";
+  var d0 = new Date(+OBJ.mois.slice(0, 4), +OBJ.mois.slice(5) - 1, 1);
+  av.onclick = function(){ OBJ.mois = moisISO(new Date(d0.getFullYear(), d0.getMonth() - 1, 1)); OBJ.edit = ""; chargerObjectifs(); };
+  ap.onclick = function(){ OBJ.mois = moisISO(new Date(d0.getFullYear(), d0.getMonth() + 1, 1)); OBJ.edit = ""; chargerObjectifs(); };
+  ap.disabled = OBJ.mois >= moisISO(new Date());
+  t.appendChild(el("b", "", OBJ_NOMS[OBJ.type])); t.appendChild(el("span", "", MOIS[d0.getMonth()].replace(/^./, function(x){ return x.toUpperCase(); }) + " " + d0.getFullYear()));
+  t.style.textAlign = "center"; tete.appendChild(av); tete.appendChild(t); tete.appendChild(ap); c.appendChild(tete);
+  // totaux du magasin
+  var R = 0, O = 0; lignes.forEach(function(x){ R += x.r || 0; O += x.o || 0; });
+  var jm = joursMois(OBJ.mois), enCours = OBJ.mois === moisISO(new Date());
+  var attendu = enCours ? Math.round(jm.ecoule / jm.tot * 100) : 100, taux = O ? Math.round(R / O * 100) : 0;
+  var tt = el("div", "objtot"), a1 = el("div"), a2 = el("div"), a3 = el("div", "taux " + (O ? couleurTaux(taux, attendu) : ""));
+  a1.appendChild(el("b", "", String(R))); a1.appendChild(el("span", "", "Réalisé"));
+  a2.appendChild(el("b", "", String(O))); a2.appendChild(el("span", "", "Objectif"));
+  a3.appendChild(el("b", "", O ? taux + " %" : "–")); a3.appendChild(el("span", "", "Taux d’atteinte"));
+  tt.appendChild(a1); tt.appendChild(a2); tt.appendChild(a3); c.appendChild(tt);
+  var inf = el("div", "objinfo");
+  if (enCours && O) {
+    inf.appendChild(el("span", "", "Reste à faire par jour : " + (O > R && jm.reste ? Math.ceil((O - R) / jm.reste) : 0)));
+    inf.appendChild(el("span", "", "Rythme attendu aujourd’hui : " + attendu + " %"));
+  } else if (!O) inf.appendChild(el("span", "", "Pas encore d’objectif pour ce mois."));
+  c.appendChild(inf);
+  box.appendChild(c);
+  // chacun
+  var c2 = el("div", "card");
+  var moiL = lignes.filter(function(x){ return x.n === moiN; })[0];
+  lignes.sort(function(a, b){ return (a.n === moiN ? -1 : 0) - (b.n === moiN ? -1 : 0) || String(a.a).localeCompare(String(b.a)); });
+  if (!moiL && enCours) {
+    var mc = el("div", "objp moi");
+    mc.appendChild(el("p", "lbl", "Ton objectif " + (OBJ.type === "adh" ? "Adhésions" : "CEMBRA") + " du mois"));
+    var ed = el("div", "objedit"), lo = el("label", "", "Objectif"), io = el("input"), lr = el("label", "", "Déjà réalisé"), ir = el("input"), ok = el("button", "big", "Enregistrer");
+    io.inputMode = ir.inputMode = "numeric"; io.placeholder = "ex. 23"; ir.placeholder = "0"; ok.type = "button";
+    lo.appendChild(io); lr.appendChild(ir); ed.appendChild(lo); ed.appendChild(lr); ed.appendChild(ok); mc.appendChild(ed);
+    ok.onclick = function(){ if (!/^\d{1,3}$/.test(io.value.trim())) { io.focus(); toast("Indique ton objectif (un nombre)."); return; } majObjectif({ objectif: io.value.trim(), realise: ir.value.trim() || "0" }); };
+    c2.appendChild(mc);
+  }
+  if (!lignes.length && !(!moiL && enCours)) c2.appendChild(el("p", "muted", "Personne n’a encore rempli d’objectif ce mois-ci."));
+  lignes.forEach(function(x){
+    var estMoiL = x.n === moiN, d = el("div", "objp" + (estMoiL ? " moi" : "")), l1 = el("div", "l1");
+    var pc = x.o ? Math.round((x.r || 0) / x.o * 100) : 0, coul = x.o ? couleurTaux(pc, attendu) : "";
+    l1.appendChild(el("b", "", estMoiL ? x.a + " (toi)" : x.a));
+    l1.appendChild(el("span", "nb", (x.r || 0) + " / " + (x.o == null ? "?" : x.o)));
+    l1.appendChild(el("span", "pc", x.o ? pc + " %" : ""));
+    d.appendChild(l1);
+    var bar = el("div", "objbar"), bi = el("i", coul); bi.style.width = Math.min(100, pc) + "%"; bar.appendChild(bi); d.appendChild(bar);
+    if (x.o != null) d.appendChild(el("span", "ec", (x.r - x.o >= 0 ? "Objectif atteint ✓ (+" + (x.r - x.o) + ")" : "Encore " + (x.o - x.r) + " à faire") + (x.par && cleNom(x.par) !== cleNom(x.a) ? " · modifié par " + x.par : "")));
+    // ma ligne : +1 en un geste
+    if (estMoiL && enCours) {
+      var ac = el("div", "objact"), moins = el("button", "big alt moins", "−"), plus = el("button", "big plus", "+"), mod = el("button", "big alt", "Modifier");
+      moins.type = plus.type = mod.type = "button";
+      moins.disabled = !(x.r > 0);
+      plus.onclick = function(){ plus.disabled = true; majObjectif({ delta: "1" }).then(function(){ toast(OBJ.type === "adh" ? "Adhésion ajoutée 💳" : "Carte CEMBRA ajoutée 🟩"); }); };
+      moins.onclick = function(){ majObjectif({ delta: "-1" }); };
+      mod.onclick = function(){ OBJ.edit = OBJ.edit === x.n ? "" : x.n; dessinerObjectifs(); };
+      ac.appendChild(moins); ac.appendChild(plus); ac.appendChild(mod); d.appendChild(ac);
+    } else if (gere) {
+      var m2 = el("button", "more", OBJ.edit === x.n ? "Fermer" : "Modifier"); m2.type = "button";
+      m2.onclick = function(){ OBJ.edit = OBJ.edit === x.n ? "" : x.n; dessinerObjectifs(); };
+      d.appendChild(m2);
+    }
+    // édition (sa propre ligne, ou n'importe laquelle pour le responsable)
+    if (OBJ.edit === x.n && (estMoiL || gere)) {
+      var ed2 = el("div", "objedit"), lo2 = el("label", "", "Objectif"), io2 = el("input"), lr2 = el("label", "", "Réalisé"), ir2 = el("input"), ok2 = el("button", "big", "OK");
+      io2.inputMode = ir2.inputMode = "numeric"; io2.value = x.o == null ? "" : x.o; ir2.value = x.r || 0; ok2.type = "button";
+      lo2.appendChild(io2); lr2.appendChild(ir2); ed2.appendChild(lo2); ed2.appendChild(lr2); ed2.appendChild(ok2);
+      ok2.onclick = function(){ OBJ.edit = ""; majObjectif(Object.assign({ objectif: io2.value.trim(), realise: ir2.value.trim() }, estMoiL ? {} : { cible: x.a })); };
+      if (gere && !estMoiL) { var sup = el("button", "big alt", "Retirer"); sup.type = "button"; sup.onclick = function(){ if (window.confirm("Retirer " + x.a + " des objectifs de ce mois ?")) prof("/chat/objectif-suppr", { code: CHAT.code, mois: OBJ.mois, cible: x.a }).then(function(){ OBJ.edit = ""; chargerObjectifs(); }); }; ed2.appendChild(sup); }
+      d.appendChild(ed2);
+    }
+    c2.appendChild(d);
+  });
+  box.appendChild(c2);
+  // responsable : ajouter un collègue
+  if (gere) {
+    var c3 = el("div", "card imp");
+    c3.appendChild(el("p", "lbl", "Responsable"));
+    var ed3 = el("div", "objedit"), ln = el("label", "", "Collègue"), sel = el("select"), lo3 = el("label", "", "Objectif"), io3 = el("input"), ok3 = el("button", "big", "Ajouter");
+    io3.inputMode = "numeric"; ok3.type = "button"; sel.appendChild(el("option", "", "Chargement…"));
+    ln.appendChild(sel); lo3.appendChild(io3); ed3.appendChild(ln); ed3.appendChild(lo3); ed3.appendChild(ok3); c3.appendChild(ed3);
+    c3.appendChild(el("p", "aide", "Tu peux aussi corriger l’objectif ou le réalisé de chacun avec « Modifier ». Tout le monde voit les chiffres en direct."));
+    var remplir = function(){ sel.innerHTML = ""; var deja = lignes.map(function(x){ return x.n; }); (MEMBRES || []).filter(function(m){ return deja.indexOf(m.n) < 0; }).forEach(function(m){ var o = el("option", "", m.a); o.value = m.a; sel.appendChild(o); }); if (!sel.children.length) sel.appendChild(el("option", "", "Tout le monde est déjà là")); };
+    if (MEMBRES) remplir(); else prof("/chat/membres", { code: CHAT.code }).then(function(r){ MEMBRES = (r && r.membres) || []; remplir(); });
+    ok3.onclick = function(){ if (!sel.value || !/^\d{1,3}$/.test(io3.value.trim())) { toast("Choisis un collègue et un objectif."); return; } majObjectif({ cible: sel.value, objectif: io3.value.trim() }); };
+    box.appendChild(c3);
+  }
+  box.appendChild(el("p", "aide", "Taux d’atteinte en vert si on est dans le rythme du mois, orange si un peu en retard, rouge si en retard."));
+}
 // sous-onglets de l'onglet Équipe : "chat", "plan" ou "info"
 function vue(v){
   v = v === true ? "plan" : v === false ? "chat" : v;
-  [["chat", "vChat", "vueChat"], ["plan", "vPlan", "vuePlan"], ["info", "vInfo", "vueInfo"], ["rea", "vRea", "vueRea"]].forEach(function(x){
+  [["chat", "vChat", "vueChat"], ["plan", "vPlan", "vuePlan"], ["info", "vInfo", "vueInfo"], ["rea", "vRea", "vueRea"], ["obj", "vObj", "vueObj"]].forEach(function(x){
     $(x[1]).className = v === x[0] ? "on" : ""; $(x[2]).className = v === x[0] ? "" : "hide";
   });
-  if (v === "plan") chargerPlanning(); else if (v === "info") chargerInfos(); else if (v === "rea") chargerReassort(); else { CHAT.dernier = 0; chargerMessages(true); }
+  if (v === "plan") chargerPlanning(); else if (v === "obj") chargerObjectifs(); else if (v === "info") chargerInfos(); else if (v === "rea") chargerReassort(); else { CHAT.dernier = 0; chargerMessages(true); }
   if (typeof boucleChat === "function") boucleChat();   // rythme de rafraîchissement du chat (4 s quand il est affiché)
 }
 $("vRea").onclick = function(){ vue("rea"); };
 $("vChat").onclick = function(){ vue("chat"); };
 $("vPlan").onclick = function(){ vue("plan"); };
+$("vObj").onclick = function(){ vue("obj"); };
 $("vInfo").onclick = function(){ vue("info"); };
 
 // ---------- Infos : publications du magasin ----------
