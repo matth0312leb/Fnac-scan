@@ -97,6 +97,15 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 .tomes li .an{flex:none;color:var(--muted);font-size:12px}
 .tomes li.lien{cursor:pointer}
 .tomes li.ici{background:var(--bg);border-radius:8px;font-weight:600}
+.bvgros{font-size:44px;line-height:1;margin:6px 0 10px}
+#bvEtape h2{margin:0 0 8px;font-size:22px}
+#bvEtape p{margin:0 0 10px;color:var(--muted);line-height:1.45}
+#bvEtape ul{list-style:none;padding:0;margin:8px 0 4px}
+#bvEtape li{padding:7px 0;font-size:15px}
+#bvEtape .big{margin-top:8px}
+.bvpts{display:flex;gap:6px;justify-content:center;margin:14px 0}
+.bvpts i{width:8px;height:8px;border-radius:50%;background:var(--line)}
+.bvpts i.on{background:var(--accent);width:22px;border-radius:4px}
 #profil.hide{display:none}
 #profil{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px}
 #profil .card{width:100%;max-width:420px;margin:0}
@@ -297,6 +306,20 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 #chatList .jour{align-self:center;font-size:12px;color:var(--muted);margin:10px 0 4px}
 #chatList .vide{align-self:center;color:var(--muted);font-size:14px;text-align:center;margin:40px 20px}
 .msg{max-width:80%;align-self:flex-start;background:var(--card);border:1px solid var(--line);border-radius:16px 16px 16px 4px;padding:8px 12px;font-size:16px;line-height:1.35;word-wrap:break-word;white-space:pre-wrap}
+#chatCam{flex:none;width:46px;height:46px;border:1px solid var(--line);border-radius:50%;background:var(--card);color:var(--text);display:flex;align-items:center;justify-content:center}
+#chatCam svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#chatPhoto{position:sticky;bottom:calc(136px + env(safe-area-inset-bottom,0px));z-index:5;display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:8px;margin-top:8px}
+#chatPhoto.hide,#chatSugg.hide{display:none}
+#chatPhoto img{width:52px;height:52px;object-fit:cover;border-radius:8px}
+#chatPhoto span{flex:1;font-size:14px}
+#chatPhoto button{border:0;background:var(--bg);color:var(--text);width:34px;height:34px;border-radius:50%;font-size:18px}
+#chatSugg{position:sticky;bottom:calc(136px + env(safe-area-inset-bottom,0px));z-index:6;display:flex;gap:6px;flex-wrap:wrap;padding:6px 0}
+#chatSugg button{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:999px;padding:7px 12px;font-size:14px}
+.msg .ph{display:block;margin:4px 0 2px;border-radius:10px;overflow:hidden;min-height:60px;min-width:140px;background:rgba(127,127,127,.15);cursor:zoom-in}
+.msg .ph img{display:block;width:100%;max-height:280px;object-fit:cover}
+.msg .ph i{display:block;padding:20px;font-style:normal;font-size:13px;opacity:.7;text-align:center}
+.msg .mention{font-weight:700}
+.msg.pourmoi{box-shadow:0 0 0 2px var(--accent)}
 .msg.moi{align-self:flex-end;background:var(--accent);color:var(--accent-text);border-color:transparent;border-radius:16px 16px 4px 16px}
 .msg .qui{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:2px}
 .msg .h{display:block;font-size:11px;opacity:.6;text-align:right;margin-top:2px}
@@ -452,6 +475,11 @@ body{max-width:1000px;margin-left:calc(232px + max(32px,(100vw - 1264px)/2));mar
   </ul>
   <p class="aide">Rien de confidentiel dans le chat et les infos : pas de données clients.</p>
 </div></div>
+<div id="bienvenue" class="sheet hide"><div class="card">
+  <div id="bvEtape"></div>
+  <div class="bvpts" id="bvPts"><i></i><i></i><i></i></div>
+  <div class="infoacts"><button class="big alt" id="bvPasser" type="button">Passer</button><button class="big" id="bvSuite" type="button">Suivant</button></div>
+</div></div>
 <div id="toast" class="hide"></div>
 <div id="profil" class="hide"><div class="card">
   <h2>Bienvenue sur BipBip 👋</h2>
@@ -573,7 +601,9 @@ body{max-width:1000px;margin-left:calc(232px + max(32px,(100vw - 1264px)/2));mar
     <div class="seg"><button id="vInfo" class="on" type="button">Infos<i class="pt hide" id="ptInfo"></i></button><button id="vPlan" type="button">Planning</button><button id="vRea" type="button">Réassort<i class="pt hide" id="ptRea"></i></button><button id="vChat" type="button">Chat<i class="pt hide" id="ptChat"></i></button></div>
     <div id="vueChat" class="hide">
     <div id="chatList"></div>
-    <div id="chatBar"><textarea id="chatIn" rows="1" maxlength="500" placeholder="Écris un message…" enterkeyhint="send"></textarea><button id="chatGo" type="button" aria-label="Envoyer"><svg viewBox="0 0 24 24"><path d="M4 12 20 4l-6 16-3-7z"/></svg></button></div>
+    <div id="chatSugg" class="hide"></div>
+    <div id="chatPhoto" class="hide"><img id="chatPhotoImg" alt=""><span>Photo prête</span><button type="button" id="chatPhotoX" aria-label="Retirer la photo">×</button></div>
+    <div id="chatBar"><button id="chatCam" type="button" aria-label="Envoyer une photo"><svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/></svg></button><input type="file" id="chatFichier" accept="image/*" class="hide"><textarea id="chatIn" rows="1" maxlength="500" placeholder="Écris un message… (@ pour citer)" enterkeyhint="send"></textarea><button id="chatGo" type="button" aria-label="Envoyer"><svg viewBox="0 0 24 24"><path d="M4 12 20 4l-6 16-3-7z"/></svg></button></div>
     </div>
     <div id="vuePlan" class="hide"></div>
     <div id="vueInfo">
@@ -665,6 +695,7 @@ body{max-width:1000px;margin-left:calc(232px + max(32px,(100vw - 1264px)/2));mar
       <div><b>Samsung / Android</b><span>Menu ⋮ du navigateur → « Ajouter à l'écran d'accueil »</span></div>
       <div><b>iPhone</b><span>Dans Safari, bouton Partager → « Sur l'écran d'accueil »</span></div>
     </div>
+    <button class="big hide" id="installBtn" type="button" style="margin-top:12px">📲 Installer BipBip sur ce téléphone</button>
     <p class="aide" id="regVer"></p>
   </div>
 </div>
@@ -804,6 +835,8 @@ function connexion(){
       PROFIL = { nom: j.nom, cle: cle, admin: !!j.admin, role: j.role || "equipe", droits: j.droits || [] };
       try { localStorage.setItem("profilNom", PROFIL.nom); localStorage.setItem("profilCle", cle); localStorage.setItem("profilAdmin", PROFIL.admin ? "1" : "0"); } catch(e){}
       $("profil").className = "hide"; appliquerDroits(j); $("statCard").className = "card hide"; utiliserInvitation();
+      var dejaAccueilli = false; try { dejaAccueilli = localStorage.getItem("bienvenue") === "1"; } catch(e){}
+      if (premier && !dejaAccueilli) setTimeout(ouvrirBienvenue, 400);
       chargerHistoriqueServeur(true);
     }, function(){ $("pMsg").textContent = "Serveur injoignable, réessaie."; });
 }
@@ -1793,7 +1826,9 @@ function ajouterMessages(liste, premier){
     if (box.getAttribute("data-jour") !== j) { box.appendChild(el("p", "jour", j)); box.setAttribute("data-jour", j); }
     var d = el("div", "msg" + (moi(m.n) ? " moi" : "")); d.setAttribute("data-id", m.id);
     if (!moi(m.n)) d.appendChild(el("span", "qui", m.a));
-    d.appendChild(document.createTextNode(m.x));
+    if (m.img) d.appendChild(photoMessage(m.id));
+    if (m.x) texteAvecMentions(d, m.x);
+    if (!moi(m.n) && mentionneMoi(m.x)) d.className += " pourmoi";
     d.appendChild(el("span", "h", heure(m.t)));
     if (moi(m.n) || peut("chat")) {
       var sp = el("button", "suppr", "Supprimer"); sp.type = "button";
@@ -1831,16 +1866,57 @@ $("chatPli").onclick = function(){
   $("chatPli").setAttribute("aria-expanded", ouvert ? "true" : "false"); $("chatDetail").className = ouvert ? "" : "hide";
 };
 function envoyer(){
-  var t = $("chatIn").value.trim();
-  if (!t || CHAT.envoi) return;
-  CHAT.envoi = true;
-  prof("/chat/envoyer", { code: CHAT.code, texte: t }).then(function(j){
-    CHAT.envoi = false;
-    if (!j || !j.ok) { $("chatIn").placeholder = "Pas envoyé, réessaie…"; return; }
-    $("chatIn").value = ""; ajusterChamp(); $("chatIn").placeholder = "Écris un message…";
+  var t = $("chatIn").value.trim(), img = CHAT.photo || "";
+  if ((!t && !img) || CHAT.envoi) return;
+  CHAT.envoi = true; $("chatGo").disabled = true;
+  prof("/chat/envoyer", { code: CHAT.code, texte: t, image: img }).then(function(j){
+    CHAT.envoi = false; $("chatGo").disabled = false;
+    if (!j || !j.ok) { $("chatIn").placeholder = (j && j.erreur) ? "Pas envoyé : " + j.erreur : "Pas envoyé, réessaie…"; return; }
+    $("chatIn").value = ""; ajusterChamp(); $("chatIn").placeholder = "Écris un message… (@ pour citer)"; retirerPhoto(); $("chatSugg").className = "hide";
     chargerMessages(false);
-  });
+  }, function(){ CHAT.envoi = false; $("chatGo").disabled = false; $("chatIn").placeholder = "Pas envoyé, réessaie…"; });
 }
+// ---------- photos dans le chat ----------
+var PHOTOS_CHAT = {};
+function photoMessage(id){
+  var b = el("span", "ph"), i = el("i", "", "📷 Chargement de la photo…"); b.appendChild(i);
+  var mettre = function(src){ b.innerHTML = ""; var im = el("img"); im.alt = "Photo"; im.src = src; b.appendChild(im); b.onclick = function(e){ e.stopPropagation(); zoom(src); }; };
+  if (PHOTOS_CHAT[id]) mettre(PHOTOS_CHAT[id]);
+  else prof("/chat/msg-image", { code: CHAT.code, id: id }).then(function(j){ if (j && j.ok) { PHOTOS_CHAT[id] = j.image; mettre(j.image); } else i.textContent = "📷 Photo effacée"; });
+  return b;
+}
+function retirerPhoto(){ CHAT.photo = ""; $("chatPhoto").className = "hide"; $("chatPhotoImg").src = ""; }
+$("chatCam").onclick = function(){ $("chatFichier").click(); };
+$("chatFichier").onchange = function(){
+  var f = this.files[0]; this.value = ""; if (!f) return;
+  reduireImage(f, 1200).then(function(img){ CHAT.photo = img; $("chatPhotoImg").src = img; $("chatPhoto").className = ""; $("chatIn").focus(); });
+};
+$("chatPhotoX").onclick = retirerPhoto;
+// ---------- @mentions ----------
+var MEMBRES = null;
+function cleNom(t){ return String(t || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, ""); }
+function mentionneMoi(t){ var moiC = cleNom(PROFIL.nom); if (!moiC) return false; var re = /@([A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ'’-]{1,29})/g, m; while ((m = re.exec(t || ""))) if (cleNom(m[1]) === moiC) return true; return false; }
+function texteAvecMentions(d, t){
+  var re = /@([A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ'’-]{1,29})/g, m, i = 0;
+  while ((m = re.exec(t))) { if (m.index > i) d.appendChild(document.createTextNode(t.slice(i, m.index))); d.appendChild(el("span", "mention", m[0])); i = m.index + m[0].length; }
+  if (i < t.length) d.appendChild(document.createTextNode(t.slice(i)));
+}
+function suggestions(){
+  var inp = $("chatIn"), avant = inp.value.slice(0, inp.selectionStart || inp.value.length), m = avant.match(/(^|\s)@([A-Za-zÀ-ÖØ-öø-ÿ'’-]{0,29})$/), box = $("chatSugg");
+  if (!m) { box.className = "hide"; return; }
+  var aff = function(){
+    var q = cleNom(m[2]), liste = (MEMBRES || []).filter(function(x){ return cleNom(x.a).indexOf(q) === 0; }).slice(0, 6);
+    box.innerHTML = ""; if (!liste.length) { box.className = "hide"; return; }
+    liste.forEach(function(x){ var b = el("button", "", "@" + x.a); b.type = "button"; b.onclick = function(){
+      var debut = avant.length - m[2].length - 1, insere = "@" + x.a.replace(/\s+/g, "") + " ";
+      inp.value = inp.value.slice(0, debut) + insere + inp.value.slice(avant.length); box.className = "hide"; inp.focus();
+      var pos = debut + insere.length; try { inp.setSelectionRange(pos, pos); } catch(e){} ajusterChamp();
+    }; box.appendChild(b); });
+    box.className = "";
+  };
+  if (MEMBRES) aff(); else prof("/chat/membres", { code: CHAT.code }).then(function(j){ MEMBRES = (j && j.membres) || []; aff(); });
+}
+$("chatIn").addEventListener("input", suggestions);
 function ajusterChamp(){ var i = $("chatIn"); i.style.height = "auto"; i.style.height = Math.min(i.scrollHeight + 2, 120) + "px"; }
 $("chatGo").onclick = envoyer;
 $("chatIn").addEventListener("input", ajusterChamp);
@@ -1908,6 +1984,56 @@ function qrSvg(texte){
   return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + (n + 2 * q) + ' ' + (n + 2 * q) + '" shape-rendering="crispEdges"><rect width="100%" height="100%" fill="#fff"/><path fill="#000" d="' + d + '"/></svg>';
 }
 function toast(t, ms){ var b = $("toast"); b.textContent = t; b.className = ""; clearTimeout(toast.m); toast.m = setTimeout(function(){ b.className = "hide"; }, ms || 4000); }
+
+// ---------- accueil des nouveaux (une seule fois par téléphone) ----------
+var INSTALL = null;
+window.addEventListener("beforeinstallprompt", function(e){ e.preventDefault(); INSTALL = e; $("installBtn").className = "big"; });
+window.addEventListener("appinstalled", function(){ INSTALL = null; $("installBtn").className = "big hide"; toast("BipBip est installée ✓"); });
+function estInstallee(){ return !!(navigator.standalone || (window.matchMedia && matchMedia("(display-mode: standalone)").matches)); }
+function installer(){ if (!INSTALL) return; INSTALL.prompt(); INSTALL.userChoice.then(function(){ INSTALL = null; $("installBtn").className = "big hide"; if (BV.i === 2) etapeBienvenue(); }); }
+$("installBtn").onclick = installer;
+var BV = { i: 0 };
+function etapeBienvenue(){
+  var e = $("bvEtape"); e.innerHTML = "";
+  var prenom = PROFIL.nom || "";
+  if (BV.i === 0) {
+    e.appendChild(el("div", "bvgros", "👋"));
+    e.appendChild(el("h2", "", "Salut " + prenom + " !"));
+    e.appendChild(el("p", "", "BipBip, c’est l’assistant de rayon de l’équipe. Scanne un article et tu as tout de suite :"));
+    var u = el("ul"); ["📚 le résumé, la date de sortie et l’âge conseillé", "💬 la réponse à la question du client", "▮▯▮ le code-barres à rescanner au poste", "🎁 des idées cadeaux récentes"].forEach(function(t){ u.appendChild(el("li", "", t)); }); e.appendChild(u);
+  } else if (BV.i === 1) {
+    e.appendChild(el("div", "bvgros", "👥"));
+    e.appendChild(el("h2", "", "Ton équipe dans la poche"));
+    e.appendChild(el("p", "", "Dans l’onglet Équipe :"));
+    var u2 = el("ul"); ["📌 les infos du magasin (la plus importante s’affiche sur l’accueil)", "🗓️ le planning de la semaine", "📦 les demandes de réassort", "💬 le chat, avec photos et @prénom"].forEach(function(t){ u2.appendChild(el("li", "", t)); }); e.appendChild(u2);
+    e.appendChild(el("p", "", "Rien de confidentiel dedans : pas de données clients."));
+  } else {
+    e.appendChild(el("div", "bvgros", "🚀"));
+    e.appendChild(el("h2", "", "Dernière étape"));
+    // installation
+    if (estInstallee()) e.appendChild(el("p", "", "✓ BipBip est installée sur ce téléphone."));
+    else if (INSTALL) { var bi = el("button", "big", "📲 Installer BipBip"); bi.type = "button"; bi.onclick = installer; e.appendChild(el("p", "", "Mets BipBip sur ton écran d’accueil, comme une vraie appli :")); e.appendChild(bi); }
+    else if (/iPhone|iPad|iPod/.test(navigator.userAgent)) e.appendChild(el("p", "", "📲 Mets BipBip sur ton écran d’accueil : dans Safari, bouton Partager (carré avec flèche) → « Sur l’écran d’accueil »."));
+    else e.appendChild(el("p", "", "📲 Mets BipBip sur ton écran d’accueil : menu ⋮ du navigateur → « Ajouter à l’écran d’accueil »."));
+    // notifications
+    if (notifPossible() && CHAT.code && Notification.permission === "default") {
+      e.appendChild(el("p", "", "Sois prévenu des nouvelles infos et des messages de l’équipe :"));
+      var bn = el("button", "big alt", "🔔 Activer les notifications"); bn.type = "button";
+      bn.onclick = function(){ $("notifOn").click(); bn.disabled = true; bn.textContent = "Activation…"; setTimeout(function(){ bn.textContent = Notification.permission === "granted" ? "✓ Notifications activées" : "🔔 Activer les notifications"; bn.disabled = Notification.permission === "granted"; }, 2500); };
+      e.appendChild(bn);
+    } else if (notifPossible() && Notification.permission === "granted") e.appendChild(el("p", "", "✓ Notifications autorisées."));
+    else if (iosSansInstall()) e.appendChild(el("p", "", "🔔 Une fois BipBip installée, ouvre-la depuis l’icône et active les notifications dans Réglages."));
+    else if (!CHAT.code) e.appendChild(el("p", "", "🔔 Rejoins ton magasin (QR code de Matthieu), puis active les notifications dans Réglages."));
+    e.appendChild(el("p", "", "Besoin d’aide plus tard ? Réglages → « Comment ça marche »."));
+  }
+  Array.prototype.forEach.call($("bvPts").children, function(p, i){ p.className = i === BV.i ? "on" : ""; });
+  $("bvSuite").textContent = BV.i < 2 ? "Suivant" : "C’est parti !";
+  $("bvPasser").style.display = BV.i < 2 ? "" : "none";
+}
+function ouvrirBienvenue(){ BV.i = 0; etapeBienvenue(); $("bienvenue").className = "sheet"; try { localStorage.setItem("bienvenue", "1"); } catch(e){} }
+function fermerBienvenue(){ $("bienvenue").className = "sheet hide"; }
+$("bvSuite").onclick = function(){ if (BV.i < 2) { BV.i++; etapeBienvenue(); } else fermerBienvenue(); };
+$("bvPasser").onclick = fermerBienvenue;
 // ---------- aide ----------
 function ouvrirAide(){ $("aideBox").className = "sheet"; }
 $("aideBtn").onclick = ouvrirAide;

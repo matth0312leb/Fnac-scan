@@ -1056,6 +1056,15 @@ async function serie(isbn) {
   return { trouve: true, source: "BnF", serie: base.nom, editeur: String(editeur).replace(/^.*:\s*/, "").replace(/\s*\(.*\)\s*$/, ""), ici: base.n, tomes, dernier: max, manquants, complet: !manquants.length };
 }
 
+// « @Inès » / « @ines » / « @Valoche » → noms de profil (sans l'auteur)
+async function mentionsDe(env, texte, auteur) {
+  const ms = [...String(texte || "").matchAll(/@([A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ'’-]{1,29})/g)].map((m) => m[1].toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, ""));
+  if (!ms.length) return [];
+  const r = await env.DB.prepare("SELECT nom FROM profils").all().catch(() => ({ results: [] }));
+  const parCle = {};
+  (r.results || []).forEach((x) => { parCle[String(x.nom).replace(/[^a-z0-9]/g, "")] = x.nom; });
+  return [...new Set(ms.map((m) => parCle[m]).filter((n) => n && n !== auteur))].slice(0, 10);
+}
 // ---------- notifications Web Push (RFC 8291 / 8292), sans service payant ----------
 // les clés VAPID sont créées une seule fois et gardées dans la base (table config)
 let vapidCache = null, tablePushOk = false;
@@ -1115,11 +1124,12 @@ function enArrierePlan(env, promesse) {
   return p;
 }
 // envoie une notification aux membres du magasin abonnés à ce type (sauf l'auteur) ; renvoie le nombre d'envois réussis
-async function pousser(env, salon, auteur, type, msg, seulement) {
+async function pousser(env, salon, auteur, type, msg, seulement, sauf) {
   await tablePush(env);
   const r = await env.DB.prepare("SELECT endpoint, nom, abo, types FROM push_abos WHERE salon = ?").bind(salon).all();
-  let cibles = (r.results || []).filter((x) => x.nom !== auteur && (type === "test" || String(x.types || "").split(",").includes(type)));
+  let cibles = (r.results || []).filter((x) => x.nom !== auteur && (type === "test" || type === "mention" || String(x.types || "").split(",").includes(type)));
   if (seulement) cibles = cibles.filter((x) => seulement.includes(x.nom));
+  if (sauf && sauf.length) cibles = cibles.filter((x) => !sauf.includes(x.nom));
   if (type === "reassort") {
     // les demandes de réassort ne vont qu'à ceux qui peuvent les valider (administrateur, manager avec le droit)
     const rc = await rolesConf(env), adminNom = await env.DB.prepare("SELECT valeur FROM config WHERE cle = 'admin_nom'").first().catch(() => null);
@@ -1159,6 +1169,9 @@ async function chat(route, p, nom, affichage, admin, droits, env, now) {
       env.DB.prepare("CREATE TABLE IF NOT EXISTS post_images (post_id INTEGER PRIMARY KEY, image TEXT)"),
       env.DB.prepare("CREATE TABLE IF NOT EXISTS reassort (id INTEGER PRIMARY KEY AUTOINCREMENT, salon TEXT, nom TEXT, affichage TEXT, sku TEXT, titre TEXT, quantite INTEGER DEFAULT 1, note TEXT, statut TEXT DEFAULT 'demande', valide_par TEXT, t INTEGER, t_valide INTEGER)"),
     ]);
+    // photos du chat (ajout après coup : colonne img + table à part, comme pour les infos)
+    try { await env.DB.prepare("ALTER TABLE messages ADD COLUMN img INTEGER DEFAULT 0").run(); } catch (e) {}
+    await env.DB.prepare("CREATE TABLE IF NOT EXISTS msg_images (msg_id INTEGER PRIMARY KEY, image TEXT)").run();
     tablesChatOk = true;
   }
   if (route === "/chat/creer") {
@@ -1340,22 +1353,41 @@ async function chat(route, p, nom, affichage, admin, droits, env, now) {
   }
   if (route === "/chat/messages") {
     const apres = parseInt(p("apres"), 10) || 0;
-    const r = await env.DB.prepare("SELECT id, affichage AS a, nom AS n, texte AS x, t FROM messages WHERE salon = ? AND id > ? ORDER BY id DESC LIMIT 80").bind(code, apres).all();
+    const r = await env.DB.prepare("SELECT id, affichage AS a, nom AS n, texte AS x, t, img FROM messages WHERE salon = ? AND id > ? ORDER BY id DESC LIMIT 80").bind(code, apres).all();
     return { ok: true, salon: salon.nom, messages: (r.results || []).reverse() };
   }
   if (route === "/chat/envoyer") {
     const texte = p("texte").replace(/\r/g, "").replace(/\n{3,}/g, "\n\n").slice(0, 500);
-    if (!texte) return { ok: false, erreur: "message vide" };
+    const image = p("image");
+    if (image && (!/^data:image\/(jpeg|png|webp);base64,/.test(image) || image.length > 1500000)) return { ok: false, erreur: "photo trop lourde ou illisible" };
+    if (!texte && !image) return { ok: false, erreur: "message vide" };
+    const r = await env.DB.prepare("INSERT INTO messages (salon, nom, affichage, texte, t, img) VALUES (?, ?, ?, ?, ?, ?) RETURNING id").bind(code, nom, affichage, texte, now, image ? 1 : 0).first();
+    if (image && r) await env.DB.prepare("INSERT INTO msg_images (msg_id, image) VALUES (?, ?)").bind(r.id, image).run();
+    // les messages (et leurs photos) s'effacent tout seuls après 30 jours
     await env.DB.batch([
-      env.DB.prepare("INSERT INTO messages (salon, nom, affichage, texte, t) VALUES (?, ?, ?, ?, ?)").bind(code, nom, affichage, texte, now),
-      // les messages s'effacent tout seuls après 30 jours
+      env.DB.prepare("DELETE FROM msg_images WHERE msg_id IN (SELECT id FROM messages WHERE salon = ? AND t < ?)").bind(code, now - 30 * 24 * 3600 * 1000),
       env.DB.prepare("DELETE FROM messages WHERE salon = ? AND t < ?").bind(code, now - 30 * 24 * 3600 * 1000),
     ]);
-    enArrierePlan(env, pousser(env, code, nom, "chat", { titre: "💬 " + affichage, texte: texte.slice(0, 140), url: "./?vue=chat", tag: "chat-" + code }));
-    return { ok: true };
+    // @mentions : la personne citée est prévenue même si elle a coupé les notifications du chat
+    const cites = await mentionsDe(env, texte, nom);
+    const apercu = (image ? "📷 " : "") + (texte || "Photo").slice(0, 140);
+    if (cites.length) enArrierePlan(env, pousser(env, code, nom, "mention", { titre: "📣 " + affichage + " t’a mentionné", texte: apercu, url: "./?vue=chat", tag: "mention-" + code }, cites));
+    enArrierePlan(env, pousser(env, code, nom, "chat", { titre: "💬 " + affichage, texte: apercu, url: "./?vue=chat", tag: "chat-" + code }, null, cites));
+    return { ok: true, mentions: cites };
+  }
+  if (route === "/chat/msg-image") {
+    const r = await env.DB.prepare("SELECT i.image FROM msg_images i JOIN messages m ON m.id = i.msg_id WHERE i.msg_id = ? AND m.salon = ?").bind(parseInt(p("id"), 10) || 0, code).first();
+    return r ? { ok: true, image: r.image } : { ok: false, erreur: "photo effacée" };
+  }
+  // prénoms de l'équipe pour l'autocomplétion des @mentions
+  if (route === "/chat/membres") {
+    const r = await env.DB.prepare("SELECT nom, affichage FROM profils WHERE vu > ? ORDER BY affichage").bind(now - 90 * 24 * 3600 * 1000).all();
+    return { ok: true, membres: (r.results || []).filter((x) => x.nom !== nom).map((x) => ({ n: x.nom, a: x.affichage })) };
   }
   if (route === "/chat/supprimer") {
-    await env.DB.prepare("DELETE FROM messages WHERE id = ? AND salon = ? AND (nom = ? OR ?)").bind(parseInt(p("id"), 10) || 0, code, nom, peut("chat") ? 1 : 0).run();
+    const idm = parseInt(p("id"), 10) || 0;
+    await env.DB.prepare("DELETE FROM msg_images WHERE msg_id IN (SELECT id FROM messages WHERE id = ? AND salon = ? AND (nom = ? OR ?))").bind(idm, code, nom, peut("chat") ? 1 : 0).run();
+    await env.DB.prepare("DELETE FROM messages WHERE id = ? AND salon = ? AND (nom = ? OR ?)").bind(idm, code, nom, peut("chat") ? 1 : 0).run();
     return { ok: true };
   }
   return { ok: false, erreur: "route inconnue" };
