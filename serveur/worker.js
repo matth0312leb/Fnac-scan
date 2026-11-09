@@ -1213,10 +1213,17 @@ async function chat(route, p, nom, affichage, admin, droits, env, now) {
     await env.DB.prepare("CREATE TABLE IF NOT EXISTS objectifs (salon TEXT, mois TEXT, nom TEXT, affichage TEXT, type TEXT, objectif INTEGER, realise INTEGER DEFAULT 0, maj INTEGER, maj_par TEXT, PRIMARY KEY (salon, mois, nom, type))").run();
     const gere = peut("objectifs");
     const mois = /^\d{4}-\d{2}$/.test(p("mois")) ? p("mois") : new Date(now).toISOString().slice(0, 7);
+    // les managers (Mesud, Inès…) n'ont pas d'objectif cartes : ils contrôlent seulement
+    const rcO = await rolesConf(env), estManager = (n) => rcO.roles[n] === "manager";
     if (route === "/chat/objectifs") {
       const r = await env.DB.prepare("SELECT nom AS n, affichage AS a, type, objectif AS o, realise AS r, maj, maj_par AS par FROM objectifs WHERE salon = ? AND mois = ? ORDER BY affichage").bind(code, mois).all();
       const prec = await env.DB.prepare("SELECT COUNT(*) AS n FROM objectifs WHERE salon = ? AND mois < ?").bind(code, mois).first();
-      return { ok: true, mois, peutGerer: gere, moi: nom, lignes: r.results || [], historique: !!(prec && prec.n) };
+      let equipe = [];
+      if (gere) {
+        const e = await env.DB.prepare("SELECT nom, affichage FROM profils WHERE vu > ? ORDER BY affichage").bind(now - 90 * 24 * 3600 * 1000).all();
+        equipe = (e.results || []).filter((x) => !estManager(x.nom)).map((x) => ({ n: x.nom, a: x.affichage }));
+      }
+      return { ok: true, mois, peutGerer: gere, moi: nom, vendeur: !estManager(nom), equipe, lignes: (r.results || []).filter((x) => !estManager(x.n)), historique: !!(prec && prec.n) };
     }
     if (route === "/chat/objectif-maj") {
       const type = ["adh", "cembra"].includes(p("type")) ? p("type") : "";
@@ -1224,6 +1231,7 @@ async function chat(route, p, nom, affichage, admin, droits, env, now) {
       // chacun gère sa ligne ; le responsable (droit « objectifs ») peut toucher à toutes
       const cible = p("cible") ? p("cible").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").slice(0, 30) : nom;
       if (cible !== nom && !gere) return { ok: false, erreur: "réservé au responsable" };
+      if (estManager(cible)) return { ok: false, erreur: "pas d'objectif cartes pour les managers" };
       let aff = affichage;
       if (cible !== nom) { const pr = await env.DB.prepare("SELECT affichage FROM profils WHERE nom = ?").bind(cible).first(); aff = pr ? pr.affichage : p("cible").slice(0, 30); }
       const ex = await env.DB.prepare("SELECT objectif, realise FROM objectifs WHERE salon = ? AND mois = ? AND nom = ? AND type = ?").bind(code, mois, cible, type).first();
