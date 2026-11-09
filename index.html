@@ -104,7 +104,7 @@ li{padding:10px 0;border-top:1px solid var(--line)}
 #bvEtape li{padding:7px 0;font-size:15px}
 #bvEtape .big{margin-top:8px}
 .bvpts{display:flex;gap:6px;justify-content:center;margin:14px 0}
-.bvpts i{width:8px;height:8px;border-radius:50%;background:var(--line)}
+.bvpts{padding:6px 0}.bvpts i{width:10px;height:10px;border-radius:50%;background:var(--line)}
 .bvpts i.on{background:var(--accent);width:22px;border-radius:4px}
 div.seg button{padding-left:0;padding-right:0;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13.5px;letter-spacing:-.2px}
 @media (min-width:430px){div.seg button{font-size:15px;letter-spacing:0}}
@@ -500,7 +500,7 @@ body{max-width:1000px;margin-left:calc(232px + max(32px,(100vw - 1264px)/2));mar
     <li><b>🖼️ Photo d’un article</b><span>Pas de code-barres ? Prends l’article en photo : BipBip reconnaît le livre, le jeu ou le produit.</span></li>
     <li><b>⚖️ Comparer 2 articles</b><span>Scanne ou tape deux articles : ils s’affichent côte à côte.</span></li>
     <li><b>🎁 Idées cadeaux</b><span>Donne l’âge et les goûts de la personne : des idées récentes, avec l’âge PEGI pour les jeux.</span></li>
-    <li><b>▮▯▮ Code-barres à rescanner</b><span>Sous chaque résultat : présente l’écran à la douchette du poste. Touche-le pour l’agrandir.</span></li>
+    <li><b>🏷️ Code-barres à rescanner</b><span>Sous chaque résultat : présente l’écran à la douchette du poste. Touche-le pour l’agrandir.</span></li>
     <li><b>🕘 Historique</b><span>Tes derniers articles, sur n’importe quel téléphone avec ton prénom et ton code.</span></li>
     <li><b>👥 Équipe</b><span>Infos (la plus importante s’affiche « À la une » sur l’accueil), Planning de la semaine, Réassort (demande un produit avec son SKU, le responsable valide) et Chat du magasin.</span></li>
     <li><b>🔔 Notifications</b><span>Dans Réglages : sois prévenu des nouvelles infos et des messages, même appli fermée. Sur iPhone, installe d’abord BipBip sur l’écran d’accueil.</span></li>
@@ -2037,7 +2037,7 @@ function etapeBienvenue(){
     e.appendChild(el("div", "bvgros", "👋"));
     e.appendChild(el("h2", "", "Salut " + prenom + " !"));
     e.appendChild(el("p", "", "BipBip, c’est l’assistant de rayon de l’équipe. Scanne un article et tu as tout de suite :"));
-    var u = el("ul"); ["📚 le résumé, la date de sortie et l’âge conseillé", "💬 la réponse à la question du client", "▮▯▮ le code-barres à rescanner au poste", "🎁 des idées cadeaux récentes"].forEach(function(t){ u.appendChild(el("li", "", t)); }); e.appendChild(u);
+    var u = el("ul"); ["📚 le résumé, la date de sortie et l’âge conseillé", "💬 la réponse à la question du client", "🏷️ le code-barres à rescanner au poste", "🎁 des idées cadeaux récentes"].forEach(function(t){ u.appendChild(el("li", "", t)); }); e.appendChild(u);
   } else if (BV.i === 1) {
     e.appendChild(el("div", "bvgros", "👥"));
     e.appendChild(el("h2", "", "Ton équipe dans la poche"));
@@ -2070,9 +2070,20 @@ function etapeBienvenue(){
 function ouvrirBienvenue(){ BV.i = 0; $("bvCompris").checked = false; etapeBienvenue(); $("bienvenue").className = "sheet"; }
 // revient à chaque ouverture tant que « J'ai compris » n'est pas coché
 function fermerBienvenue(){ $("bienvenue").className = "sheet hide"; if ($("bvCompris").checked) { try { localStorage.setItem("bienvenue", "1"); } catch(e){} } }
-$("bvSuite").onclick = function(){ if (BV.i < 2) { BV.i++; etapeBienvenue(); } else fermerBienvenue(); };
+$("bvSuite").onclick = function(){ if (BV.i < 2) allerEtape(BV.i + 1); else fermerBienvenue(); };
 $("bvPasser").onclick = fermerBienvenue;
 $("bvRevoir").onclick = ouvrirBienvenue;
+// glisser à gauche / à droite pour changer d'écran, ou toucher les points
+function allerEtape(i){ if (i < 0 || i > 2 || i === BV.i) return; var e = $("bvEtape"), dir = i > BV.i ? 1 : -1; BV.i = i; etapeBienvenue(); e.style.transition = "none"; e.style.transform = "translateX(" + (dir * 40) + "px)"; e.style.opacity = "0"; requestAnimationFrame(function(){ requestAnimationFrame(function(){ e.style.transition = "transform .22s ease, opacity .22s ease"; e.style.transform = ""; e.style.opacity = ""; }); }); }
+(function(){
+  var carte = $("bienvenue").querySelector(".card"), x0 = null, y0 = 0;
+  carte.addEventListener("touchstart", function(e){ x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; }, { passive: true });
+  carte.addEventListener("touchend", function(e){
+    if (x0 === null) return; var dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0; x0 = null;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.3) allerEtape(BV.i + (dx < 0 ? 1 : -1));
+  }, { passive: true });
+  Array.prototype.forEach.call($("bvPts").children, function(p, i){ p.style.cursor = "pointer"; p.onclick = function(){ allerEtape(i); }; });
+})();
 // ---------- aide ----------
 function ouvrirAide(){ $("aideBox").className = "sheet"; }
 $("aideBtn").onclick = ouvrirAide;
@@ -2536,7 +2547,7 @@ function ligneDemande(x){
   if (x.statut !== "demande") d.appendChild(el("p", "etat" + (x.statut === "refuse" ? " refuse" : ""), (x.statut === "refuse" ? "✕ Pas commandé" : "✓ Commandé") + (x.v ? " par " + x.v : "") + (x.tv ? " · " + ago(x.tv) : "")));
   var acts = el("div", "acts"), act = function(txt, cls, f){ var b = el("button", cls, txt); b.type = "button"; b.onclick = f; acts.appendChild(b); };
   var maj = function(route, data){ return function(){ prof(route, Object.assign({ code: CHAT.code, id: x.id }, data)).then(chargerReassort); }; };
-  act("▮▯▮ Code-barres", "", function(){ zoomCodeBarre(x.sku); });
+  act("🏷️ Code-barres", "", function(){ zoomCodeBarre(x.sku); });
   // « Copier le SKU » : seulement sur ordinateur (souris + grand écran), inutile sur téléphone
   if (navigator.clipboard && window.matchMedia && window.matchMedia("(pointer: fine) and (min-width: 900px)").matches) act("Copier le SKU", "", function(){ navigator.clipboard.writeText(x.sku).then(function(){ this.textContent = "Copié ✓"; }.bind(this)); });
   if (REA.peutValider && x.statut === "demande") { act("✓ Commandé", "ok", maj("/chat/reassort-valider", { statut: "commande" })); act("Pas commandé", "", maj("/chat/reassort-valider", { statut: "refuse" })); }
