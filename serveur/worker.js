@@ -13,6 +13,7 @@
 
 const SITE = "https://matth0312leb.github.io";
 const UA = "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Mobile Safari/537.36";
+const VERSION = "v2";   // version des fiches gardées en mémoire (v2 : dates de parution / sortie exactes)
 const HDRS = { "User-Agent": UA, "Accept": "application/json,application/xml,text/xml;q=0.9,*/*;q=0.8", "Accept-Language": "fr-CH,fr;q=0.9" };
 
 export default {
@@ -24,7 +25,8 @@ export default {
     const cors = {
       "Access-Control-Allow-Origin": origin === SITE ? SITE : "*",
       "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      "Access-Control-Max-Age": "86400",
       "Content-Type": "application/json; charset=utf-8",
       "Cache-Control": "public, max-age=3600",
     };
@@ -34,17 +36,24 @@ export default {
     const code = (url.searchParams.get("ean") || url.searchParams.get("isbn") || "").replace(/\D/g, "");
     const send = (o, s = 200) => new Response(JSON.stringify(o, null, 2), { status: s, headers: cors });
     // mémoire des fiches (stockage KV Cloudflare, 30 jours) : un article déjà vu s'affiche tout de suite
-    const VERSION = "v2";   // v2 : dates de parution / sortie exactes
     const cle = url.pathname.slice(1) + ":" + VERSION + ":" + [code, url.searchParams.get("a"), url.searchParams.get("b")].filter(Boolean).join("-");
     const frais = url.searchParams.get("frais") === "1";
     if (env.FICHES && !frais && /^\/(livre|produit|comparer|similaires)$/.test(url.pathname)) {
       try { const deja = await env.FICHES.get(cle, "json"); if (deja) return send({ ...deja, memoire: true }); } catch (e) {}
     }
+    // l'IA et les recherches neuves sont réservées aux profils connectés (une fiche déjà en mémoire ne coûte rien : elle reste servie)
+    const ip = ipDe(req);
+    const refus = async () => {
+      const a = await accesRequete(req, env, ip);
+      return a.ok ? null : new Response(JSON.stringify({ ok: false, trouve: false, connexion: true, bloque: !!a.bloque, erreur: a.bloque ? "trop d'essais" : "connexion requise" }), { status: 401, headers: { ...cors, "Cache-Control": "no-store" } });
+    };
+    const PROTEGE = /^\/(photo|cadeaux|question|livre|similaires|serie|produit|comparer)$/;
     const sendCache = async (o) => {
       if (o && o.trouve && env.FICHES) { try { await env.FICHES.put(cle, JSON.stringify(o), { expirationTtl: 60 * 60 * 24 * 30 }); } catch (e) {} }
       return send(o);
     };
     try {
+      if (PROTEGE.test(url.pathname) && url.pathname !== "/serie") { const r = await refus(); if (r) return r; }
       if (url.pathname === "/photo" && req.method === "POST") {
         let body; try { body = await req.json(); } catch (e) { return send({ trouve: false, erreur: "image attendue" }, 400); }
         return send(await photo(String(body.image || ""), env));
@@ -64,6 +73,7 @@ export default {
         // liste des tomes : gardée 3 jours (les nouveaux tomes arrivent vite)
         const cs = "serie:v1:" + code;
         if (env.FICHES && !frais) { try { const d = await env.FICHES.get(cs, "json"); if (d) return send({ ...d, memoire: true }); } catch (e) {} }
+        const rs = await refus(); if (rs) return rs;
         const o = await serie(code);
         if (o.trouve && env.FICHES) { try { await env.FICHES.put(cs, JSON.stringify(o), { expirationTtl: 3 * 24 * 3600 }); } catch (e) {} }
         return send(o);
@@ -318,7 +328,7 @@ function compteurIA(env, ctx) {
 // ---------- livres similaires ----------
 async function similaires(isbn, env) {
   if (!/^97[89]\d{10}$/.test(isbn)) return { trouve: false, erreur: "ISBN attendu" };
-  let f = env.FICHES ? await env.FICHES.get("livre:v1:" + isbn, "json").catch(() => null) : null;
+  let f = env.FICHES ? await env.FICHES.get("livre:" + VERSION + ":" + isbn, "json").catch(() => null) : null;
   if (!f) f = await livre(isbn, env);
   if (!f || !f.trouve) return { trouve: false, erreur: "livre introuvable" };
   const ia = f.ia || {};
@@ -689,6 +699,7 @@ async function profils(req, url, env) {
   let nom = affichage.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
   const now = Date.now();
   const route = url.pathname;
+  const ip = ipDe(req);
 
   if (route === "/stats") {
     // chaque requête a un délai maximum, pour ne jamais bloquer l'écran des statistiques
@@ -702,12 +713,14 @@ async function profils(req, url, env) {
       ]).catch((err) => { etapes.push(nomEtape + " : " + String(err && err.message || err).slice(0, 80)); return defaut; })
         .finally(() => clearTimeout(minuteur));
     };
-    const code = await borne("code", conf("code_stats"), null);
-    if (code === null) return { ok: false, erreur: "base injoignable", etapes };
-    if (p("cle") !== code) {
-      // un manager qui a le droit « stats » y accède avec son prénom et son code personnel
-      const rcA = await rolesConf(env), pr = nom ? await env.DB.prepare("SELECT pin FROM profils WHERE nom = ?").bind(nom).first().catch(() => null) : null;
-      if (!(rcA.roles[nom] === "manager" && rcA.droits.includes("stats") && pr && await pinOk(p("cle"), pr.pin))) return { ok: false, erreur: "code incorrect" };
+    // administrateur, ou manager qui a le droit « stats » : prénom + code, avec blocage après 5 erreurs
+    let acc;
+    try { acc = await accesProfil(env, p("nom"), p("cle"), ip, now); } catch (e) { return { ok: false, erreur: "base injoignable", etapes }; }
+    if (acc.bloque) return { ok: false, erreur: "trop d'essais" };
+    if (!acc.ok) return { ok: false, erreur: "code incorrect" };
+    if (!acc.admin) {
+      const rcA = await rolesConf(env);
+      if (!(rcA.roles[acc.nom] === "manager" && rcA.droits.includes("stats"))) return { ok: false, erreur: "code incorrect" };
     }
     const semaine = now - 7 * 24 * 3600 * 1000;
     const jour = new Date().toISOString().slice(0, 10);
@@ -731,8 +744,11 @@ async function profils(req, url, env) {
 
   if (!nom || nom.length < 2) return { ok: false, erreur: "prénom manquant" };
   // protection du profil administrateur
-  if (nom === await conf("admin_nom") && p("cle") !== await conf("code_stats")) return { ok: false, erreur: "code", protege: true };
   const admin = nom === await conf("admin_nom");
+  if (admin) {
+    const ra = await codeAdminOk(env, p("cle"), ip, now);
+    if (!ra.ok) return { ok: false, erreur: ra.bloque ? "trop d'essais" : "code", protege: true, bloque: !!ra.bloque };
+  }
 
   // profil renommé ou supprimé par l'administrateur : le téléphone du collègue est prévenu à sa prochaine requête
   let renomme = "";
@@ -770,15 +786,26 @@ async function profils(req, url, env) {
   }
 
   const rc = await rolesConf(env), mesDroits = droitsDe(nom, admin, rc), monRole = roleDe(nom, admin, rc);
+  // l'administrateur change son propre code : 6 chiffres au moins, gardé haché (jamais en clair)
+  if (route === "/profil/admin-mon-code") {
+    if (!admin) return { ok: false, erreur: "réservé à l'administrateur" };
+    const nv = p("nouveau");
+    if (!/^\d{6,12}$/.test(nv)) return { ok: false, erreur: "6 chiffres au minimum (12 au maximum)" };
+    if (/^(\d)\1+$/.test(nv) || "01234567890123456789".includes(nv) || "98765432109876543210".includes(nv)) return { ok: false, erreur: "code trop facile à deviner" };
+    await env.DB.prepare("INSERT INTO config (cle, valeur) VALUES ('code_stats', ?) ON CONFLICT(cle) DO UPDATE SET valeur = excluded.valeur").bind(await codeAdminHache(nv)).run();
+    return { ok: true };
+  }
   if (route.startsWith("/profil/admin-")) return await gestionProfils(route, p, admin, mesDroits, env, now);
+  // tant que l'administrateur garde son ancien code court, l'appli lui propose d'en choisir un plus long
+  const codeCourt = admin && !String(await conf("code_stats")).startsWith("h1:") ? { code_court: true } : {};
 
   if (route.startsWith("/chat/")) return await chat(route, p, nom, affichage, admin, mesDroits, env, now);
-  if (route === "/profil/moi") return reponse({ ok: true, nom: affichage, admin, role: monRole, droits: mesDroits, catalogue: DROITS });
+  if (route === "/profil/moi") return reponse({ ok: true, nom: affichage, admin, role: monRole, droits: mesDroits, catalogue: DROITS, ...codeCourt });
 
   if (route === "/profil/connexion") {
     await env.DB.prepare("INSERT INTO profils (nom, affichage, cree, vu) VALUES (?, ?, ?, ?) ON CONFLICT(nom) DO UPDATE SET vu = excluded.vu").bind(nom, affichage, now, now).run();
     if (poserPin) await env.DB.prepare("UPDATE profils SET pin = ?, essais = 0, bloque = 0 WHERE nom = ?").bind(poserPin, nom).run();
-    return reponse({ ok: true, nom: affichage, admin, role: monRole, droits: mesDroits, catalogue: DROITS });
+    return reponse({ ok: true, nom: affichage, admin, role: monRole, droits: mesDroits, catalogue: DROITS, ...codeCourt });
   }
   if (route === "/profil/historique") {
     const rows = (await env.DB.prepare("SELECT code AS c, note AS n, t, titre AS ti FROM historique WHERE nom = ? ORDER BY t DESC LIMIT 50").bind(nom).all()).results || [];
@@ -820,6 +847,81 @@ async function profils(req, url, env) {
     return reponse({ ok: true });
   }
   return { ok: false, erreur: "route inconnue" };
+}
+
+// ---------- contrôle des codes ----------
+// adresse de la connexion (pour IPv6 : le préfixe /64, sinon on change d'adresse à volonté)
+function ipDe(req) {
+  const ip = (req.headers.get("CF-Connecting-IP") || "?").trim();
+  return ip.includes(":") ? ip.split(":").slice(0, 4).join(":") : ip;
+}
+const sha = async (t) => [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t)))].map((b) => b.toString(16).padStart(2, "0")).join("");
+// code administrateur : gardé haché « h1:sel:empreinte » (l'ancien code court, en clair, marche jusqu'à ce qu'il soit changé)
+async function codeAdminHache(code, sel) {
+  sel = sel || [...crypto.getRandomValues(new Uint8Array(8))].map((b) => b.toString(16).padStart(2, "0")).join("");
+  return "h1:" + sel + ":" + await sha("bipbip:admin:" + sel + ":" + code);
+}
+async function codeAdminEgal(code, stocke) {
+  if (!code || !stocke) return false;
+  if (stocke.startsWith("h1:")) return (await codeAdminHache(code, stocke.split(":")[1])) === stocke;
+  return code === stocke;
+}
+// 5 codes faux depuis la même connexion = 15 minutes d'attente pour cette connexion (les autres téléphones ne sont pas gênés).
+// Un même code faux répété (vieil onglet resté ouvert après un changement de code) ne compte qu'une fois.
+let tableEssaisOk = false;
+async function codeAdminOk(env, code, ip, now) {
+  if (!code) return { ok: false };
+  const r = await env.DB.prepare("SELECT valeur FROM config WHERE cle = 'code_stats'").first();
+  const stocke = r ? String(r.valeur || "") : "";
+  if (!tableEssaisOk) { await env.DB.prepare("CREATE TABLE IF NOT EXISTS essais (cle TEXT PRIMARY KEY, n INTEGER DEFAULT 0, bloque INTEGER DEFAULT 0, dernier TEXT, t INTEGER)").run(); tableEssaisOk = true; }
+  const k = "admin:" + ip;
+  const e = await env.DB.prepare("SELECT n, bloque, dernier FROM essais WHERE cle = ?").bind(k).first();
+  if (e && (e.bloque || 0) > now) return { ok: false, bloque: true };
+  if (await codeAdminEgal(code, stocke)) {
+    if (e) await env.DB.prepare("DELETE FROM essais WHERE cle = ?").bind(k).run();
+    return { ok: true };
+  }
+  const emp = (await sha("bipbip:essai:" + code)).slice(0, 16);
+  if (e && e.dernier === emp) return { ok: false };
+  const n = (e ? e.n || 0 : 0) + 1, bloque = n >= 5;
+  await env.DB.batch([
+    env.DB.prepare("INSERT INTO essais (cle, n, bloque, dernier, t) VALUES (?, ?, ?, ?, ?) ON CONFLICT(cle) DO UPDATE SET n = excluded.n, bloque = excluded.bloque, dernier = excluded.dernier, t = excluded.t").bind(k, bloque ? 0 : n, bloque ? now + 15 * 60 * 1000 : 0, emp, now),
+    env.DB.prepare("DELETE FROM essais WHERE t < ?").bind(now - 24 * 3600 * 1000),
+  ]);
+  return { ok: false, bloque };
+}
+// prénom + code valides ? (statistiques, IA) — mêmes règles que la connexion : 5 erreurs = 15 minutes
+async function accesProfil(env, nomBrut, cle, ip, now) {
+  let nom = String(nomBrut || "").replace(/\s+/g, " ").trim().slice(0, 30).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  cle = String(cle || "").trim();
+  if (nom.length < 2) return { ok: false };
+  const ad = await env.DB.prepare("SELECT valeur FROM config WHERE cle = 'admin_nom'").first();
+  if (ad && nom === ad.valeur) return { ...(await codeAdminOk(env, cle, ip, now)), nom, admin: true };
+  const al = await env.DB.prepare("SELECT nouveau FROM renommages WHERE ancien = ?").bind(nom).first().catch(() => null);
+  if (al && !al.nouveau) return { ok: false };
+  if (al) nom = al.nouveau;
+  const pr = await env.DB.prepare("SELECT pin, essais, bloque FROM profils WHERE nom = ?").bind(nom).first();
+  if (!pr) return { ok: false };
+  if (!pr.pin) return { ok: true, nom, admin: false };   // ancien profil sans code : il marche, l'appli lui demande d'en choisir un
+  if ((pr.bloque || 0) > now) return { ok: false, bloque: true };
+  if (!cle) return { ok: false };
+  if (await pinOk(cle, pr.pin)) {
+    if (pr.essais) await env.DB.prepare("UPDATE profils SET essais = 0 WHERE nom = ?").bind(nom).run();
+    return { ok: true, nom, admin: false };
+  }
+  const essais = (pr.essais || 0) + 1;
+  await env.DB.prepare("UPDATE profils SET essais = ?, bloque = ? WHERE nom = ?").bind(essais >= 5 ? 0 : essais, essais >= 5 ? now + 15 * 60 * 1000 : 0, nom).run();
+  return { ok: false, bloque: essais >= 5 };
+}
+// identifiants envoyés par l'appli avec chaque recherche : en-tête « Authorization: Bip <base64 de ["prénom","code"]> »
+async function accesRequete(req, env, ip) {
+  if (!env.DB) return { ok: true };
+  const m = (req.headers.get("Authorization") || "").match(/^Bip\s+([A-Za-z0-9+\/=]+)$/);
+  if (!m) return { ok: false };
+  let id; try { id = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(m[1]), (c) => c.charCodeAt(0)))); } catch (e) { return { ok: false }; }
+  if (!Array.isArray(id)) return { ok: false };
+  // base momentanément injoignable : on laisse passer plutôt que de couper les fiches à toute l'équipe
+  try { return await accesProfil(env, id[0], id[1], ip, Date.now()); } catch (e) { return { ok: true }; }
 }
 
 async function pinHache(pin, sel) {

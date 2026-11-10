@@ -9,12 +9,12 @@
 <link rel="manifest" href="manifest.json?v=2">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Caveat:wght@600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Caveat:wght@600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <link rel="icon" href="logo.svg" type="image/svg+xml">
 <link rel="alternate icon" href="bipbip-192.png">
 <link rel="apple-touch-icon" href="bipbip-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script async src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js" onerror="window.__libScanKO=1"></script>
 <style>
 :root{box-sizing:border-box;--bg:#f6f6f4;--card:#fff;--text:#1a1a1a;--muted:#6b6b6b;--accent:#e1a925;--accent-text:#1a1a1a;--line:#ddd;
 padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -598,6 +598,13 @@ body{max-width:1000px;margin-left:calc(232px + max(32px,(100vw - 1264px)/2));mar
 .tv::after{content:"";position:absolute;left:7px;bottom:8px;width:16px;height:6px;border-radius:3px;background:#e1a925}
 .aide a,#aideLien{color:var(--muted);font-weight:600;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px}
 .aide a:visited{color:var(--muted)}
+#horsLigne{position:fixed;left:50%;top:calc(10px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:80;display:flex;align-items:center;gap:10px;width:max-content;max-width:calc(100vw - 24px);background:#b3261e;color:#fff;padding:10px 14px;border-radius:14px;font-size:13.5px;font-weight:600;line-height:1.35;box-shadow:0 6px 24px rgba(0,0,0,.3)}
+#horsLigne.hide{display:none}
+#horsLigne .ic{flex:none;width:20px;height:20px;stroke:#fff}
+.rlist .rt small{display:block;font-size:12.5px;font-weight:400;color:#d64545;margin-top:2px}
+.rlist .rt small.hide{display:none}
+#codeAdminCard input{font-size:17px;padding:12px}
+#codeAdminCard .big{margin-top:4px}
 @supports ((-webkit-backdrop-filter:blur(1px)) or (backdrop-filter:blur(1px))){
 #bnav{background:rgba(255,255,255,.72);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-top-color:rgba(0,0,0,.08)}
 .sheet{background:rgba(0,0,0,.35);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
@@ -645,16 +652,17 @@ body{max-width:1000px;margin-left:calc(232px + max(32px,(100vw - 1264px)/2));mar
 </div></div>
 <div id="bienvenue" class="sheet hide"><div class="card">
   <div id="bvEtape"></div>
-  <div class="bvpts" id="bvPts"><i></i><i></i><i></i></div>
+  <div class="bvpts" id="bvPts"><i></i><i></i><i></i><i></i></div>
   <label class="opt" style="margin:0 0 12px;font-size:14px"><input type="checkbox" id="bvCompris"> J’ai compris, ne plus afficher</label>
   <div class="infoacts"><button class="big alt" id="bvPasser" type="button">Passer</button><button class="big" id="bvSuite" type="button">Suivant</button></div>
 </div></div>
 <div id="toast" class="hide"></div>
+<div id="horsLigne" class="hide" role="status" aria-live="polite"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18"/><path d="M5 12.5a10 10 0 0 1 3.5-2.4M19 12.5a10 10 0 0 0-5.6-3M8.5 16a5 5 0 0 1 7 0M2 9a14.5 14.5 0 0 1 4-2.7M22 9a14.5 14.5 0 0 0-10.5-3.9"/><path d="M12 19.5h.01"/></svg><span>Pas de connexion : les recherches, le chat et les envois attendent le retour du réseau.</span></div>
 <div id="profil" class="hide"><div class="card">
   <h2>Bienvenue sur BipBip 👋</h2>
   <p class="intro">Entre ton prénom et ton code à 4 chiffres : ils te permettent de retrouver ton historique sur n'importe quel téléphone. Nouveau ? Choisis un code et retiens-le.</p>
   <input id="pNom" type="text" placeholder="Ton prénom" autocomplete="given-name" enterkeyhint="next">
-  <input id="pCle" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="Code à 4 chiffres" autocomplete="off" enterkeyhint="go">
+  <input id="pCle" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="12" placeholder="Code à 4 chiffres" autocomplete="off" enterkeyhint="go">
   <button class="big" id="pGo" type="button">C'est parti</button>
   <p class="warn" id="pMsg"></p>
 </div></div>
@@ -880,6 +888,15 @@ body{max-width:1000px;margin-left:calc(232px + max(32px,(100vw - 1264px)/2));mar
   <p class="rtit">Administration</p>
   <div class="card rlist">
     <button class="hide" id="statBtn" type="button"><span class="ri"><svg class="si" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V11M10 20V5M16 20v-6M22 20H2"/></svg></span><span class="rt">Statistiques de l’équipe</span><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
+    <button class="hide" id="codeAdminBtn" type="button"><span class="ri"><svg class="si" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></svg></span><span class="rt">Changer mon code<small id="caAlerte" class="hide">Ton code n’a que 4 chiffres : choisis-en un plus long.</small></span><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
+  </div>
+  <div class="card rg hide" id="codeAdminCard">
+    <p class="lbl">Mon code administrateur</p>
+    <p class="aide" style="margin-top:0">Choisis un code de 6 chiffres ou plus, sans lien avec une date ou ton pseudo. Après 5 codes faux, la connexion qui essaie est bloquée 15 minutes. Tes autres appareils te redemanderont ce nouveau code.</p>
+    <input id="caNv" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="12" placeholder="Nouveau code (6 chiffres ou plus)" autocomplete="new-password" aria-label="Nouveau code administrateur">
+    <input id="caNv2" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="12" placeholder="Encore une fois" autocomplete="new-password" aria-label="Nouveau code, encore une fois">
+    <button class="big" id="caOk" type="button">Enregistrer le nouveau code</button>
+    <p class="aide" id="caMsg"></p>
   </div>
   <div id="statCard" class="card hide"></div>
   <div class="card rg hide" id="rolesCard">
@@ -957,13 +974,41 @@ function peut(d){ return PROFIL.admin || (PROFIL.droits || []).indexOf(d) > -1; 
 var ROLES = { admin: "👑 Administrateur", manager: "⭐ Manager", equipe: "Équipe" };
 try { PROFIL.droits = JSON.parse(localStorage.getItem("profilDroits") || "[]"); PROFIL.role = localStorage.getItem("profilRole") || ""; } catch(e){ PROFIL.droits = []; }
 try { PROFIL.nom = localStorage.getItem("profilNom") || ""; PROFIL.cle = localStorage.getItem("profilCle") || ""; PROFIL.admin = localStorage.getItem("profilAdmin") === "1"; } catch(e){}
+// ---------- réseau : bandeau « pas de connexion » ----------
+var RESEAU = { ok: true, t: 0 };
+function reseau(ok){
+  if (ok === RESEAU.ok) return;
+  RESEAU.ok = ok; $("horsLigne").className = ok ? "hide" : "";
+  clearInterval(RESEAU.t);
+  // tant que le bandeau est affiché, on vérifie toutes les 15 s si le serveur répond à nouveau
+  if (!ok) RESEAU.t = setInterval(function(){
+    if (document.hidden) return;
+    fetch(SERVEUR + "/?t=" + Date.now(), { cache: "no-store" }).then(function(r){ if (r.ok) { reseau(true); if (CHAT.code) chargerMessages(false); } }, function(){});
+  }, 15000);
+}
+window.addEventListener("offline", function(){ reseau(false); });
+window.addEventListener("online", function(){ fetch(SERVEUR + "/?t=" + Date.now(), { cache: "no-store" }).then(function(r){ if (r.ok) reseau(true); }, function(){}); });
+// l'IA et les fiches neuves sont réservées aux profils connectés : prénom + code partent avec chaque recherche
+function enteteAuth(h){
+  h = h || {};
+  if (PROFIL.nom) { try { h.Authorization = "Bip " + btoa(unescape(encodeURIComponent(JSON.stringify([PROFIL.nom, PROFIL.cle])))); } catch(e){} }
+  return h;
+}
+function appel(u, o){
+  o = o || {}; o.headers = enteteAuth(Object.assign({}, o.headers || {}));
+  return fetch(u, o).then(function(r){
+    reseau(true);
+    if (r.status === 401) r.clone().json().then(function(j){ if (j && j.connexion) codeAChange(!!j.bloque); }).catch(function(){});
+    return r;
+  }, function(e){ if (!e || e.name !== "AbortError") reseau(false); throw e; });
+}
 function prof(route, data){
   if (!PROFIL.nom) return Promise.resolve(null);
   var body = Object.assign({ nom: PROFIL.nom, cle: PROFIL.cle }, data || {});
   return fetch(SERVEUR + route, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
-    .then(function(r){ return r.json(); })
+    .then(function(r){ reseau(true); return r.json(); })
     .then(function(j){
-      if (j && j.protege) codeAChange();
+      if (j && j.protege) codeAChange(!!j.bloque);
       // profil renommé ou fusionné par l'administrateur : on suit le nouveau prénom
       if (j && j.renomme && j.renomme !== PROFIL.nom) { PROFIL.nom = j.renomme; try { localStorage.setItem("profilNom", PROFIL.nom); } catch(e){} majProfilUI(); }
       // ancien profil sans code (ou code réinitialisé par l'administrateur) : on lui en fait choisir un
@@ -976,12 +1021,12 @@ function prof(route, data){
       if (j && j.supprime && PROFIL.nom) { PROFIL = { nom: "", cle: "", admin: false }; try { localStorage.removeItem("profilNom"); localStorage.removeItem("profilCle"); localStorage.removeItem("profilAdmin"); } catch(e){} storeHist([]); renderHist([]); majProfilUI(); ouvrirProfil(); }
       return j;
     })
-    .catch(function(){ return null; });
+    .catch(function(e){ if (e instanceof TypeError) reseau(false); return null; });
 }
-function codeAChange(){
+function codeAChange(bloque){
   if ($("profil").className === "") return;
   ouvrirProfil(); $("pNom").value = PROFIL.nom; setTimeout(function(){ $("pCle").focus(); }, 80);
-  $("pMsg").textContent = "Entre ton code à 4 chiffres.";
+  $("pMsg").textContent = bloque ? "Trop d’essais : réessaie dans 15 minutes." : "Entre ton code.";
 }
 function stat(type){ prof("/profil/activite", { type: type }); }
 function typeDe(c){ return c.indexOf("p:") === 0 ? "photo" : c.indexOf("s:") === 0 ? "sku" : (isBook(c) ? "livre" : "produit"); }
@@ -1001,12 +1046,15 @@ function majProfilUI(){
   $("regRole").innerHTML = ""; if (PROFIL.nom) { $("regRole").appendChild(el("span", "", ROLES[role] || "Équipe")); }
   $("regDroits").textContent = role === "admin" ? "" : role === "manager" ? ((PROFIL.droits || []).length ? "Tes droits : " + PROFIL.droits.map(function(d){ return (CATALOGUE[d] || d).toLowerCase(); }).join(" ; ") + "." : "Aucun droit particulier pour l’instant.") : "";
   $("rolesCard").className = PROFIL.admin ? "card rg" : "card rg hide";
+  $("codeAdminBtn").className = PROFIL.admin ? "" : "hide";
+  if (!PROFIL.admin) $("codeAdminCard").className = "card rg hide";
+  $("caAlerte").className = PROFIL.admin && PROFIL.codeCourt ? "" : "hide";
   $("regNom").textContent = PROFIL.nom || "—";
 }
 // rôle et droits à jour (au démarrage, après connexion)
 function appliquerDroits(j){
   if (!j || !j.ok || !j.role) return;   // réponse sans rôle (ancien serveur) : on garde ce qu'on sait
-  PROFIL.admin = !!j.admin; PROFIL.role = j.role || "equipe"; PROFIL.droits = j.droits || [];
+  PROFIL.admin = !!j.admin; PROFIL.role = j.role || "equipe"; PROFIL.droits = j.droits || []; PROFIL.codeCourt = !!j.code_court;
   if (j.catalogue) CATALOGUE = j.catalogue;
   try { localStorage.setItem("profilAdmin", PROFIL.admin ? "1" : "0"); localStorage.setItem("profilRole", PROFIL.role); localStorage.setItem("profilDroits", JSON.stringify(PROFIL.droits)); localStorage.setItem("catalogueDroits", JSON.stringify(CATALOGUE)); } catch(e){}
   majProfilUI();
@@ -1064,7 +1112,7 @@ function connexion(){
       $("profil").className = "hide"; appliquerDroits(j); $("statCard").className = "card hide"; utiliserInvitation();
       if (!bienvenueVue()) setTimeout(ouvrirBienvenue, 400);
       chargerHistoriqueServeur(true);
-    }, function(){ $("pMsg").textContent = "Serveur injoignable, réessaie."; });
+    }, function(){ reseau(false); $("pMsg").textContent = "Serveur injoignable, réessaie."; });
 }
 // administrateur : renommer, fusionner (renommer vers un prénom qui existe déjà) ou supprimer un profil
 function gererProfil(tr, p){
@@ -1118,11 +1166,12 @@ function afficherStats(){
     var re = el("button", "big alt", "Réessayer"); re.type = "button"; re.onclick = function(){ box.className = "card hide"; afficherStats(); };
     box.appendChild(re);
   };
-  fetch(SERVEUR + "/stats?cle=" + encodeURIComponent(PROFIL.cle) + "&nom=" + encodeURIComponent(PROFIL.nom) + "&t=" + Date.now(), { cache: "no-store", signal: ctl ? ctl.signal : undefined })
+  fetch(SERVEUR + "/stats", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nom: PROFIL.nom, cle: PROFIL.cle }), cache: "no-store", signal: ctl ? ctl.signal : undefined })
     .then(function(r){ clearTimeout(tm); return r.text().then(function(t){ try { return JSON.parse(t); } catch(e){ throw new Error("réponse " + r.status + " : " + t.slice(0, 80)); } }); })
     .then(function(j){
     box.innerHTML = "";
     if (j && j.erreur === "code incorrect") { box.className = "card hide"; codeAChange(); return; }
+    if (j && j.erreur === "trop d'essais") { erreurStats("Trop d’essais : réessaie dans 15 minutes."); return; }
     if (!j || !j.ok) { erreurStats("Statistiques indisponibles" + (j && j.erreur ? " : " + j.erreur : ".")); return; }
     if (j.quota) {
       var q = j.quota, pct = Math.min(100, Math.round(q.neurones / q.limite * 100));
@@ -1305,7 +1354,7 @@ function poserQuestion(){
   $("qRep").insertBefore(bloc, $("qRep").firstChild); $("qIn").value = "";
   var ctl = ("AbortController" in window) ? new AbortController() : null;
   var tm = setTimeout(function(){ if (ctl) ctl.abort(); }, 25000);
-  fetch(SERVEUR + "/question", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question: q, contexte: ctx }), signal: ctl ? ctl.signal : undefined })
+  appel(SERVEUR + "/question", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question: q, contexte: ctx }), signal: ctl ? ctl.signal : undefined })
     .then(function(r){ clearTimeout(tm); return r.json(); })
     .then(function(j){
       if (!j || !j.ok) { rep.textContent = "Pas de réponse pour le moment, réessaie ou utilise Google IA."; return; }
@@ -1316,7 +1365,7 @@ var COURANT = "";
 // ---------- tous les tomes d'une série (catalogue BnF, sans IA) ----------
 function tomesSerie(isbn, box, btn){
   btn.disabled = true; btn.querySelector(".lb").textContent = "Recherche dans le catalogue…";
-  fetch(SERVEUR + "/serie?isbn=" + isbn).then(function(r){ return r.json(); }).then(function(j){
+  appel(SERVEUR + "/serie?isbn=" + isbn).then(function(r){ return r.json(); }).then(function(j){
     if (isbn !== COURANT) return;
     var c = el("div", "serie");
     if (!j || !j.trouve) {
@@ -1347,7 +1396,7 @@ function livresSimilaires(isbn, box, btn){
   btn.disabled = true; btn.querySelector(".lb").textContent = "Recherche de suggestions…";
   var ctl = ("AbortController" in window) ? new AbortController() : null;
   var tm = setTimeout(function(){ if (ctl) ctl.abort(); }, 30000);
-  fetch(SERVEUR + "/similaires?isbn=" + isbn, ctl ? { signal: ctl.signal } : {}).then(function(r){ clearTimeout(tm); return r.json(); }).then(function(j){
+  appel(SERVEUR + "/similaires?isbn=" + isbn, ctl ? { signal: ctl.signal } : {}).then(function(r){ clearTimeout(tm); return r.json(); }).then(function(j){
     btn.remove();
     if (!j || !j.trouve || !j.livres || !j.livres.length) { box.appendChild(el("p", "muted", "Pas de suggestion pour ce livre.")); return; }
     stat("similaires");
@@ -1493,7 +1542,7 @@ var SERVEUR = "https://scan-produit.matth0312.workers.dev";
 function fromServeur(isbn){
   var ctl = ("AbortController" in window) ? new AbortController() : null;
   var tm = setTimeout(function(){ if (ctl) ctl.abort(); }, 20000);
-  return fetch(SERVEUR + "/livre?isbn=" + isbn, ctl ? { signal: ctl.signal } : {}).then(function(r){ clearTimeout(tm); return r.json(); }).then(function(j){
+  return appel(SERVEUR + "/livre?isbn=" + isbn, ctl ? { signal: ctl.signal } : {}).then(function(r){ clearTimeout(tm); return r.json(); }).then(function(j){
     if (!j || !j.trouve) return null;
     var ia = j.ia || {};
     return { title: j.titre, authors: j.auteur, date: /^\d{4}-\d{2}/.test(j.date || "") ? frDate(j.date) : j.date,
@@ -1547,7 +1596,7 @@ function lancerComparaison(a, b, box){
   var ctl = ("AbortController" in window) ? new AbortController() : null;
   var tm = setTimeout(function(){ if (ctl) ctl.abort(); }, 30000);
   var q = "/comparer?a=" + encodeURIComponent(a) + "&b=" + encodeURIComponent(b) + "&na=" + encodeURIComponent(titreDe(a)) + "&nb=" + encodeURIComponent(titreDe(b));
-  fetch(SERVEUR + q, ctl ? { signal: ctl.signal } : {}).then(function(r){ clearTimeout(tm); return r.json(); }).then(function(j){
+  appel(SERVEUR + q, ctl ? { signal: ctl.signal } : {}).then(function(r){ clearTimeout(tm); return r.json(); }).then(function(j){
     box.innerHTML = "";
     var ia = j && j.ia;
     if (!j || !j.trouve || !ia || !ia.lignes) {
@@ -1613,7 +1662,7 @@ function loadProduit(ean){
   box.className = ""; box.innerHTML = '<p class="muted">Recherche du produit…</p>';
   var ctl = ("AbortController" in window) ? new AbortController() : null;
   var tm = setTimeout(function(){ if (ctl) ctl.abort(); }, 20000);
-  fetch(SERVEUR + "/produit?ean=" + ean, ctl ? { signal: ctl.signal } : {}).then(function(r){ clearTimeout(tm); return r.json(); }).then(function(j){
+  appel(SERVEUR + "/produit?ean=" + ean, ctl ? { signal: ctl.signal } : {}).then(function(r){ clearTimeout(tm); return r.json(); }).then(function(j){
     if (my !== prodReq) return;
     if (!j || !j.trouve) { produitIntrouvable(); return; }
     if (j.type === "jeu") stat("jeu");
@@ -1690,7 +1739,7 @@ function identifierPhoto(file){
   reduireImage(file).then(function(image){
     var ctl = ("AbortController" in window) ? new AbortController() : null;
     var tm = setTimeout(function(){ if (ctl) ctl.abort(); }, 40000);
-    return fetch(SERVEUR + "/photo", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ image: image }), signal: ctl ? ctl.signal : undefined })
+    return appel(SERVEUR + "/photo", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ image: image }), signal: ctl ? ctl.signal : undefined })
       .then(function(r){ clearTimeout(tm); return r.json(); });
   }).then(function(j){
     if (my !== prodReq) return;
@@ -1842,9 +1891,27 @@ function onScan(text){
   return true;
 }
 
+// le scanner se charge en arrière-plan pour ne pas retarder l'affichage : s'il n'est pas encore là, on l'attend
+// (et on le redemande une fois si son chargement a échoué)
+function avecScanner(suite){
+  if (typeof Html5Qrcode !== "undefined") { suite(); return; }
+  if (avecScanner.attente) return;
+  avecScanner.attente = true; $("hint").textContent = "Chargement du scanner…";
+  var t0 = Date.now(), relance = false, iv = setInterval(function(){
+    if (typeof Html5Qrcode !== "undefined") { clearInterval(iv); avecScanner.attente = false; $("hint").textContent = ""; suite(); return; }
+    if (window.__libScanKO && !relance) {
+      relance = true; window.__libScanKO = 0;
+      var sc = document.createElement("script"); sc.src = "https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"; sc.async = true; sc.onerror = function(){ window.__libScanKO = 1; };
+      document.head.appendChild(sc);
+    } else if ((window.__libScanKO && relance) || Date.now() - t0 > 12000) {
+      clearInterval(iv); avecScanner.attente = false;
+      $("hint").textContent = "Scanner indisponible : vérifie ta connexion, puis réessaie. En attendant, tape le code à la main.";
+    }
+  }, 200);
+}
 function scanFile(file){
   if (!file) return;
-  if (typeof Html5Qrcode === "undefined") { $("hint").textContent = "Scanner indisponible (bibliothèque non chargée)."; return; }
+  if (typeof Html5Qrcode === "undefined") { avecScanner(function(){ scanFile(file); }); return; }
   $("hint").textContent = "Analyse de la photo…";
   var fr = new Html5Qrcode("filereader", {
     formatsToSupport: [Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.EAN_8, Html5QrcodeSupportedFormats.UPC_A],
@@ -1894,7 +1961,7 @@ $("sku").addEventListener("keydown", function(e){ if (e.key === "Enter") goSku()
 
 function start(){
   if (running) return;
-  if (typeof Html5Qrcode === "undefined") { $("hint").textContent = "Scanner indisponible (bibliothèque non chargée)."; return; }
+  if (typeof Html5Qrcode === "undefined") { avecScanner(start); return; }
   $("reader").className = "";
   scanner = new Html5Qrcode("reader", {
     formatsToSupport: [Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.EAN_8, Html5QrcodeSupportedFormats.UPC_A],
@@ -2004,6 +2071,26 @@ $("pGo").onclick = connexion;
 $("pNom").addEventListener("keydown", function(e){ if (e.key === "Enter") { if ($("pCle").value) connexion(); else $("pCle").focus(); } });
 $("pCle").addEventListener("keydown", function(e){ if (e.key === "Enter") connexion(); });
 $("statBtn").onclick = afficherStats;
+// ---------- l'administrateur change son code (6 chiffres ou plus) ----------
+$("codeAdminBtn").onclick = function(){
+  var c = $("codeAdminCard"), ouvre = c.className.indexOf("hide") > -1;
+  c.className = ouvre ? "card rg" : "card rg hide"; $("caMsg").textContent = ""; $("caNv").value = ""; $("caNv2").value = "";
+  if (ouvre) setTimeout(function(){ $("caNv").focus(); c.scrollIntoView({ behavior: "smooth", block: "center" }); }, 60);
+};
+$("caOk").onclick = function(){
+  var a = $("caNv").value.trim(), b = $("caNv2").value.trim(), m = $("caMsg"), btn = this;
+  if (!/^\d{6,12}$/.test(a)) { m.textContent = "Il faut 6 chiffres au minimum (12 au maximum)."; $("caNv").focus(); return; }
+  if (a !== b) { m.textContent = "Les deux codes ne sont pas identiques."; $("caNv2").value = ""; $("caNv2").focus(); return; }
+  btn.disabled = true; m.textContent = "Enregistrement…";
+  prof("/profil/admin-mon-code", { nouveau: a }).then(function(j){
+    btn.disabled = false;
+    if (!j || !j.ok) { m.textContent = j && j.erreur ? "Refusé : " + j.erreur + "." : "Pas enregistré (serveur injoignable), réessaie."; return; }
+    PROFIL.cle = a; PROFIL.codeCourt = false; try { localStorage.setItem("profilCle", a); } catch(e){}
+    $("codeAdminCard").className = "card rg hide"; majProfilUI(); toast("Nouveau code enregistré ✓ Retiens-le bien.", 6000);
+  });
+};
+$("caNv").addEventListener("keydown", function(e){ if (e.key === "Enter") $("caNv2").focus(); });
+$("caNv2").addEventListener("keydown", function(e){ if (e.key === "Enter") $("caOk").click(); });
 renderHist(loadHist());
 majProfilUI();
 if (PROFIL.nom) chargerHistoriqueServeur(false); else ouvrirProfil();
@@ -2250,7 +2337,7 @@ var INSTALL = null;
 window.addEventListener("beforeinstallprompt", function(e){ e.preventDefault(); INSTALL = e; $("installBtn").className = "big"; try { document.querySelector(".rins").open = true; } catch(x){} });
 window.addEventListener("appinstalled", function(){ INSTALL = null; $("installBtn").className = "big hide"; toast("BipBip est installée ✓"); });
 function estInstallee(){ return !!(navigator.standalone || (window.matchMedia && matchMedia("(display-mode: standalone)").matches)); }
-function installer(){ if (!INSTALL) return; INSTALL.prompt(); INSTALL.userChoice.then(function(){ INSTALL = null; $("installBtn").className = "big hide"; if (BV.i === 2) etapeBienvenue(); }); }
+function installer(){ if (!INSTALL) return; INSTALL.prompt(); INSTALL.userChoice.then(function(){ INSTALL = null; $("installBtn").className = "big hide"; if (BV.i === 3) etapeBienvenue(); }); }
 $("installBtn").onclick = installer;
 var BV = { i: 0 };
 function etapeBienvenue(){
@@ -2267,6 +2354,32 @@ function etapeBienvenue(){
     e.appendChild(el("p", "", "Dans les onglets Équipe et Magasin :"));
     var u2 = el("ul"); ["📌 les infos du magasin (la plus importante s’affiche sur l’accueil)", "🗓️ le planning de la semaine", "💬 le chat, avec photos et @prénom", "🎯 tes objectifs cartes Adhésion et CEMBRA", "📦 les demandes de réassort"].forEach(function(t){ u2.appendChild(el("li", "", t)); }); e.appendChild(u2);
     e.appendChild(el("p", "", "Rien de confidentiel dedans : pas de données clients."));
+  } else if (BV.i === 2) {
+    e.appendChild(el("div", "bvgros", "🔔"));
+    e.appendChild(el("h2", "", "Ne rate rien"));
+    if (notifPossible() && Notification.permission === "granted") {
+      e.appendChild(el("p", "", "✓ Les notifications sont autorisées sur ce téléphone. Tu choisis ce que tu reçois dans Réglages."));
+    } else if (notifPossible() && CHAT.code && Notification.permission === "default") {
+      e.appendChild(el("p", "", "BipBip te prévient, même fermée :"));
+      var u3 = el("ul"); ["📌 quand une info est publiée pour l’équipe", "💬 quand un collègue écrit dans le chat", "📣 quand quelqu’un te cite avec @" + (prenom || "prénom")].forEach(function(t){ u3.appendChild(el("li", "", t)); }); e.appendChild(u3);
+      var bn = el("button", "big", "🔔 Activer les notifications"); bn.type = "button";
+      bn.onclick = function(){
+        $("notifOn").click(); bn.disabled = true; bn.textContent = "Activation…";
+        var n = 0, iv = setInterval(function(){
+          n++;
+          if (Notification.permission === "granted") { bn.textContent = "✓ Notifications activées"; clearInterval(iv); }
+          else if (Notification.permission === "denied" || n > 40) { clearInterval(iv); if (BV.i === 2) etapeBienvenue(); }
+        }, 500);
+      };
+      e.appendChild(bn);
+      e.appendChild(el("p", "aide", "Ton téléphone va te demander l’autorisation : réponds « Autoriser ». Tu pourras tout régler ou couper dans Réglages."));
+    } else if (notifPossible() && Notification.permission === "denied") {
+      e.appendChild(el("p", "", "Les notifications sont bloquées pour BipBip sur ce téléphone. Pour les recevoir, autorise-les pour ce site dans les réglages du navigateur."));
+    } else if (iosSansInstall()) {
+      e.appendChild(el("p", "", "Sur iPhone, les notifications marchent une fois BipBip installée sur l’écran d’accueil (écran suivant). Ouvre-la ensuite depuis son icône, puis Réglages → Notifications."));
+    } else if (!CHAT.code) {
+      e.appendChild(el("p", "", "Rejoins d’abord ton magasin avec le QR code de Matthieu. Tu pourras ensuite activer les notifications dans Réglages."));
+    } else e.appendChild(el("p", "", "Ce navigateur ne gère pas les notifications. Ouvre BipBip dans Chrome (Android) ou installe-la sur l’écran d’accueil (iPhone)."));
   } else {
     e.appendChild(el("div", "bvgros", "🚀"));
     e.appendChild(el("h2", "", "Dernière étape"));
@@ -2275,29 +2388,20 @@ function etapeBienvenue(){
     else if (INSTALL) { var bi = el("button", "big", "📲 Installer BipBip"); bi.type = "button"; bi.onclick = installer; e.appendChild(el("p", "", "Mets BipBip sur ton écran d’accueil, comme une vraie appli :")); e.appendChild(bi); }
     else if (/iPhone|iPad|iPod/.test(navigator.userAgent)) e.appendChild(el("p", "", "📲 Mets BipBip sur ton écran d’accueil : dans Safari, bouton Partager (carré avec flèche) → « Sur l’écran d’accueil »."));
     else e.appendChild(el("p", "", "📲 Mets BipBip sur ton écran d’accueil : menu ⋮ du navigateur → « Ajouter à l’écran d’accueil »."));
-    // notifications
-    if (notifPossible() && CHAT.code && Notification.permission === "default") {
-      e.appendChild(el("p", "", "Sois prévenu des nouvelles infos et des messages de l’équipe :"));
-      var bn = el("button", "big alt", "🔔 Activer les notifications"); bn.type = "button";
-      bn.onclick = function(){ $("notifOn").click(); bn.disabled = true; bn.textContent = "Activation…"; setTimeout(function(){ bn.textContent = Notification.permission === "granted" ? "✓ Notifications activées" : "🔔 Activer les notifications"; bn.disabled = Notification.permission === "granted"; }, 2500); };
-      e.appendChild(bn);
-    } else if (notifPossible() && Notification.permission === "granted") e.appendChild(el("p", "", "✓ Notifications autorisées."));
-    else if (iosSansInstall()) e.appendChild(el("p", "", "🔔 Une fois BipBip installée, ouvre-la depuis l’icône et active les notifications dans Réglages."));
-    else if (!CHAT.code) e.appendChild(el("p", "", "🔔 Rejoins ton magasin (QR code de Matthieu), puis active les notifications dans Réglages."));
     e.appendChild(el("p", "", "Besoin d’aide plus tard ? Réglages → « Comment ça marche »."));
   }
   Array.prototype.forEach.call($("bvPts").children, function(p, i){ p.className = i === BV.i ? "on" : ""; });
-  $("bvSuite").textContent = BV.i < 2 ? "Suivant" : "C’est parti !";
-  $("bvPasser").style.display = BV.i < 2 ? "" : "none";
+  $("bvSuite").textContent = BV.i < 3 ? "Suivant" : "C’est parti !";
+  $("bvPasser").style.display = BV.i < 3 ? "" : "none";
 }
 function ouvrirBienvenue(){ BV.i = 0; $("bvCompris").checked = false; etapeBienvenue(); $("bienvenue").className = "sheet"; }
 // revient à chaque ouverture tant que « J'ai compris » n'est pas coché
 function fermerBienvenue(){ $("bienvenue").className = "sheet hide"; if ($("bvCompris").checked) { try { localStorage.setItem("bienvenue", "1"); } catch(e){} } }
-$("bvSuite").onclick = function(){ if (BV.i < 2) allerEtape(BV.i + 1); else fermerBienvenue(); };
+$("bvSuite").onclick = function(){ if (BV.i < 3) allerEtape(BV.i + 1); else fermerBienvenue(); };
 $("bvPasser").onclick = fermerBienvenue;
 $("bvRevoir").onclick = ouvrirBienvenue;
 // glisser à gauche / à droite pour changer d'écran, ou toucher les points
-function allerEtape(i){ if (i < 0 || i > 2 || i === BV.i) return; var e = $("bvEtape"), dir = i > BV.i ? 1 : -1; BV.i = i; etapeBienvenue(); e.style.transition = "none"; e.style.transform = "translateX(" + (dir * 40) + "px)"; e.style.opacity = "0"; requestAnimationFrame(function(){ requestAnimationFrame(function(){ e.style.transition = "transform .22s ease, opacity .22s ease"; e.style.transform = ""; e.style.opacity = ""; }); }); }
+function allerEtape(i){ if (i < 0 || i > 3 || i === BV.i) return; var e = $("bvEtape"), dir = i > BV.i ? 1 : -1; BV.i = i; etapeBienvenue(); e.style.transition = "none"; e.style.transform = "translateX(" + (dir * 40) + "px)"; e.style.opacity = "0"; requestAnimationFrame(function(){ requestAnimationFrame(function(){ e.style.transition = "transform .22s ease, opacity .22s ease"; e.style.transform = ""; e.style.opacity = ""; }); }); }
 (function(){
   var carte = $("bienvenue").querySelector(".card"), x0 = null, y0 = 0;
   carte.addEventListener("touchstart", function(e){ x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; }, { passive: true });
@@ -2473,7 +2577,7 @@ function dessinerObjectifs(){
   var sg = el("div", "segobj");
   ["adh", "cembra"].forEach(function(t){ var b = el("button", t + (OBJ.type === t ? " on" : "")); b.innerHTML = svgIc("carte") + "<span>" + (t === "adh" ? "Adhésions" : "CEMBRA") + "</span>"; b.type = "button"; b.onclick = function(){ OBJ.type = t; OBJ.edit = ""; try { localStorage.setItem("objType", t); } catch(e){} dessinerObjectifs(); }; sg.appendChild(b); });
   box.appendChild(sg);
-  var lignes = j.lignes.filter(function(x){ return x.type === OBJ.type; });
+  var lignes = (j.lignes || []).filter(function(x){ return x.type === OBJ.type; });
   var c = el("div", "card");
   // mois
   var tete = el("div", "plsem"), av = el("button", "", "‹"), ap = el("button", "", "›"), t = el("div");
@@ -2855,7 +2959,7 @@ $("cdGo").onclick = function(){
   box.innerHTML = '<p class="muted">Recherche d’idées… (10 à 20 secondes)</p>';
   lab("cdGo", "Recherche…");
   var ctl = ("AbortController" in window) ? new AbortController() : null, tm = setTimeout(function(){ if (ctl) ctl.abort(); }, 40000);
-  fetch(SERVEUR + "/cadeaux", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ age: age, budget: budget, types: types, gouts: gouts, occasion: "Noël" }), signal: ctl ? ctl.signal : undefined })
+  appel(SERVEUR + "/cadeaux", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ age: age, budget: budget, types: types, gouts: gouts, occasion: "Noël" }), signal: ctl ? ctl.signal : undefined })
     .then(function(r){ clearTimeout(tm); return r.json(); }).then(function(j){
       lab("cdGo", "Autres idées");
       box.innerHTML = "";
